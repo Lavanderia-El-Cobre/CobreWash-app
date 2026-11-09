@@ -20,4 +20,4 @@ jobs:
       - name: Configure demo Firebase resources for compilation only
         run: cp config/google-services.ci.json androidApp/google-services.json
       - name: Compile, test and analyze Android
-        run: bash gradlew :shared:testAndroidHostTest :androidApp:assembleDebug :androidApp:lintDebug detekt --no-configuration-cache --console=plain
+        run: bash gradlew :shared:testAndroidHostTest :androidApp:assembleDebug :androidApp:lintDebug detekt -PallowDemoFirebase=true --no-configuration-cache --console=plain

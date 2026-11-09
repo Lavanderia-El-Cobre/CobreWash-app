@@ -19,8 +19,12 @@ private fun mapAuthError(error: Throwable): String = when (error) {
         "ERROR_USER_DISABLED" -> "Esta cuenta ha sido deshabilitada."
         "ERROR_USER_NOT_FOUND",
         "ERROR_WRONG_PASSWORD",
+        "ERROR_INVALID_LOGIN_CREDENTIALS",
         "ERROR_INVALID_CREDENTIAL" -> "Correo o contraseña incorrectos."
         "ERROR_TOO_MANY_REQUESTS" -> "Demasiados intentos. Intenta nuevamente más tarde."
+        "ERROR_INVALID_API_KEY",
+        "ERROR_APP_NOT_AUTHORIZED" -> "La app no está configurada correctamente para iniciar sesión. Contacta al administrador."
+        "ERROR_OPERATION_NOT_ALLOWED" -> "El inicio de sesión con correo no está habilitado. Contacta al administrador."
         else -> "Ocurrió un error inesperado. Intenta nuevamente."
     }
     else -> "Ocurrió un error inesperado. Intenta nuevamente."
@@ -38,7 +42,8 @@ actual class AuthRepository actual constructor() {
             AuthResultado.Exito(uid = user.uid, email = user.email ?: correo)
         }
     } catch (error: FirebaseException) {
-        Log.w(AUTH_TAG, "Firebase Auth rechazó el inicio de sesión: ${error::class.simpleName}")
+        val codigo = (error as? FirebaseAuthException)?.errorCode ?: error::class.simpleName
+        Log.w(AUTH_TAG, "Firebase Auth rechazó el inicio de sesión: $codigo")
         AuthResultado.Error(mapAuthError(error))
     } catch (error: IllegalArgumentException) {
         Log.w(AUTH_TAG, "Las credenciales no tienen un formato válido: ${error::class.simpleName}")

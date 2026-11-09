@@ -80,7 +80,7 @@ fun AvisoPrivacidad(modifier: Modifier = Modifier, mostrarTarjeta: Boolean = fal
             onAbrirEnlace = { ruta ->
                 try {
                     enlaces.openUri(ORIGEN_PRIVACIDAD + ruta)
-                } catch (_: IllegalArgumentException) { errorEnlace = true }
+                } catch (_: Exception) { errorEnlace = true }
             },
         )
     }
@@ -177,7 +177,7 @@ private fun ContenidoPrivacidad(errorEnlace: Boolean, onCerrar: () -> Unit, onAb
         SeccionesPrivacidad()
         if (errorEnlace) {
             Text(
-                "No se pudo abrir el navegador. Visita lavanderia-elcobre.vercel.app/privacidad.",
+                "No se pudo abrir el navegador. Visita $ORIGEN_PRIVACIDAD/privacidad/derechos.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
@@ -207,8 +207,18 @@ private fun SeccionesPrivacidad() {
                     "si llevan más de 48 horas. Las copias del servidor tienen una conservación independiente.",
             )
             SeccionPrivacidad(
-                CobreIcons.Lock, "Ejercer tus derechos",
-                "Puedes pedir acceso, rectificación, supresión, oposición o bloqueo en el formulario de derechos de la web.",
+                CobreIcons.Lock, "Ejercer tus derechos (Ley N° 21.719)",
+                "Conforme a la ley, puedes pedir acceso, rectificación, supresión, " +
+                    "oposición, portabilidad o bloqueo en el formulario de la web. " +
+                    "Plazo general: máx. 30 días corridos (bloqueo urgente: 2 días hábiles). " +
+                    "Tienes derecho a reclamar ante la Agencia de Protección de Datos Personales " +
+                    "dentro de 30 días hábiles.",
+            )
+            SeccionPrivacidad(
+                CobreIcons.Inventory, "Ubicación de servidores y transferencias",
+                "Base de datos y fotos en Santiago de Chile (región southamerica-west1); " +
+                    "servicios web en São Paulo, Brasil (región gru1) y autenticación en EE.UU. (región us-central1), " +
+                    "conforme a las normas de transferencias internacionales (Arts. 27 a 29 de la Ley N° 21.719).",
             )
         }
     }

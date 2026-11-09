@@ -637,7 +637,7 @@ private fun EscanerInsumo(inventario: InventarioState, onCerrar: () -> Unit) {
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),
-                label = { Text("Código QR (UUID)") },
+                label = { Text("Código del insumo") },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(
                     onSearch = { if (codigo.isNotBlank()) consultar(codigo) },

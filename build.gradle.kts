@@ -24,3 +24,11 @@ detekt {
         "androidApp/src/main/kotlin",
     )
 }
+
+tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
+    reports {
+        txt.required.set(true)
+        xml.required.set(true)
+        html.required.set(true)
+    }
+}

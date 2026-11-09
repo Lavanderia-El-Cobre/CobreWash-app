@@ -33,6 +33,7 @@ config/       # Configuración de herramientas (detekt)
 
 ## Cómo correr la app
 
+- **Firebase Android:** descargar `google-services.json` desde la app Android con paquete `com.elcobre.lavanderiaelcobre` del proyecto `lavanderia-el-cobre-16fd5` y guardarlo en `androidApp/`. El archivo está excluido de Git. La configuración de `config/google-services.ci.json` solo permite comprobar la compilación en CI con `-PallowDemoFirebase=true`; no permite iniciar sesión.
 - **Android:** `./gradlew :androidApp:assembleDebug` o usar el run widget del IDE
 - **iOS:** abrir [`/iosApp`](./iosApp) en Xcode y ejecutar desde ahí
 
