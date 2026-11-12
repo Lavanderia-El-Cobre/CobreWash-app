@@ -80,16 +80,16 @@ val connector: ExampleConnector = ExampleConnector.getInstance(
 ### ExampleConnector - Query and Mutation Properties
 
 The `example` Data Connect connector defines
-36 queries and
-42 mutations,
-a total of 78 operations.
+51 queries and
+54 mutations,
+a total of 105 operations.
 Each of these operations is exposed
 as a property of [ExampleConnector].
 
 
 An example of the property for a query
-is the query named "DiagnosticoComandas",
-which can be accessed via the [ExampleConnector.diagnosticoComandas] property.
+is the query named "AutorizarGestionPrivacidad",
+which can be accessed via the [ExampleConnector.autorizarGestionPrivacidad] property.
 
 
 An example of the property for a mutation
@@ -172,15 +172,15 @@ last argument of the `execute()` method.
 If a query has no variables then it can be easily executed
 by calling the `execute()` method with no arguments.
 
-For example, the "DiagnosticoComandas" query has no variables
+For example, the "AutorizarGestionPrivacidad" query has no variables
 and can be executed via the
-[ExampleConnector.diagnosticoComandas]
+[ExampleConnector.autorizarGestionPrivacidad]
 property as follows:
 
 ```kotlin
 val connector = ExampleConnector.instance
-val queryResult = connector.diagnosticoComandas.execute()
-println("DiagnosticoComandas query returned: ${queryResult.data}")
+val queryResult = connector.autorizarGestionPrivacidad.execute()
+println("AutorizarGestionPrivacidad query returned: ${queryResult.data}")
 ```
 
 
@@ -208,22 +208,22 @@ however, if they _are_ specified,
 then they are specified in a Kotlin DSL block as the last argument
 of the `execute()` method.
 
-For example, the "GetHistorialVehiculos" query has 7 optional variables ("vehiculoId", "repartidorId", "estado", "desde", "hasta", "limit", and "offset")
-and can be executed via the [ExampleConnector.getHistorialVehiculos]
+For example, the "GetComandasPaginadas" query has 7 optional variables ("limit", "offset", "estados", "cliente", "fechaDesde", "fechaHasta", and "fechaHastaExclusiva")
+and can be executed via the [ExampleConnector.getComandasPaginadas]
 property as follows:
 
 ```kotlin
 val connector = ExampleConnector.instance
-val queryResult = connector.getHistorialVehiculos.execute {
-  vehiculoId = java.util.UUID.randomUUID()
-  repartidorId = "waldo"
-  estado = null
-  desde = Timestamp(723045766, 462198766)
-  hasta = Timestamp(1703884786, 886570560)
+val queryResult = connector.getComandasPaginadas.execute {
   limit = 2702
   offset = 1775
+  estados = listOf(...)
+  cliente = "grault"
+  fechaDesde = Timestamp(1173855893, 338240134)
+  fechaHasta = Timestamp(709150052, 238657902)
+  fechaHastaExclusiva = Timestamp(473331428, 400093898)
 }
-println("GetHistorialVehiculos query returned: ${queryResult.data}")
+println("GetComandasPaginadas query returned: ${queryResult.data}")
 ```
 
 
@@ -240,20 +240,36 @@ _Optional_ variables are specified in a Kotlin DSL block as the
 last argument of the `execute()` method.
 
 
+### Executing Mutations with No Variables
+
+If a mutation has no variables then it can be easily executed
+by calling the `execute()` method with no arguments.
+
+For example, the "VincularMiFichaVerificada" mutation has no variables
+and can be executed via the
+[ExampleConnector.vincularMiFichaVerificada]
+property as follows:
+
+```kotlin
+val connector = ExampleConnector.instance
+val mutationResult = connector.vincularMiFichaVerificada.execute()
+println("VincularMiFichaVerificada mutation returned: ${mutationResult.data}")
+```
+
 
 ### Executing Mutations with Required Variables
 
 If a mutation has _required_ variables then they must be specified as
 arguments to the `execute()` method.
 
-For example, the "AgregarComandaDetalle" mutation has 6 required variables ("comandaId", "tipoPrendaId", "tipoServicioId", "cantidad", "precioUnitario", and "subtotal")
-and can be executed via the [ExampleConnector.agregarComandaDetalle]
+For example, the "RecibirSolicitudDerecho" mutation has 10 required variables ("id", "secretoHash", "contenidoHash", "nombre", "email", "derecho", "detalle", "versionAviso", "objetivoAtencion", and "limiteId")
+and can be executed via the [ExampleConnector.recibirSolicitudDerecho]
 property as follows:
 
 ```kotlin
 val connector = ExampleConnector.instance
-val mutationResult = connector.agregarComandaDetalle.execute(comandaId=java.util.UUID.randomUUID(), tipoPrendaId=java.util.UUID.randomUUID(), tipoServicioId=java.util.UUID.randomUUID(), cantidad=7072, precioUnitario=779.69, subtotal=4654.32)
-println("AgregarComandaDetalle mutation returned: ${mutationResult.data}")
+val mutationResult = connector.recibirSolicitudDerecho.execute(id=java.util.UUID.randomUUID(), secretoHash="thud", contenidoHash="waldo", nombre="corge", email="qux", derecho=derechoSample, detalle="waldo", versionAviso="garply", objetivoAtencion=Timestamp(1745223254, 606178710), limiteId="foo")
+println("RecibirSolicitudDerecho mutation returned: ${mutationResult.data}")
 ```
 
 

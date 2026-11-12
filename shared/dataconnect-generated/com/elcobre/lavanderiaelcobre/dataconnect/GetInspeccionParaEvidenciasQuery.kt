@@ -24,55 +24,55 @@ public interface GetInspeccionParaEvidenciasQuery :
       GetInspeccionParaEvidenciasQuery.Variables
     >
 {
-
+  
     @kotlinx.serialization.Serializable
   public data class Variables(
-
+  
     val id: @kotlinx.serialization.Serializable(with = com.google.firebase.dataconnect.serializers.UUIDSerializer::class) java.util.UUID,
-
+  
   ) {
-
-
+    
+    
   }
+  
 
-
-
+  
     @kotlinx.serialization.Serializable
   public data class Data(
-
+  
     val inspeccionVehiculo: InspeccionVehiculo?,
-
+  
   ) {
-
-
+    
+      
         @kotlinx.serialization.Serializable
   public data class InspeccionVehiculo(
-
+  
     val id: @kotlinx.serialization.Serializable(with = com.google.firebase.dataconnect.serializers.UUIDSerializer::class) java.util.UUID,
-
+  
     val salida: Salida,
-
+  
   ) {
-
-
+    
+      
         @kotlinx.serialization.Serializable
   public data class Salida(
-
+  
     val repartidorId: String,
-
+  
   ) {
-
-
+    
+    
   }
-
-
-
+      
+    
+    
   }
-
-
-
+      
+    
+    
   }
-
+  
 
   public companion object {
     public val operationName: String = "GetInspeccionParaEvidencias"
@@ -86,58 +86,59 @@ public interface GetInspeccionParaEvidenciasQuery :
 }
 
 public fun GetInspeccionParaEvidenciasQuery.ref(
-
+  
     id: java.util.UUID,
 
-
-
+  
+  
 ): com.google.firebase.dataconnect.QueryRef<
     GetInspeccionParaEvidenciasQuery.Data,
     GetInspeccionParaEvidenciasQuery.Variables
   > =
   ref(
-
+    
       GetInspeccionParaEvidenciasQuery.Variables(
         id=id,
-
+  
       )
-
+    
   )
 
 public suspend fun GetInspeccionParaEvidenciasQuery.execute(
 
-
-
+  
+    
       id: java.util.UUID,
 
-
+  
 
   ): com.google.firebase.dataconnect.QueryResult<
     GetInspeccionParaEvidenciasQuery.Data,
     GetInspeccionParaEvidenciasQuery.Variables
   > =
   ref(
-
+    
       id=id,
-
-
+  
+    
   ).execute()
 
 
   public fun GetInspeccionParaEvidenciasQuery.flow(
-
+    
       id: java.util.UUID,
 
-
-
+  
+    
     ): kotlinx.coroutines.flow.Flow<GetInspeccionParaEvidenciasQuery.Data> =
     ref(
-
+        
           id=id,
-
-
+  
+        
       ).subscribe()
       .flow
       ._flow_map { querySubscriptionResult -> querySubscriptionResult.result.getOrNull() }
       ._flow_filterNotNull()
       ._flow_map { it.data }
+

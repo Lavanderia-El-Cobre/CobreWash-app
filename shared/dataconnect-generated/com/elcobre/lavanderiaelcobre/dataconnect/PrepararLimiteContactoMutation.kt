@@ -21,29 +21,29 @@ public interface PrepararLimiteContactoMutation :
       PrepararLimiteContactoMutation.Variables
     >
 {
-
+  
     @kotlinx.serialization.Serializable
   public data class Variables(
-
+  
     val id: String,
-
+  
   ) {
-
-
+    
+    
   }
+  
 
-
-
+  
     @kotlinx.serialization.Serializable
   public data class Data(
-
+  
     val limiteContacto_insert: LimiteContactoKey,
-
+  
   ) {
-
-
+    
+    
   }
-
+  
 
   public companion object {
     public val operationName: String = "PrepararLimiteContacto"
@@ -57,39 +57,41 @@ public interface PrepararLimiteContactoMutation :
 }
 
 public fun PrepararLimiteContactoMutation.ref(
-
+  
     id: String,
 
-
-
+  
+  
 ): com.google.firebase.dataconnect.MutationRef<
     PrepararLimiteContactoMutation.Data,
     PrepararLimiteContactoMutation.Variables
   > =
   ref(
-
+    
       PrepararLimiteContactoMutation.Variables(
         id=id,
-
+  
       )
-
+    
   )
 
 public suspend fun PrepararLimiteContactoMutation.execute(
 
-
-
+  
+    
       id: String,
 
-
+  
 
   ): com.google.firebase.dataconnect.MutationResult<
     PrepararLimiteContactoMutation.Data,
     PrepararLimiteContactoMutation.Variables
   > =
   ref(
-
+    
       id=id,
-
-
+  
+    
   ).execute()
+
+

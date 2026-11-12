@@ -21,31 +21,31 @@ public interface ActualizarEstadoSolicitudContactoMutation :
       ActualizarEstadoSolicitudContactoMutation.Variables
     >
 {
-
+  
     @kotlinx.serialization.Serializable
   public data class Variables(
-
+  
     val id: @kotlinx.serialization.Serializable(with = com.google.firebase.dataconnect.serializers.UUIDSerializer::class) java.util.UUID,
-
+  
     val estado: SolicitudContactoEstado,
-
+  
   ) {
-
-
+    
+    
   }
+  
 
-
-
+  
     @kotlinx.serialization.Serializable
   public data class Data(
-
+  
     val solicitudContacto_update: SolicitudContactoKey?,
-
+  
   ) {
-
-
+    
+    
   }
-
+  
 
   public companion object {
     public val operationName: String = "ActualizarEstadoSolicitudContacto"
@@ -59,39 +59,41 @@ public interface ActualizarEstadoSolicitudContactoMutation :
 }
 
 public fun ActualizarEstadoSolicitudContactoMutation.ref(
-
+  
     id: java.util.UUID,estado: SolicitudContactoEstado,
 
-
-
+  
+  
 ): com.google.firebase.dataconnect.MutationRef<
     ActualizarEstadoSolicitudContactoMutation.Data,
     ActualizarEstadoSolicitudContactoMutation.Variables
   > =
   ref(
-
+    
       ActualizarEstadoSolicitudContactoMutation.Variables(
         id=id,estado=estado,
-
+  
       )
-
+    
   )
 
 public suspend fun ActualizarEstadoSolicitudContactoMutation.execute(
 
-
-
+  
+    
       id: java.util.UUID,estado: SolicitudContactoEstado,
 
-
+  
 
   ): com.google.firebase.dataconnect.MutationResult<
     ActualizarEstadoSolicitudContactoMutation.Data,
     ActualizarEstadoSolicitudContactoMutation.Variables
   > =
   ref(
-
+    
       id=id,estado=estado,
-
-
+  
+    
   ).execute()
+
+

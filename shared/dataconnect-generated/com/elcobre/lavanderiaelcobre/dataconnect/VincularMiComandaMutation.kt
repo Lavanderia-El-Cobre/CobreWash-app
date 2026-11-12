@@ -21,29 +21,29 @@ public interface VincularMiComandaMutation :
       VincularMiComandaMutation.Variables
     >
 {
-
+  
     @kotlinx.serialization.Serializable
   public data class Variables(
-
+  
     val numeroComanda: String,
-
+  
   ) {
-
-
+    
+    
   }
+  
 
-
-
+  
     @kotlinx.serialization.Serializable
   public data class Data(
-
+  
     val comandaVinculada_upsert: ComandaVinculadaKey,
-
+  
   ) {
-
-
+    
+    
   }
-
+  
 
   public companion object {
     public val operationName: String = "VincularMiComanda"
@@ -57,39 +57,41 @@ public interface VincularMiComandaMutation :
 }
 
 public fun VincularMiComandaMutation.ref(
-
+  
     numeroComanda: String,
 
-
-
+  
+  
 ): com.google.firebase.dataconnect.MutationRef<
     VincularMiComandaMutation.Data,
     VincularMiComandaMutation.Variables
   > =
   ref(
-
+    
       VincularMiComandaMutation.Variables(
         numeroComanda=numeroComanda,
-
+  
       )
-
+    
   )
 
 public suspend fun VincularMiComandaMutation.execute(
 
-
-
+  
+    
       numeroComanda: String,
 
-
+  
 
   ): com.google.firebase.dataconnect.MutationResult<
     VincularMiComandaMutation.Data,
     VincularMiComandaMutation.Variables
   > =
   ref(
-
+    
       numeroComanda=numeroComanda,
-
-
+  
+    
   ).execute()
+
+

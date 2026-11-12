@@ -45,6 +45,7 @@ public interface ActualizarVehiculoMutation :
       
       @kotlin.DslMarker public annotation class BuilderDsl
 
+      
       @BuilderDsl
       public interface Builder {
         public var id: java.util.UUID
@@ -58,6 +59,7 @@ public interface ActualizarVehiculoMutation :
       }
 
       public companion object {
+        
         @Suppress("NAME_SHADOWING")
         public fun build(
           id: java.util.UUID,patente: String,marca: String,modelo: String,activo: Boolean,

@@ -40,6 +40,7 @@ public interface GetAvisosParaEquipoQuery :
       
       @kotlin.DslMarker public annotation class BuilderDsl
 
+      
       @BuilderDsl
       public interface Builder {
         public var rol: String
@@ -49,6 +50,7 @@ public interface GetAvisosParaEquipoQuery :
       }
 
       public companion object {
+        
         @Suppress("NAME_SHADOWING")
         public fun build(
           rol: String,

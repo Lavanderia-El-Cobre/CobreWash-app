@@ -39,6 +39,7 @@ public interface RegistrarInspeccionDespuesMutation :
       
       @kotlin.DslMarker public annotation class BuilderDsl
 
+      
       @BuilderDsl
       public interface Builder {
         public var salidaId: java.util.UUID
@@ -49,6 +50,7 @@ public interface RegistrarInspeccionDespuesMutation :
       }
 
       public companion object {
+        
         @Suppress("NAME_SHADOWING")
         public fun build(
           salidaId: java.util.UUID,estadoVehiculo: EstadoVehiculo,kilometraje: Double,

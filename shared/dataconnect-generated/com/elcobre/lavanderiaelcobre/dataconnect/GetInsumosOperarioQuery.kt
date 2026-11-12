@@ -38,6 +38,7 @@ public interface GetInsumosOperarioQuery :
       
       @kotlin.DslMarker public annotation class BuilderDsl
 
+      
       @BuilderDsl
       public interface Builder {
         public var limit: Int?
@@ -46,6 +47,7 @@ public interface GetInsumosOperarioQuery :
       }
 
       public companion object {
+        
         @Suppress("NAME_SHADOWING")
         public fun build(
           
@@ -104,6 +106,8 @@ public interface GetInsumosOperarioQuery :
     val stockMinimo: Double,
   
     val activo: Boolean,
+  
+    val revisionStock: Int,
   
   ) {
     

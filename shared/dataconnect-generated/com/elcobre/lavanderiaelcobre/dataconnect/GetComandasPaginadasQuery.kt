@@ -40,12 +40,15 @@ public interface GetComandasPaginadasQuery :
   
     val fechaHasta: com.google.firebase.dataconnect.OptionalVariable<@kotlinx.serialization.Serializable(with = com.google.firebase.dataconnect.serializers.TimestampSerializer::class) com.google.firebase.Timestamp?>,
   
+    val fechaHastaExclusiva: com.google.firebase.dataconnect.OptionalVariable<@kotlinx.serialization.Serializable(with = com.google.firebase.dataconnect.serializers.TimestampSerializer::class) com.google.firebase.Timestamp?>,
+  
   ) {
     
     
       
       @kotlin.DslMarker public annotation class BuilderDsl
 
+      
       @BuilderDsl
       public interface Builder {
         public var limit: Int?
@@ -54,10 +57,12 @@ public interface GetComandasPaginadasQuery :
         public var cliente: String?
         public var fechaDesde: com.google.firebase.Timestamp?
         public var fechaHasta: com.google.firebase.Timestamp?
+        public var fechaHastaExclusiva: com.google.firebase.Timestamp?
         
       }
 
       public companion object {
+        
         @Suppress("NAME_SHADOWING")
         public fun build(
           
@@ -74,6 +79,8 @@ public interface GetComandasPaginadasQuery :
             var fechaDesde: com.google.firebase.dataconnect.OptionalVariable<com.google.firebase.Timestamp?> =
                 com.google.firebase.dataconnect.OptionalVariable.Undefined
             var fechaHasta: com.google.firebase.dataconnect.OptionalVariable<com.google.firebase.Timestamp?> =
+                com.google.firebase.dataconnect.OptionalVariable.Undefined
+            var fechaHastaExclusiva: com.google.firebase.dataconnect.OptionalVariable<com.google.firebase.Timestamp?> =
                 com.google.firebase.dataconnect.OptionalVariable.Undefined
             
 
@@ -102,11 +109,15 @@ public interface GetComandasPaginadasQuery :
               get() = throw UnsupportedOperationException("getting builder values is not supported")
               set(value_) { fechaHasta = com.google.firebase.dataconnect.OptionalVariable.Value(value_) }
               
+            override var fechaHastaExclusiva: com.google.firebase.Timestamp?
+              get() = throw UnsupportedOperationException("getting builder values is not supported")
+              set(value_) { fechaHastaExclusiva = com.google.firebase.dataconnect.OptionalVariable.Value(value_) }
+              
             
           }.apply(block_)
           .let {
             Variables(
-              limit=limit,offset=offset,estados=estados,cliente=cliente,fechaDesde=fechaDesde,fechaHasta=fechaHasta,
+              limit=limit,offset=offset,estados=estados,cliente=cliente,fechaDesde=fechaDesde,fechaHasta=fechaHasta,fechaHastaExclusiva=fechaHastaExclusiva,
             )
           }
         }

@@ -37,6 +37,7 @@ public interface CrearAvisoMutation :
       
       @kotlin.DslMarker public annotation class BuilderDsl
 
+      
       @BuilderDsl
       public interface Builder {
         public var titulo: String
@@ -46,6 +47,7 @@ public interface CrearAvisoMutation :
       }
 
       public companion object {
+        
         @Suppress("NAME_SHADOWING")
         public fun build(
           titulo: String,contenido: String,

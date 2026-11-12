@@ -43,6 +43,7 @@ public interface RegistrarseMutation :
       
       @kotlin.DslMarker public annotation class BuilderDsl
 
+      
       @BuilderDsl
       public interface Builder {
         public var rolId: java.util.UUID
@@ -55,6 +56,7 @@ public interface RegistrarseMutation :
       }
 
       public companion object {
+        
         @Suppress("NAME_SHADOWING")
         public fun build(
           rolId: java.util.UUID,rut: String,nombre: String,apellido: String,email: String,

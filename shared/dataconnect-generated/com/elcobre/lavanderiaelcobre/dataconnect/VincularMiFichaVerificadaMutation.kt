@@ -21,19 +21,19 @@ public interface VincularMiFichaVerificadaMutation :
       Unit
     >
 {
+  
 
-
-
+  
     @kotlinx.serialization.Serializable
   public data class Data(
-
+  
     val cliente_update: ClienteKey?,
-
+  
   ) {
-
-
+    
+    
   }
-
+  
 
   public companion object {
     public val operationName: String = "VincularMiFichaVerificada"
@@ -47,25 +47,27 @@ public interface VincularMiFichaVerificadaMutation :
 }
 
 public fun VincularMiFichaVerificadaMutation.ref(
-
+  
 ): com.google.firebase.dataconnect.MutationRef<
     VincularMiFichaVerificadaMutation.Data,
     Unit
   > =
   ref(
-
+    
       Unit
-
+    
   )
 
 public suspend fun VincularMiFichaVerificadaMutation.execute(
 
-
+  
 
   ): com.google.firebase.dataconnect.MutationResult<
     VincularMiFichaVerificadaMutation.Data,
     Unit
   > =
   ref(
-
+    
   ).execute()
+
+

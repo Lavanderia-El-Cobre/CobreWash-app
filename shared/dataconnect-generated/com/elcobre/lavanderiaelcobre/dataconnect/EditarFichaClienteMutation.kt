@@ -45,6 +45,7 @@ public interface EditarFichaClienteMutation :
       
       @kotlin.DslMarker public annotation class BuilderDsl
 
+      
       @BuilderDsl
       public interface Builder {
         public var id: java.util.UUID
@@ -58,6 +59,7 @@ public interface EditarFichaClienteMutation :
       }
 
       public companion object {
+        
         @Suppress("NAME_SHADOWING")
         public fun build(
           id: java.util.UUID,nombre: String,tipoCliente: TipoCliente,

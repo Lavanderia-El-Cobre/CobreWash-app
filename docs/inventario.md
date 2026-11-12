@@ -19,8 +19,13 @@ errores se conservan los datos de la última consulta exitosa. Cerrar o cambiar
 sesión limpia el catálogo, selección y errores y descarta respuestas tardías.
 
 Se mantienen los permisos de la web: solo administración registra entradas,
-salidas o edita insumos. La app del operario no expone botones de escritura ni
-solicita la bitácora administrativa. El antiguo formulario de alertas mock se
+salidas o edita insumos, y la app no solicita la bitácora administrativa. El
+operario solo envía conteos físicos con `RegistrarConteoInventario` (con la
+`revisionStock` vigente del insumo); quedan pendientes hasta que administración
+los aprueba o rechaza desde la intranet, y recién al aprobarse cambia el stock.
+La app muestra el último conteo de cada insumo y su estado con
+`GetMisConteosInventario`. El SDK de Kotlin se regenera desde el conector
+`example` del repositorio web (`firebase dataconnect:sdk:generate`). El antiguo formulario de alertas mock se
 retiró porque no persistía sus datos en Firebase.
 
 Pruebas Android: `InventarioTest`. Pruebas reales del servidor, sin producción:

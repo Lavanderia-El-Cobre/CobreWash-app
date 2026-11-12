@@ -24,41 +24,41 @@ public interface ContarLimitesContactoVencidosQuery :
       ContarLimitesContactoVencidosQuery.Variables
     >
 {
-
+  
     @kotlinx.serialization.Serializable
   public data class Variables(
-
+  
     val antesDe: @kotlinx.serialization.Serializable(with = com.google.firebase.dataconnect.serializers.TimestampSerializer::class) com.google.firebase.Timestamp,
-
+  
   ) {
-
-
+    
+    
   }
+  
 
-
-
+  
     @kotlinx.serialization.Serializable
   public data class Data(
-
+  
     val limiteContactos: List<LimiteContactosItem>,
-
+  
   ) {
-
-
+    
+      
         @kotlinx.serialization.Serializable
   public data class LimiteContactosItem(
-
+  
     val _count: Int,
-
+  
   ) {
-
-
+    
+    
   }
-
-
-
+      
+    
+    
   }
-
+  
 
   public companion object {
     public val operationName: String = "ContarLimitesContactoVencidos"
@@ -72,58 +72,59 @@ public interface ContarLimitesContactoVencidosQuery :
 }
 
 public fun ContarLimitesContactoVencidosQuery.ref(
-
+  
     antesDe: com.google.firebase.Timestamp,
 
-
-
+  
+  
 ): com.google.firebase.dataconnect.QueryRef<
     ContarLimitesContactoVencidosQuery.Data,
     ContarLimitesContactoVencidosQuery.Variables
   > =
   ref(
-
+    
       ContarLimitesContactoVencidosQuery.Variables(
         antesDe=antesDe,
-
+  
       )
-
+    
   )
 
 public suspend fun ContarLimitesContactoVencidosQuery.execute(
 
-
-
+  
+    
       antesDe: com.google.firebase.Timestamp,
 
-
+  
 
   ): com.google.firebase.dataconnect.QueryResult<
     ContarLimitesContactoVencidosQuery.Data,
     ContarLimitesContactoVencidosQuery.Variables
   > =
   ref(
-
+    
       antesDe=antesDe,
-
-
+  
+    
   ).execute()
 
 
   public fun ContarLimitesContactoVencidosQuery.flow(
-
+    
       antesDe: com.google.firebase.Timestamp,
 
-
-
+  
+    
     ): kotlinx.coroutines.flow.Flow<ContarLimitesContactoVencidosQuery.Data> =
     ref(
-
+        
           antesDe=antesDe,
-
-
+  
+        
       ).subscribe()
       .flow
       ._flow_map { querySubscriptionResult -> querySubscriptionResult.result.getOrNull() }
       ._flow_filterNotNull()
       ._flow_map { it.data }
+

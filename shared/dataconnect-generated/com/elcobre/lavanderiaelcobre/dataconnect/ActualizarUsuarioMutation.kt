@@ -43,6 +43,7 @@ public interface ActualizarUsuarioMutation :
       
       @kotlin.DslMarker public annotation class BuilderDsl
 
+      
       @BuilderDsl
       public interface Builder {
         public var id: String
@@ -55,6 +56,7 @@ public interface ActualizarUsuarioMutation :
       }
 
       public companion object {
+        
         @Suppress("NAME_SHADOWING")
         public fun build(
           id: String,rolId: java.util.UUID,nombre: String,activo: Boolean,

@@ -24,9 +24,9 @@ public interface AutorizarGestionPrivacidadQuery :
       Unit
     >
 {
+  
 
-
-
+  
 
   public companion object {
     public val operationName: String = "AutorizarGestionPrivacidad"
@@ -40,37 +40,38 @@ public interface AutorizarGestionPrivacidadQuery :
 }
 
 public fun AutorizarGestionPrivacidadQuery.ref(
-
+  
 ): com.google.firebase.dataconnect.QueryRef<
     Unit,
     Unit
   > =
   ref(
-
+    
       Unit
-
+    
   )
 
 public suspend fun AutorizarGestionPrivacidadQuery.execute(
 
-
+  
 
   ): com.google.firebase.dataconnect.QueryResult<
     Unit,
     Unit
   > =
   ref(
-
+    
   ).execute()
 
 
   public fun AutorizarGestionPrivacidadQuery.flow(
-
+    
     ): kotlinx.coroutines.flow.Flow<Unit> =
     ref(
-
+        
       ).subscribe()
       .flow
       ._flow_map { querySubscriptionResult -> querySubscriptionResult.result.getOrNull() }
       ._flow_filterNotNull()
       ._flow_map { it.data }
+

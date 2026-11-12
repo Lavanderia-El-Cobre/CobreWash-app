@@ -21,32 +21,33 @@ public interface RegistrarSalidaFlotaMutation :
       RegistrarSalidaFlotaMutation.Variables
     >
 {
-
+  
     @kotlinx.serialization.Serializable
   public data class Variables(
-
+  
     val salidaId: com.google.firebase.dataconnect.OptionalVariable<@kotlinx.serialization.Serializable(with = com.google.firebase.dataconnect.serializers.UUIDSerializer::class) java.util.UUID?>,
-
+  
     val inspeccionId: com.google.firebase.dataconnect.OptionalVariable<@kotlinx.serialization.Serializable(with = com.google.firebase.dataconnect.serializers.UUIDSerializer::class) java.util.UUID?>,
-
+  
     val vehiculoId: @kotlinx.serialization.Serializable(with = com.google.firebase.dataconnect.serializers.UUIDSerializer::class) java.util.UUID,
-
+  
     val repartidorId: String,
-
+  
     val kilometraje: Double,
-
+  
     val estadoVehiculo: EstadoVehiculo,
-
+  
     val observaciones: com.google.firebase.dataconnect.OptionalVariable<String?>,
-
+  
     val observacionesInspeccion: com.google.firebase.dataconnect.OptionalVariable<String?>,
-
+  
   ) {
-
-
-
+    
+    
+      
       @kotlin.DslMarker public annotation class BuilderDsl
 
+      
       @BuilderDsl
       public interface Builder {
         public var salidaId: java.util.UUID?
@@ -57,10 +58,11 @@ public interface RegistrarSalidaFlotaMutation :
         public var estadoVehiculo: EstadoVehiculo
         public var observaciones: String?
         public var observacionesInspeccion: String?
-
+        
       }
 
       public companion object {
+        
         @Suppress("NAME_SHADOWING")
         public fun build(
           vehiculoId: java.util.UUID,repartidorId: String,kilometraje: Double,estadoVehiculo: EstadoVehiculo,
@@ -78,42 +80,42 @@ public interface RegistrarSalidaFlotaMutation :
                 com.google.firebase.dataconnect.OptionalVariable.Undefined
             var observacionesInspeccion: com.google.firebase.dataconnect.OptionalVariable<String?> =
                 com.google.firebase.dataconnect.OptionalVariable.Undefined
-
+            
 
           return object : Builder {
             override var salidaId: java.util.UUID?
               get() = throw UnsupportedOperationException("getting builder values is not supported")
               set(value_) { salidaId = com.google.firebase.dataconnect.OptionalVariable.Value(value_) }
-
+              
             override var inspeccionId: java.util.UUID?
               get() = throw UnsupportedOperationException("getting builder values is not supported")
               set(value_) { inspeccionId = com.google.firebase.dataconnect.OptionalVariable.Value(value_) }
-
+              
             override var vehiculoId: java.util.UUID
               get() = throw UnsupportedOperationException("getting builder values is not supported")
               set(value_) { vehiculoId = value_ }
-
+              
             override var repartidorId: String
               get() = throw UnsupportedOperationException("getting builder values is not supported")
               set(value_) { repartidorId = value_ }
-
+              
             override var kilometraje: Double
               get() = throw UnsupportedOperationException("getting builder values is not supported")
               set(value_) { kilometraje = value_ }
-
+              
             override var estadoVehiculo: EstadoVehiculo
               get() = throw UnsupportedOperationException("getting builder values is not supported")
               set(value_) { estadoVehiculo = value_ }
-
+              
             override var observaciones: String?
               get() = throw UnsupportedOperationException("getting builder values is not supported")
               set(value_) { observaciones = com.google.firebase.dataconnect.OptionalVariable.Value(value_) }
-
+              
             override var observacionesInspeccion: String?
               get() = throw UnsupportedOperationException("getting builder values is not supported")
               set(value_) { observacionesInspeccion = com.google.firebase.dataconnect.OptionalVariable.Value(value_) }
-
-
+              
+            
           }.apply(block_)
           .let {
             Variables(
@@ -122,25 +124,25 @@ public interface RegistrarSalidaFlotaMutation :
           }
         }
       }
-
+    
   }
+  
 
-
-
+  
     @kotlinx.serialization.Serializable
   public data class Data(
-
+  
     val bloqueo: VehiculoKey?,
-
+  
     val salida: SalidaVehiculoKey,
-
+  
     val inspeccion: InspeccionVehiculoKey,
-
+  
   ) {
-
-
+    
+    
   }
-
+  
 
   public companion object {
     public val operationName: String = "RegistrarSalidaFlota"
@@ -154,33 +156,33 @@ public interface RegistrarSalidaFlotaMutation :
 }
 
 public fun RegistrarSalidaFlotaMutation.ref(
-
+  
     vehiculoId: java.util.UUID,repartidorId: String,kilometraje: Double,estadoVehiculo: EstadoVehiculo,
 
-
+  
     block_: RegistrarSalidaFlotaMutation.Variables.Builder.() -> Unit = {}
-
+  
 ): com.google.firebase.dataconnect.MutationRef<
     RegistrarSalidaFlotaMutation.Data,
     RegistrarSalidaFlotaMutation.Variables
   > =
   ref(
-
+    
       RegistrarSalidaFlotaMutation.Variables.build(
         vehiculoId=vehiculoId,repartidorId=repartidorId,kilometraje=kilometraje,estadoVehiculo=estadoVehiculo,
-
+  
     block_
       )
-
+    
   )
 
 public suspend fun RegistrarSalidaFlotaMutation.execute(
 
-
-
+  
+    
       vehiculoId: java.util.UUID,repartidorId: String,kilometraje: Double,estadoVehiculo: EstadoVehiculo,
 
-
+  
     block_: RegistrarSalidaFlotaMutation.Variables.Builder.() -> Unit = {}
 
   ): com.google.firebase.dataconnect.MutationResult<
@@ -188,9 +190,11 @@ public suspend fun RegistrarSalidaFlotaMutation.execute(
     RegistrarSalidaFlotaMutation.Variables
   > =
   ref(
-
+    
       vehiculoId=vehiculoId,repartidorId=repartidorId,kilometraje=kilometraje,estadoVehiculo=estadoVehiculo,
-
+  
     block_
-
+    
   ).execute()
+
+

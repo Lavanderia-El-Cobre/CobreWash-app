@@ -22,6 +22,8 @@ class InventarioState(private val scope: CoroutineScope, private val repository:
         private set
     var buscando by mutableStateOf(false)
         private set
+    var enviandoConteo by mutableStateOf(false)
+        private set
     var error by mutableStateOf<String?>(null)
         private set
     private var generacion = 0
@@ -36,6 +38,7 @@ class InventarioState(private val scope: CoroutineScope, private val repository:
         conteos = emptyMap()
         cargando = false
         buscando = false
+        enviandoConteo = false
         error = null
     }
 
@@ -43,8 +46,18 @@ class InventarioState(private val scope: CoroutineScope, private val repository:
 
     fun conteoDe(insumoId: String): ConteoFisico? = conteos[insumoId]
 
-    fun registrarConteoFisico(insumoId: String, cantidadContada: Double): Boolean {
-        if (!habilitado) return false
+    /**
+     * Envía el conteo a Firebase como pendiente de aprobación, con la misma mutación que
+     * usa la web (`RegistrarConteoInventario`). El stock del sistema no cambia hasta que
+     * administración lo aprueba; mientras tanto la tarjeta muestra el conteo y su estado.
+     * Devuelve `false` si el conteo no se llegó a enviar.
+     */
+    fun registrarConteoFisico(
+        insumoId: String,
+        cantidadContada: Double,
+        onResultado: (String?) -> Unit = {},
+    ): Boolean {
+        if (!habilitado || enviandoConteo) return false
         if (!cantidadContada.isFinite() || cantidadContada < 0.0) {
             error = "La cantidad contada debe ser cero o mayor."
             return false
@@ -55,8 +68,27 @@ class InventarioState(private val scope: CoroutineScope, private val repository:
             error = "El insumo no está disponible para registrar conteo."
             return false
         }
+        val inicio = generacion
         error = null
-        conteos = conteos + (insumoId to ConteoFisico(insumoId, cantidadContada, insumo.stockActual))
+        enviandoConteo = true
+        scope.launch {
+            try {
+                repository.registrarConteo(insumo, cantidadContada)
+                if (inicio == generacion) {
+                    conteos = conteos + (insumoId to ConteoFisico(insumoId, cantidadContada, insumo.stockActual))
+                    onResultado(null)
+                    cargarConteos(inicio)
+                }
+            } catch (causa: OperacionComandaException) {
+                if (inicio == generacion) {
+                    val mensaje = causa.message ?: "No se pudo registrar el conteo. Intenta nuevamente."
+                    error = mensaje
+                    onResultado(mensaje)
+                }
+            } finally {
+                if (inicio == generacion) enviandoConteo = false
+            }
+        }
         return true
     }
 
@@ -73,11 +105,22 @@ class InventarioState(private val scope: CoroutineScope, private val repository:
                     insumos = resultado.filter { it.activo }.distinctBy { it.id }
                     seleccionado = seleccionado?.let { previo -> insumos.firstOrNull { it.id == previo.id } }
                 }
+                cargarConteos(inicio)
             } catch (causa: OperacionComandaException) {
                 if (inicio == generacion) error = "No se pudo cargar el inventario: ${causa.message}"
             } finally {
                 if (inicio == generacion) cargando = false
             }
+        }
+    }
+
+    /** Último conteo de cada insumo según Firebase; si la consulta falla se conservan los conocidos. */
+    private suspend fun cargarConteos(inicio: Int) {
+        try {
+            val remotos = repository.misConteos()
+            if (inicio == generacion) conteos = remotos.distinctBy { it.insumoId }.associateBy { it.insumoId }
+        } catch (_: OperacionComandaException) {
+            // El catálogo sigue siendo válido aunque no se pueda leer el historial de conteos.
         }
     }
 

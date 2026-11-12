@@ -39,6 +39,7 @@ public interface ReasignarOperarioEtapaMutation :
       
       @kotlin.DslMarker public annotation class BuilderDsl
 
+      
       @BuilderDsl
       public interface Builder {
         public var comandaId: java.util.UUID
@@ -49,6 +50,7 @@ public interface ReasignarOperarioEtapaMutation :
       }
 
       public companion object {
+        
         @Suppress("NAME_SHADOWING")
         public fun build(
           comandaId: java.util.UUID,etapaId: java.util.UUID,operarioId: String,

@@ -60,6 +60,8 @@ public interface GetInsumoPorQrQuery :
   
     val stockMinimo: Double,
   
+    val revisionStock: Int,
+  
     val activo: Boolean,
   
   ) {

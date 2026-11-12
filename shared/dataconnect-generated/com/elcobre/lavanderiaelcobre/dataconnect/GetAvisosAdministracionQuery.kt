@@ -38,6 +38,7 @@ public interface GetAvisosAdministracionQuery :
       
       @kotlin.DslMarker public annotation class BuilderDsl
 
+      
       @BuilderDsl
       public interface Builder {
         public var limit: Int?
@@ -46,6 +47,7 @@ public interface GetAvisosAdministracionQuery :
       }
 
       public companion object {
+        
         @Suppress("NAME_SHADOWING")
         public fun build(
           

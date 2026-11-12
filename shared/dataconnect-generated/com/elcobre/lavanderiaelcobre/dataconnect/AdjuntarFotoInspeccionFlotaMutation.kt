@@ -39,6 +39,7 @@ public interface AdjuntarFotoInspeccionFlotaMutation :
       
       @kotlin.DslMarker public annotation class BuilderDsl
 
+      
       @BuilderDsl
       public interface Builder {
         public var inspeccionId: java.util.UUID
@@ -49,6 +50,7 @@ public interface AdjuntarFotoInspeccionFlotaMutation :
       }
 
       public companion object {
+        
         @Suppress("NAME_SHADOWING")
         public fun build(
           inspeccionId: java.util.UUID,rutaStorage: String,

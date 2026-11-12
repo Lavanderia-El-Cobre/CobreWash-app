@@ -46,6 +46,7 @@ public interface GetReporteCuentasQuery :
       
       @kotlin.DslMarker public annotation class BuilderDsl
 
+      
       @BuilderDsl
       public interface Builder {
         public var desde: com.google.firebase.Timestamp
@@ -58,6 +59,7 @@ public interface GetReporteCuentasQuery :
       }
 
       public companion object {
+        
         @Suppress("NAME_SHADOWING")
         public fun build(
           desde: com.google.firebase.Timestamp,hasta: com.google.firebase.Timestamp,

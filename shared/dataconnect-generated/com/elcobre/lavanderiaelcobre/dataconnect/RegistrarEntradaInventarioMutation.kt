@@ -37,6 +37,7 @@ public interface RegistrarEntradaInventarioMutation :
       
       @kotlin.DslMarker public annotation class BuilderDsl
 
+      
       @BuilderDsl
       public interface Builder {
         public var insumoId: java.util.UUID
@@ -46,6 +47,7 @@ public interface RegistrarEntradaInventarioMutation :
       }
 
       public companion object {
+        
         @Suppress("NAME_SHADOWING")
         public fun build(
           insumoId: java.util.UUID,cantidad: Double,

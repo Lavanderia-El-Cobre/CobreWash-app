@@ -24,41 +24,41 @@ public interface GetLimiteContactoQuery :
       GetLimiteContactoQuery.Variables
     >
 {
-
+  
     @kotlinx.serialization.Serializable
   public data class Variables(
-
+  
     val id: String,
-
+  
   ) {
-
-
+    
+    
   }
+  
 
-
-
+  
     @kotlinx.serialization.Serializable
   public data class Data(
-
+  
     val limiteContacto: LimiteContacto?,
-
+  
   ) {
-
-
+    
+      
         @kotlinx.serialization.Serializable
   public data class LimiteContacto(
-
+  
     val id: String,
-
+  
   ) {
-
-
+    
+    
   }
-
-
-
+      
+    
+    
   }
-
+  
 
   public companion object {
     public val operationName: String = "GetLimiteContacto"
@@ -72,58 +72,59 @@ public interface GetLimiteContactoQuery :
 }
 
 public fun GetLimiteContactoQuery.ref(
-
+  
     id: String,
 
-
-
+  
+  
 ): com.google.firebase.dataconnect.QueryRef<
     GetLimiteContactoQuery.Data,
     GetLimiteContactoQuery.Variables
   > =
   ref(
-
+    
       GetLimiteContactoQuery.Variables(
         id=id,
-
+  
       )
-
+    
   )
 
 public suspend fun GetLimiteContactoQuery.execute(
 
-
-
+  
+    
       id: String,
 
-
+  
 
   ): com.google.firebase.dataconnect.QueryResult<
     GetLimiteContactoQuery.Data,
     GetLimiteContactoQuery.Variables
   > =
   ref(
-
+    
       id=id,
-
-
+  
+    
   ).execute()
 
 
   public fun GetLimiteContactoQuery.flow(
-
+    
       id: String,
 
-
-
+  
+    
     ): kotlinx.coroutines.flow.Flow<GetLimiteContactoQuery.Data> =
     ref(
-
+        
           id=id,
-
-
+  
+        
       ).subscribe()
       .flow
       ._flow_map { querySubscriptionResult -> querySubscriptionResult.result.getOrNull() }
       ._flow_filterNotNull()
       ._flow_map { it.data }
+

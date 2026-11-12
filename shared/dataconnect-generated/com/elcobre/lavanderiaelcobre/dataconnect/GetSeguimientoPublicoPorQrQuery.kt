@@ -48,6 +48,8 @@ public interface GetSeguimientoPublicoPorQrQuery :
         @kotlinx.serialization.Serializable
   public data class Comanda(
   
+    val codigoQr: @kotlinx.serialization.Serializable(with = com.google.firebase.dataconnect.serializers.UUIDSerializer::class) java.util.UUID,
+  
     val numeroComanda: String,
   
     val estado: @kotlinx.serialization.Serializable(with = ComandaEstado.EnumValueSerializer::class) EnumValue<ComandaEstado>,

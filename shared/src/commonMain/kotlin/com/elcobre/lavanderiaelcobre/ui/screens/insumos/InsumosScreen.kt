@@ -39,6 +39,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.elcobre.lavanderiaelcobre.data.ConteoFisico
+import com.elcobre.lavanderiaelcobre.data.EstadoRevisionConteo
 import com.elcobre.lavanderiaelcobre.data.InsumoInventario
 import com.elcobre.lavanderiaelcobre.ui.InventarioState
 import com.elcobre.lavanderiaelcobre.ui.components.ButtonVariant
@@ -62,7 +63,7 @@ import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 private enum class FiltroInsumo(val etiqueta: String) {
     TODOS("Todos"),
     ALERTA("Stock bajo"),
-    CONTADOS("Verificados"),
+    CONTADOS("Contados"),
 }
 
 /**
@@ -163,8 +164,9 @@ private fun DetalleInsumoSeleccionado(elegido: InsumoInventario, inventario: Inv
         InsumoCard(elegido, conteo = inventario.conteoDe(elegido.id))
         ConteoFisicoCard(
             insumo = elegido,
-            conteoActual = inventario.conteoDe(elegido.id),
-            onRegistrar = { cantidad -> inventario.registrarConteoFisico(elegido.id, cantidad) },
+            enviando = inventario.enviandoConteo,
+            errorInventario = inventario.error,
+            onRegistrar = { cantidad, alTerminar -> inventario.registrarConteoFisico(elegido.id, cantidad, alTerminar) },
         )
     }
 }
@@ -260,7 +262,7 @@ private fun ResumenKpiInventario(inventario: InventarioState) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         KpiInsumo("Total", "$total", colors.textPrimary, Modifier.weight(1f))
         KpiInsumo("Stock bajo", "$alertas", if (alertas > 0) colors.warningText else colors.textPrimary, Modifier.weight(1f))
-        KpiInsumo("Verificados", "$verificados", if (verificados > 0) colors.successText else colors.textPrimary, Modifier.weight(1f))
+        KpiInsumo("Contados", "$verificados", if (verificados > 0) colors.successText else colors.textPrimary, Modifier.weight(1f))
     }
 }
 
@@ -370,49 +372,68 @@ private fun InsumoCard(
 private fun ResumenConteoEnTarjeta(conteo: ConteoFisico, unidad: String) {
     val colors = CobreTheme.colors
     val signo = if (conteo.diferencia > 0) "+" else ""
-    val colorConteo = if (conteo.coincide) colors.successText else colors.dangerText
-    val fondo = if (conteo.coincide) colors.success else colors.danger
+    // El color sigue la revisión de administración, no la diferencia: un conteo pendiente
+    // todavía no cambió el stock.
+    val (fondo, colorConteo, icono) = when (conteo.estado) {
+        EstadoRevisionConteo.PENDIENTE -> Triple(colors.warning, colors.warningText, CobreIcons.History)
+        EstadoRevisionConteo.APROBADO -> Triple(colors.success, colors.successText, CobreIcons.CheckCircle)
+        EstadoRevisionConteo.RECHAZADO -> Triple(colors.danger, colors.dangerText, CobreIcons.Warning)
+    }
     val detalle = "${cantidad(conteo.cantidadContada)} $unidad (${conteo.estadoConteo}: $signo${cantidad(conteo.diferencia)})"
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(CobreShapes.md)
             .background(fondo.copy(alpha = 0.10f))
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Icon(
-            imageVector = if (conteo.coincide) CobreIcons.CheckCircle else CobreIcons.Warning,
-            contentDescription = null,
-            tint = colorConteo,
-            modifier = Modifier.size(16.dp),
-        )
-        Text("Conteo físico: $detalle", style = MaterialTheme.typography.bodySmall, color = colorConteo, fontWeight = FontWeight.SemiBold)
+        Icon(imageVector = icono, contentDescription = null, tint = colorConteo, modifier = Modifier.size(16.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                "Conteo ${conteo.estado.etiqueta.lowercase()}",
+                style = MaterialTheme.typography.labelMedium,
+                color = colorConteo,
+                fontWeight = FontWeight.Bold,
+            )
+            Text("Contado: $detalle", style = MaterialTheme.typography.bodySmall, color = colors.textPrimary)
+            val pie = listOfNotNull(conteo.creadoEn.takeIf { it.isNotBlank() }, conteo.motivoResolucion?.takeIf { it.isNotBlank() })
+            if (pie.isNotEmpty()) {
+                Text(pie.joinToString(" · "), style = MaterialTheme.typography.labelSmall, color = colors.textSecondary)
+            }
+        }
     }
 }
 
 @Composable
 private fun ConteoFisicoCard(
     insumo: InsumoInventario,
-    conteoActual: ConteoFisico?,
-    onRegistrar: (Double) -> Boolean,
+    enviando: Boolean,
+    errorInventario: String?,
+    onRegistrar: (cantidad: Double, alTerminar: (String?) -> Unit) -> Boolean,
 ) {
     val colors = CobreTheme.colors
-    var textoCantidad by remember(insumo.id, conteoActual) {
-        mutableStateOf(conteoActual?.let { cantidad(it.cantidadContada) } ?: "")
-    }
+    var textoCantidad by remember(insumo.id) { mutableStateOf("") }
     var mensajeLocal by remember(insumo.id) { mutableStateOf<String?>(null) }
     var esErrorLocal by remember(insumo.id) { mutableStateOf(false) }
 
-    val guardarConteo = {
+    val guardarConteo = guardar@{
         val valor = textoCantidad.trim().replace(',', '.').toDoubleOrNull()
         if (valor == null || valor < 0.0) {
             esErrorLocal = true
             mensajeLocal = "Ingresa una cantidad numérica válida (0 o mayor)."
-        } else if (onRegistrar(valor)) {
-            esErrorLocal = false
-            mensajeLocal = "Conteo físico registrado correctamente."
+            return@guardar
+        }
+        val enviado = onRegistrar(valor) { fallo ->
+            esErrorLocal = fallo != null
+            mensajeLocal = fallo
+                ?: "Conteo enviado. El stock se ajustará cuando administración lo apruebe."
+            if (fallo == null) textoCantidad = ""
+        }
+        if (!enviado && errorInventario != null) {
+            esErrorLocal = true
+            mensajeLocal = errorInventario
         }
     }
 
@@ -425,7 +446,8 @@ private fun ConteoFisicoCard(
                 modifier = Modifier.semantics { heading() },
             )
             Text(
-                "Ingresa la cantidad real contada físicamente para contrastarla con el stock del sistema.",
+                "Ingresa la cantidad real contada. Se envía a administración, que la revisa " +
+                    "y ajusta el stock al aprobarla.",
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.textSecondary,
             )
@@ -437,10 +459,11 @@ private fun ConteoFisicoCard(
                 keyboardActions = KeyboardActions(onDone = { guardarConteo() }),
             )
             CobreButton(
-                text = "Registrar conteo físico",
+                text = if (enviando) "Enviando conteo…" else "Enviar conteo físico",
                 onClick = guardarConteo,
                 variant = ButtonVariant.Primary,
                 icon = CobreIcons.Check,
+                enabled = !enviando && textoCantidad.isNotBlank(),
                 fillWidth = true,
             )
             mensajeLocal?.let {

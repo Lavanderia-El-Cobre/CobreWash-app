@@ -45,6 +45,7 @@ public interface CrearUsuarioAdministradoMutation :
       
       @kotlin.DslMarker public annotation class BuilderDsl
 
+      
       @BuilderDsl
       public interface Builder {
         public var id: String
@@ -58,6 +59,7 @@ public interface CrearUsuarioAdministradoMutation :
       }
 
       public companion object {
+        
         @Suppress("NAME_SHADOWING")
         public fun build(
           id: String,rolId: java.util.UUID,rut: String,nombre: String,apellido: String,email: String,

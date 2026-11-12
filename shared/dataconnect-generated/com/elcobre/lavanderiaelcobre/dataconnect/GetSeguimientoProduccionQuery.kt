@@ -40,6 +40,7 @@ public interface GetSeguimientoProduccionQuery :
       
       @kotlin.DslMarker public annotation class BuilderDsl
 
+      
       @BuilderDsl
       public interface Builder {
         public var limit: Int?
@@ -49,6 +50,7 @@ public interface GetSeguimientoProduccionQuery :
       }
 
       public companion object {
+        
         @Suppress("NAME_SHADOWING")
         public fun build(
           

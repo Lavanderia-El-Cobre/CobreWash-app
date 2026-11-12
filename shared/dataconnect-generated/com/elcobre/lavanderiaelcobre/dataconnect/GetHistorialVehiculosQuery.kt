@@ -48,6 +48,7 @@ public interface GetHistorialVehiculosQuery :
       
       @kotlin.DslMarker public annotation class BuilderDsl
 
+      
       @BuilderDsl
       public interface Builder {
         public var vehiculoId: java.util.UUID?
@@ -61,6 +62,7 @@ public interface GetHistorialVehiculosQuery :
       }
 
       public companion object {
+        
         @Suppress("NAME_SHADOWING")
         public fun build(
           

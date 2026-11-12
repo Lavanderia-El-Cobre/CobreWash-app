@@ -1,5 +1,7 @@
 package com.elcobre.lavanderiaelcobre
 
+import com.elcobre.lavanderiaelcobre.data.ConteoFisico
+import com.elcobre.lavanderiaelcobre.data.EstadoRevisionConteo
 import com.elcobre.lavanderiaelcobre.data.InsumoInventario
 import com.elcobre.lavanderiaelcobre.data.InventarioRepository
 import com.elcobre.lavanderiaelcobre.data.OperacionComandaException
@@ -128,31 +130,41 @@ class InventarioTest {
         assertNull(state.seleccionado)
     }
 
-    @Test fun conteoFisicoRegistraComparacionSinAlterarStockSistema() = runTest {
-        val state = InventarioState(backgroundScope, Fake(item))
+    @Test fun conteoFisicoSeEnviaPendienteSinAlterarStockSistema() = runTest {
+        val enviados = mutableListOf<Pair<String, Double>>()
+        val repo = object : InventarioRepository {
+            override suspend fun catalogo() = listOf(item)
+            override suspend fun porQr(codigo: String) = item
+            override suspend fun misConteos() = enviados.reversed().map { (id, cantidad) ->
+                ConteoFisico(id, cantidad, item.stockActual, id = "c-$cantidad", estado = EstadoRevisionConteo.PENDIENTE)
+            }
+            override suspend fun registrarConteo(insumo: InsumoInventario, cantidad: Double) {
+                if (cantidad == 99.0) throw OperacionComandaException("El stock cambió. Actualiza el insumo y vuelve a contar.")
+                enviados += insumo.id to cantidad
+            }
+        }
+        val state = InventarioState(backgroundScope, repo)
         state.cambiarSesion(true)
         state.refrescar()
         testScheduler.runCurrent()
 
-        assertTrue(state.registrarConteoFisico(item.id, 20.0))
-        val cuadrado = state.conteoDe(item.id)
-        assertNotNull(cuadrado)
-        assertTrue(cuadrado.coincide)
-        assertEquals("Cuadrado", cuadrado.estadoConteo)
-        assertEquals(20.0, state.insumos.single().stockActual)
-
-        assertTrue(state.registrarConteoFisico(item.id, 17.5))
+        var resultado: String? = "sin respuesta"
+        assertTrue(state.registrarConteoFisico(item.id, 17.5) { resultado = it })
+        testScheduler.runCurrent()
+        assertNull(resultado)
+        assertEquals(listOf(item.id to 17.5), enviados)
         val faltante = state.conteoDe(item.id)
         assertNotNull(faltante)
-        assertFalse(faltante.coincide)
         assertEquals(-2.5, faltante.diferencia)
         assertEquals("Faltante", faltante.estadoConteo)
+        assertEquals(EstadoRevisionConteo.PENDIENTE, faltante.estado)
+        assertEquals(20.0, state.insumos.single().stockActual)
+        assertFalse(state.enviandoConteo)
 
-        assertTrue(state.registrarConteoFisico(item.id, 23.0))
-        val sobrante = state.conteoDe(item.id)
-        assertNotNull(sobrante)
-        assertEquals(3.0, sobrante.diferencia)
-        assertEquals("Sobrante", sobrante.estadoConteo)
+        assertTrue(state.registrarConteoFisico(item.id, 99.0) { resultado = it })
+        testScheduler.runCurrent()
+        assertNotNull(resultado)
+        assertNotNull(state.error)
 
         assertFalse(state.registrarConteoFisico(item.id, -1.0))
         assertFalse(state.registrarConteoFisico("no-existe", 10.0))

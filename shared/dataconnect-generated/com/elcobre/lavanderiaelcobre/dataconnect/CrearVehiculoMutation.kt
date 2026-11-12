@@ -41,6 +41,7 @@ public interface CrearVehiculoMutation :
       
       @kotlin.DslMarker public annotation class BuilderDsl
 
+      
       @BuilderDsl
       public interface Builder {
         public var patente: String
@@ -52,6 +53,7 @@ public interface CrearVehiculoMutation :
       }
 
       public companion object {
+        
         @Suppress("NAME_SHADOWING")
         public fun build(
           patente: String,marca: String,modelo: String,

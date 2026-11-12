@@ -37,6 +37,7 @@ public interface RegistrarIncidenciaComandaMutation :
       
       @kotlin.DslMarker public annotation class BuilderDsl
 
+      
       @BuilderDsl
       public interface Builder {
         public var comandaId: java.util.UUID
@@ -46,6 +47,7 @@ public interface RegistrarIncidenciaComandaMutation :
       }
 
       public companion object {
+        
         @Suppress("NAME_SHADOWING")
         public fun build(
           comandaId: java.util.UUID,motivo: String,

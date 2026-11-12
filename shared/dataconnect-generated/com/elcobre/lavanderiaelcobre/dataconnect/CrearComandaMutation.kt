@@ -43,6 +43,7 @@ public interface CrearComandaMutation :
       
       @kotlin.DslMarker public annotation class BuilderDsl
 
+      
       @BuilderDsl
       public interface Builder {
         public var numeroComanda: String
@@ -55,6 +56,7 @@ public interface CrearComandaMutation :
       }
 
       public companion object {
+        
         @Suppress("NAME_SHADOWING")
         public fun build(
           numeroComanda: String,clienteId: java.util.UUID,valorTotal: Double,

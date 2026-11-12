@@ -45,6 +45,7 @@ public interface AgregarComandaDetalleMutation :
       
       @kotlin.DslMarker public annotation class BuilderDsl
 
+      
       @BuilderDsl
       public interface Builder {
         public var comandaId: java.util.UUID
@@ -58,6 +59,7 @@ public interface AgregarComandaDetalleMutation :
       }
 
       public companion object {
+        
         @Suppress("NAME_SHADOWING")
         public fun build(
           comandaId: java.util.UUID,tipoPrendaId: java.util.UUID,tipoServicioId: java.util.UUID,cantidad: Int,precioUnitario: Double,subtotal: Double,
