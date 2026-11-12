@@ -8,7 +8,6 @@ import com.elcobre.lavanderiaelcobre.data.model.EtapaProceso
 import com.elcobre.lavanderiaelcobre.data.model.Operario
 import com.elcobre.lavanderiaelcobre.data.model.Sesion
 import com.elcobre.lavanderiaelcobre.data.model.TipoAlerta
-import com.elcobre.lavanderiaelcobre.data.model.TurnoPlanta
 import com.elcobre.lavanderiaelcobre.ui.CobreViewModel
 import com.elcobre.lavanderiaelcobre.ui.Pantalla
 import com.elcobre.lavanderiaelcobre.ui.screens.login.sesionParaRol
@@ -41,7 +40,7 @@ class CobreViewModelTest {
         return vm
     }
 
-    private val operario = Sesion.DeOperario(Operario("Test", "Operario", "Mañana"))
+    private val operario = Sesion.DeOperario(Operario("Test", "Operario"))
     private val administrador = Sesion.DeAdministrador(Administrador("Test Admin"))
 
     @Test
@@ -114,7 +113,6 @@ class CobreViewModelTest {
                 email = "operario@cobre.cl",
                 nombre = "Operario Planta",
                 rol = "operario",
-                turno = "Turno Mañana",
             ),
         )
         val vm = crearViewModel()
@@ -232,39 +230,12 @@ class CobreViewModelTest {
     }
 
     @Test
-    fun cambiarTurno_actualizaOperarioYSesionParaRolRespetaTurnoElegido() {
-        val vm = crearViewModel()
-        val sesionInicial = sesionParaRol("operario", "Carlos", TurnoPlanta.TARDE)
-        assertNotNull(sesionInicial)
-        vm.iniciarSesion(sesionInicial)
-        assertEquals("Turno Tarde", vm.operario?.turno)
-
-        vm.cambiarTurno(TurnoPlanta.NOCHE.etiqueta)
-        assertEquals("Turno Noche", vm.operario?.turno)
-    }
-
-    @Test
-    fun turnoAutomatico_calculaTurnoSegunHoraYSincroniza() {
-        assertEquals(TurnoPlanta.MANANA, TurnoPlanta.porHora(6))
-        assertEquals(TurnoPlanta.MANANA, TurnoPlanta.porHora(13))
-        assertEquals(TurnoPlanta.TARDE, TurnoPlanta.porHora(14))
-        assertEquals(TurnoPlanta.TARDE, TurnoPlanta.porHora(21))
-        assertEquals(TurnoPlanta.NOCHE, TurnoPlanta.porHora(22))
-        assertEquals(TurnoPlanta.NOCHE, TurnoPlanta.porHora(23))
-        assertEquals(TurnoPlanta.NOCHE, TurnoPlanta.porHora(0))
-        assertEquals(TurnoPlanta.NOCHE, TurnoPlanta.porHora(5))
-
-        val vm = crearViewModel()
+    fun sesionParaRol_operarioNoLlevaTurno() {
         val sesion = sesionParaRol("operario", "Ana")
         assertNotNull(sesion)
+        val vm = crearViewModel()
         vm.iniciarSesion(sesion)
-        // El turno por defecto coincide con TurnoPlanta.turnoActual()
-        assertEquals(TurnoPlanta.turnoActual().etiqueta, vm.operario?.turno)
-
-        // Si se cambia manualmente y luego se sincroniza, adopta el turno horario actual
-        vm.cambiarTurno("Turno Inexistente")
-        assertEquals("Turno Inexistente", vm.operario?.turno)
-        vm.sincronizarTurnoAutomatico()
-        assertEquals(TurnoPlanta.turnoActual().etiqueta, vm.operario?.turno)
+        assertEquals("Ana", vm.operario?.nombre)
+        assertEquals("Operario de planta", vm.operario?.rol)
     }
 }

@@ -5,12 +5,6 @@ import platform.Foundation.NSCalendarUnitHour
 import platform.Foundation.NSCalendarUnitMinute
 import platform.Foundation.NSDate
 
-internal actual fun obtenerHoraActualDelDia(): Int {
-    val date = NSDate()
-    val calendar = NSCalendar.currentCalendar
-    return calendar.component(NSCalendarUnitHour, fromDate = date).toInt()
-}
-
 internal actual fun obtenerHoraFormateadaActual(): String {
     val date = NSDate()
     val calendar = NSCalendar.currentCalendar

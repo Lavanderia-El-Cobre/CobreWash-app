@@ -153,7 +153,7 @@ private fun CuentaCard(operario: Operario) {
             Spacer(Modifier.width(14.dp))
             Column {
                 Text(operario.nombre, style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
-                Text("${operario.rol} · ${operario.turno}", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+                Text(operario.rol, style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
             }
         }
     }

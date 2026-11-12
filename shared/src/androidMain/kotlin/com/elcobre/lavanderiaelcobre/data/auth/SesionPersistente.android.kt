@@ -8,7 +8,8 @@ private const val KEY_RECORDARME = "recordarme"
 private const val KEY_EMAIL = "email"
 private const val KEY_NOMBRE = "nombre"
 private const val KEY_ROL = "rol"
-private const val KEY_TURNO = "turno"
+// Clave que guardaban versiones anteriores (turnos de planta); se limpia al guardar o cerrar sesión.
+private const val KEY_TURNO_LEGADO = "turno"
 
 private var prefs: SharedPreferences? = null
 private var inMemoryFallback: DatosSesionGuardada? = null
@@ -29,7 +30,7 @@ actual object SesionPersistente {
                 .putString(KEY_EMAIL, datos.email)
                 .putString(KEY_NOMBRE, datos.nombre)
                 .putString(KEY_ROL, datos.rol)
-                .putString(KEY_TURNO, datos.turno)
+                .remove(KEY_TURNO_LEGADO)
                 .apply()
         } else {
             inMemoryFallback = datos
@@ -50,9 +51,8 @@ actual object SesionPersistente {
         val email = p.getString(KEY_EMAIL, null)
         val nombre = p.getString(KEY_NOMBRE, null)
         val rol = p.getString(KEY_ROL, null)
-        val turno = p.getString(KEY_TURNO, null)
         return if (email != null && nombre != null && rol != null) {
-            DatosSesionGuardada(email = email, nombre = nombre, rol = rol, turno = turno)
+            DatosSesionGuardada(email = email, nombre = nombre, rol = rol)
         } else {
             null
         }
@@ -66,7 +66,7 @@ actual object SesionPersistente {
                 .remove(KEY_EMAIL)
                 .remove(KEY_NOMBRE)
                 .remove(KEY_ROL)
-                .remove(KEY_TURNO)
+                .remove(KEY_TURNO_LEGADO)
                 .apply()
         } else {
             inMemoryFallback = null

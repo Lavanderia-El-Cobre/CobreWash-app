@@ -8,7 +8,6 @@ data class DatosSesionGuardada(
     val email: String,
     val nombre: String,
     val rol: String,
-    val turno: String? = null,
 )
 
 /**

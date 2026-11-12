@@ -38,6 +38,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,6 +57,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.elcobre.lavanderiaelcobre.data.model.Operario
 import com.elcobre.lavanderiaelcobre.data.model.Pedido
@@ -77,6 +80,7 @@ import com.elcobre.lavanderiaelcobre.ui.components.GlassSegmentedControl
 import com.elcobre.lavanderiaelcobre.ui.components.GlassStack
 import com.elcobre.lavanderiaelcobre.ui.components.HistorialCard
 import com.elcobre.lavanderiaelcobre.ui.components.LargeTitle
+import com.elcobre.lavanderiaelcobre.ui.components.LocalShellPadding
 import com.elcobre.lavanderiaelcobre.ui.components.SectionLabel
 import com.elcobre.lavanderiaelcobre.ui.components.StageProgress
 import com.elcobre.lavanderiaelcobre.ui.components.StatusChip
@@ -91,6 +95,9 @@ import com.elcobre.lavanderiaelcobre.ui.theme.CobreShapes
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 
 private val ANCHO_TABLET_SPLIT = 720.dp
+
+/** Ancho de la lista de comandas junto al detalle en tablet. */
+private val AnchoListaTablet = 360.dp
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -112,58 +119,67 @@ fun DashboardScreen(
     var expandidoId by remember { mutableStateOf<String?>(null) }
     var pedidoSeleccionadoId by remember { mutableStateOf<String?>(pedidos.firstOrNull()?.id) }
 
-    var sidebarVisible by remember { mutableStateOf(true) }
-
-    val visibles = remember(filtro, busqueda, pedidos) {
-        val consulta = busqueda.trim()
-        pedidos.filter { p ->
-            (filtro == null || p.tipo == filtro) &&
-            (consulta.isEmpty() || p.comanda.contains(consulta, ignoreCase = true) || p.cliente.contains(consulta, ignoreCase = true))
+    // derivedStateOf y no remember(pedidos): la lista del ViewModel es la misma instancia
+    // observable aunque cambie su contenido, así que como clave de remember nunca invalidaba
+    // y las comandas recién cargadas no aparecían hasta salir y volver a la pestaña.
+    val visibles by remember(pedidos) {
+        derivedStateOf {
+            val consulta = busqueda.trim()
+            pedidos.filter { p ->
+                (filtro == null || p.tipo == filtro) &&
+                    (
+                        consulta.isEmpty() ||
+                            p.comanda.contains(consulta, ignoreCase = true) ||
+                            p.cliente.contains(consulta, ignoreCase = true)
+                        )
+            }
         }
     }
-    CobreBackground(applySystemBarsInsets = mostrarTopBar) {
-        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-            if (maxWidth >= ANCHO_TABLET_SPLIT) {
-                TabletMasterDetailLayout(
-                    pedidos = pedidos,
-                    visibles = visibles,
-                    filtro = filtro,
-                    onFiltroChange = { filtro = it },
-                    busqueda = busqueda,
-                    onBusquedaChange = { busqueda = it },
-                    pedidoSeleccionadoId = pedidoSeleccionadoId,
-                    onSeleccionarPedido = { pedidoSeleccionadoId = it },
-                    onSeleccionarPedidoDobleClick = {
-                        pedidoSeleccionadoId = it
-                        sidebarVisible = false
-                    },
-                    sidebarVisible = sidebarVisible,
-                    onToggleSidebar = { sidebarVisible = !sidebarVisible },
-                    onAvanzarEtapa = onAvanzarEtapa,
-                    onComentar = onComentar,
-                    onAlerta = onAlerta,
-                    onResolverAlerta = onResolverAlerta,
-                    sharedScope = sharedScope,
-                    animatedScope = animatedScope,
-                )
-            } else {
-                MobileDashboardLayout(
-                    operario = operario,
-                    pedidos = pedidos,
-                    visibles = visibles,
-                    filtro = filtro,
-                    onFiltroChange = { filtro = it },
-                    busqueda = busqueda,
-                    onBusquedaChange = { busqueda = it },
-                    expandidoId = expandidoId,
-                    onToggleExpand = { expandidoId = if (expandidoId == it) null else it },
-                    onAvanzarEtapa = onAvanzarEtapa,
-                    onAbrirPedido = onAbrirPedido,
-                    onCerrarSesion = onCerrarSesion,
-                    mostrarTopBar = mostrarTopBar,
-                    sharedScope = sharedScope,
-                    animatedScope = animatedScope,
-                )
+    // El espacio de la barra flotante va como contentPadding de la lista, para que las
+    // comandas pasen por debajo del vidrio, y no como padding del contenedor.
+    val espacioNav = LocalShellPadding.current.calculateBottomPadding()
+    CompositionLocalProvider(LocalShellPadding provides PaddingValues(0.dp)) {
+        CobreBackground(applySystemBarsInsets = mostrarTopBar) {
+            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                if (maxWidth >= ANCHO_TABLET_SPLIT) {
+                    TabletMasterDetailLayout(
+                        espacioInferior = espacioNav,
+                        pedidos = pedidos,
+                        visibles = visibles,
+                        filtro = filtro,
+                        onFiltroChange = { filtro = it },
+                        busqueda = busqueda,
+                        onBusquedaChange = { busqueda = it },
+                        pedidoSeleccionadoId = pedidoSeleccionadoId,
+                        onSeleccionarPedido = { pedidoSeleccionadoId = it },
+                        onSeleccionarPedidoDobleClick = { pedidoSeleccionadoId = it },
+                        onAvanzarEtapa = onAvanzarEtapa,
+                        onComentar = onComentar,
+                        onAlerta = onAlerta,
+                        onResolverAlerta = onResolverAlerta,
+                        sharedScope = sharedScope,
+                        animatedScope = animatedScope,
+                    )
+                } else {
+                    MobileDashboardLayout(
+                        espacioInferior = espacioNav,
+                        operario = operario,
+                        pedidos = pedidos,
+                        visibles = visibles,
+                        filtro = filtro,
+                        onFiltroChange = { filtro = it },
+                        busqueda = busqueda,
+                        onBusquedaChange = { busqueda = it },
+                        expandidoId = expandidoId,
+                        onToggleExpand = { expandidoId = if (expandidoId == it) null else it },
+                        onAvanzarEtapa = onAvanzarEtapa,
+                        onAbrirPedido = onAbrirPedido,
+                        onCerrarSesion = onCerrarSesion,
+                        mostrarTopBar = mostrarTopBar,
+                        sharedScope = sharedScope,
+                        animatedScope = animatedScope,
+                    )
+                }
             }
         }
     }
@@ -172,6 +188,7 @@ fun DashboardScreen(
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun TabletMasterDetailLayout(
+    espacioInferior: Dp,
     pedidos: List<Pedido>,
     visibles: List<Pedido>,
     filtro: TipoComanda?,
@@ -181,8 +198,6 @@ private fun TabletMasterDetailLayout(
     pedidoSeleccionadoId: String?,
     onSeleccionarPedido: (String) -> Unit,
     onSeleccionarPedidoDobleClick: (String) -> Unit,
-    sidebarVisible: Boolean,
-    onToggleSidebar: () -> Unit,
     onAvanzarEtapa: (Pedido) -> Unit,
     onComentar: (String, String) -> Unit,
     onAlerta: (String, TipoAlerta, String) -> Unit,
@@ -191,65 +206,47 @@ private fun TabletMasterDetailLayout(
     animatedScope: AnimatedVisibilityScope?,
 ) {
     val haptic = LocalHapticFeedback.current
-    Row(modifier = Modifier.fillMaxSize()) {
-        val sidebarWidth by androidx.compose.animation.core.animateDpAsState(
-            targetValue = if (sidebarVisible) 380.dp else 0.dp,
-            animationSpec = tween(350, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-            label = "sidebarWidth",
-        )
-
-        Box(
-            modifier = Modifier
-                .width(sidebarWidth)
-                .fillMaxHeight(),
-        ) {
-            // Contenido fijo para que no se deforme durante la animación
-            Column(
-                modifier = Modifier
-                    .width(380.dp)
-                    .fillMaxHeight(),
-            ) {
-                MisTareasResumen(
-                    pedidos = pedidos,
-                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp),
-                )
-                Spacer(Modifier.height(12.dp))
-                SearchBar(
-                    query = busqueda,
-                    onQueryChange = onBusquedaChange,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
-                )
-                FiltroTipos(
-                    seleccion = filtro,
-                    onSeleccion = {
-                        onFiltroChange(it)
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    },
-                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 10.dp, top = 4.dp),
-                )
-                PedidosListColumn(
-                    visibles = visibles,
-                    expandidoId = null,
-                    seleccionadoId = pedidoSeleccionadoId,
-                    onToggleExpand = {},
-                    onAvanzarEtapa = onAvanzarEtapa,
-                    onSeleccionar = { p ->
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        onSeleccionarPedido(p.id)
-                    },
-                    onDoubleClick = { p ->
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onSeleccionarPedidoDobleClick(p.id)
-                    },
-                    onLimpiar = {
-                        onFiltroChange(null)
-                        onBusquedaChange("")
-                    },
-                    sharedScope = sharedScope,
-                    animatedScope = animatedScope,
-                    modifier = Modifier.weight(1f),
-                )
-            }
+    Row(modifier = Modifier.fillMaxSize().padding(bottom = espacioInferior)) {
+        // Lista fija (no plegable): ocupa su propio espacio junto al detalle.
+        Box(modifier = Modifier.width(AnchoListaTablet).fillMaxHeight()) {
+            // Resumen, búsqueda y filtro se desplazan con la lista: fijos arriba dejaban casi
+            // sin alto a las comandas en un teléfono horizontal.
+            PedidosListColumn(
+                encabezado = {
+                    item(key = "resumen") {
+                        MisTareasResumen(pedidos = pedidos, modifier = Modifier.padding(start = 4.dp, top = 12.dp))
+                    }
+                    item(key = "busqueda") { SearchBar(query = busqueda, onQueryChange = onBusquedaChange) }
+                    item(key = "filtros") {
+                        FiltroTipos(
+                            seleccion = filtro,
+                            onSeleccion = {
+                                onFiltroChange(it)
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            },
+                        )
+                    }
+                },
+                visibles = visibles,
+                expandidoId = null,
+                seleccionadoId = pedidoSeleccionadoId,
+                onToggleExpand = {},
+                onAvanzarEtapa = onAvanzarEtapa,
+                onSeleccionar = { p ->
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onSeleccionarPedido(p.id)
+                },
+                onDoubleClick = { p ->
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onSeleccionarPedidoDobleClick(p.id)
+                },
+                onLimpiar = {
+                    onFiltroChange(null)
+                    onBusquedaChange("")
+                },
+                sharedScope = sharedScope,
+                animatedScope = animatedScope,
+            )
         }
 
         val pedidoActivo = pedidos.firstOrNull { it.id == pedidoSeleccionadoId }
@@ -259,8 +256,6 @@ private fun TabletMasterDetailLayout(
             onComentar = { texto -> if (pedidoActivo != null) onComentar(pedidoActivo.id, texto) },
             onAlerta = { tipo, nota -> if (pedidoActivo != null) onAlerta(pedidoActivo.id, tipo, nota) },
             onResolver = { if (pedidoActivo != null) onResolverAlerta(pedidoActivo.id) },
-            sidebarVisible = sidebarVisible,
-            onToggleSidebar = onToggleSidebar,
             modifier = Modifier.weight(1f).fillMaxHeight(),
         )
     }
@@ -269,6 +264,7 @@ private fun TabletMasterDetailLayout(
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun MobileDashboardLayout(
+    espacioInferior: Dp,
     operario: Operario,
     pedidos: List<Pedido>,
     visibles: List<Pedido>,
@@ -296,11 +292,12 @@ private fun MobileDashboardLayout(
         background = { fuente ->
         PedidosListColumn(
             state = listState,
+            extraInferior = espacioInferior,
             encabezado = {
                 item(key = "titulo") {
                     LargeTitle(
                         title = "Mis tareas",
-                        subtitle = "${operario.nombre} · ${operario.turno}",
+                        subtitle = operario.nombre,
                         trailing = if (mostrarTopBar) {
                             {
                                 GlassIconButton(
@@ -361,6 +358,7 @@ private fun PedidosListColumn(
     visibles: List<Pedido>,
     state: LazyListState = rememberLazyListState(),
     encabezado: LazyListScope.() -> Unit = {},
+    extraInferior: Dp = 0.dp,
     expandidoId: String?,
     seleccionadoId: String?,
     onToggleExpand: (String) -> Unit,
@@ -376,7 +374,7 @@ private fun PedidosListColumn(
     LazyColumn(
         state = state,
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 28.dp, top = 8.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 28.dp + extraInferior, top = 8.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         encabezado()
@@ -432,8 +430,6 @@ private fun TabletDetailPane(
     onComentar: (String) -> Unit,
     onAlerta: (TipoAlerta, String) -> Unit,
     onResolver: () -> Unit,
-    sidebarVisible: Boolean,
-    onToggleSidebar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var comentarioTexto by remember(pedido?.id) { mutableStateOf("") }
@@ -478,7 +474,7 @@ private fun TabletDetailPane(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                TabletDetailHeader(pedido, sidebarVisible, onToggleSidebar)
+                TabletDetailHeader(pedido)
 
                 // Componente idéntico a FlujoProduccion.tsx de la web
                 FlujoProduccionCard(
@@ -505,24 +501,13 @@ private fun TabletDetailPane(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TabletDetailHeader(
-    pedido: Pedido,
-    sidebarVisible: Boolean,
-    onToggleSidebar: () -> Unit,
-) {
+private fun TabletDetailHeader(pedido: Pedido) {
     val colors = CobreTheme.colors
     val etapa = etapaColors(pedido.etapaActual)
     val prioridad = prioridadColors(pedido.prioridad)
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            GlassIconButton(
-                icon = if (sidebarVisible) CobreIcons.Close else CobreIcons.Menu,
-                contentDescription = if (sidebarVisible) "Ocultar panel" else "Mostrar panel",
-                onClick = onToggleSidebar,
-                size = 44.dp,
-            )
-            Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(pedido.comanda, style = CobreTheme.text.largeTitle, color = colors.textPrimary)
                 Text(

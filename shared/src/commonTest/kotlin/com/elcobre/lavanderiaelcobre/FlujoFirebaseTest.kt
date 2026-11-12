@@ -18,7 +18,7 @@ import kotlin.test.assertNotNull
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class FlujoFirebaseTest {
-    private val sesion = Sesion.DeOperario(Operario("Test", "Operario", "Mañana"))
+    private val sesion = Sesion.DeOperario(Operario("Test", "Operario"))
 
     @BeforeTest fun setUp() { SesionPersistente.limpiar() }
     @AfterTest fun tearDown() { SesionPersistente.limpiar() }

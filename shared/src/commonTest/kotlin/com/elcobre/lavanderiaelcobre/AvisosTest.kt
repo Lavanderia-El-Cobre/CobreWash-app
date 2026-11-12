@@ -21,7 +21,7 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AvisosTest {
-    private val sesion = Sesion.DeOperario(Operario("Test", "Operario", "Mañana"))
+    private val sesion = Sesion.DeOperario(Operario("Test", "Operario"))
     private fun datos(n: Int) = (1..n).map { Aviso("$it", "Título $it", "Contenido", "Fecha", "Operarios") }
 
     @Test fun cargaRealPaginacionYRefrescoSinDuplicados() = runTest {

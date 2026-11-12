@@ -26,7 +26,6 @@ import com.elcobre.lavanderiaelcobre.data.auth.SesionPersistente
 import com.elcobre.lavanderiaelcobre.data.auth.PerfilResultado
 import com.elcobre.lavanderiaelcobre.data.auth.restaurarPerfilAutenticado
 import com.elcobre.lavanderiaelcobre.data.model.TipoAlerta
-import com.elcobre.lavanderiaelcobre.data.model.TurnoPlanta
 import com.elcobre.lavanderiaelcobre.ui.screens.login.sesionParaRol
 import com.elcobre.lavanderiaelcobre.ui.theme.ModoTema
 
@@ -156,22 +155,6 @@ class CobreViewModel(
 
     fun cambiarReducirTransparencia(activo: Boolean) { reducirTransparencia = activo }
 
-    fun cambiarTurno(nuevoTurno: String) {
-        val actual = operario ?: return
-        val limpio = nuevoTurno.trim()
-        if (limpio.isEmpty() || actual.turno == limpio) return
-        sesion = Sesion.DeOperario(actual.copy(turno = limpio))
-        refrescarComandas()
-    }
-
-    fun sincronizarTurnoAutomatico() {
-        val actual = operario ?: return
-        val turnoCalculado = TurnoPlanta.turnoActual().etiqueta
-        if (actual.turno != turnoCalculado) {
-            cambiarTurno(turnoCalculado)
-        }
-    }
-
     // Pila de navegación real (no solo la pantalla actual): vive en el ViewModel para
     // sobrevivir a la recreación de la Activity en cambios de configuración, y permite
     // que `volver()` regrese al destino anterior real en vez de uno fijo hardcodeado.
@@ -217,7 +200,7 @@ class CobreViewModel(
             val perfil = restaurarPerfil()
             if (inicio != generacion) return@launch
             val valida = (perfil as? PerfilResultado.Exito)?.let {
-                sesionParaRol(it.rolNombre, it.nombre, TurnoPlanta.turnoActual())
+                sesionParaRol(it.rolNombre, it.nombre)
             }
             if (valida != null) iniciarSesion(valida)
             else {

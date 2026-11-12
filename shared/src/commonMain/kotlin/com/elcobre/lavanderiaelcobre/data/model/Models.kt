@@ -163,28 +163,10 @@ data class Pedido(
     }
 }
 
-/** Turnos operativos de la planta de lavandería (RF-AN01 / RF-AN02). */
-enum class TurnoPlanta(val etiqueta: String, val corto: String, val horario: String) {
-    MANANA("Turno Mañana", "Mañana", "06:00 – 14:00"),
-    TARDE("Turno Tarde", "Tarde", "14:00 – 22:00"),
-    NOCHE("Turno Noche", "Noche", "22:00 – 06:00");
-
-    companion object {
-        fun porHora(horaDelDia: Int): TurnoPlanta = when (horaDelDia) {
-            in 6..13 -> MANANA
-            in 14..21 -> TARDE
-            else -> NOCHE
-        }
-
-        fun turnoActual(): TurnoPlanta = porHora(obtenerHoraActualDelDia())
-    }
-}
-
 /** Operario autenticado. */
 data class Operario(
     val nombre: String,
     val rol: String,
-    val turno: String,
 )
 
 /** Administrador autenticado; gestiona la flota de reparto (RF-VE01 a RF-VE04). */

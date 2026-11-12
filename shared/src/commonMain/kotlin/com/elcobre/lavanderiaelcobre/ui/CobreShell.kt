@@ -66,13 +66,13 @@ private val AltoBarra = 64.dp
 private val AnchoRail = 72.dp
 private val MargenFlotante = 12.dp
 private val SeparacionContenido = 8.dp
+
+// Aire entre el rail y el contenido: en teléfono horizontal las tarjetas quedaban pegadas al vidrio.
+private val SeparacionRail = 20.dp
 private val AnchoMaxBarra = 520.dp
 
 /** Espacio que la barra inferior flotante le quita al contenido, además de la barra de navegación del sistema. */
 internal val EspacioBarraInferior: Dp = AltoBarra + MargenFlotante + SeparacionContenido
-
-/** Espacio que el rail flotante le quita al contenido por la izquierda. */
-internal val EspacioRail: Dp = AnchoRail + MargenFlotante + SeparacionContenido
 
 /** Contadores que se muestran sobre cada tab (p. ej. avisos sin leer); los ceros no se dibujan. */
 internal typealias BadgesNav = Map<Pantalla, Int>
@@ -176,7 +176,7 @@ internal fun FloatingRail(
         modifier = modifier
             .fillMaxHeight()
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Vertical + WindowInsetsSides.Start))
-            .padding(start = MargenFlotante, top = MargenFlotante, bottom = MargenFlotante),
+            .padding(start = MargenFlotante, top = MargenFlotante, bottom = MargenFlotante, end = SeparacionRail),
         contentAlignment = Alignment.CenterStart,
     ) {
         Column(

@@ -6,7 +6,8 @@ private const val KEY_RECORDARME = "cobre_recordarme"
 private const val KEY_EMAIL = "cobre_email"
 private const val KEY_NOMBRE = "cobre_nombre"
 private const val KEY_ROL = "cobre_rol"
-private const val KEY_TURNO = "cobre_turno"
+// Clave que guardaban versiones anteriores (turnos de planta); se limpia al guardar o cerrar sesión.
+private const val KEY_TURNO_LEGADO = "cobre_turno"
 
 actual object SesionPersistente {
     private val defaults get() = NSUserDefaults.standardUserDefaults
@@ -16,11 +17,7 @@ actual object SesionPersistente {
         defaults.setObject(datos.email, forKey = KEY_EMAIL)
         defaults.setObject(datos.nombre, forKey = KEY_NOMBRE)
         defaults.setObject(datos.rol, forKey = KEY_ROL)
-        if (datos.turno != null) {
-            defaults.setObject(datos.turno, forKey = KEY_TURNO)
-        } else {
-            defaults.removeObjectForKey(KEY_TURNO)
-        }
+        defaults.removeObjectForKey(KEY_TURNO_LEGADO)
     }
 
     actual fun obtener(): DatosSesionGuardada? {
@@ -28,9 +25,8 @@ actual object SesionPersistente {
         val email = defaults.stringForKey(KEY_EMAIL)
         val nombre = defaults.stringForKey(KEY_NOMBRE)
         val rol = defaults.stringForKey(KEY_ROL)
-        val turno = defaults.stringForKey(KEY_TURNO)
         return if (email != null && nombre != null && rol != null) {
-            DatosSesionGuardada(email = email, nombre = nombre, rol = rol, turno = turno)
+            DatosSesionGuardada(email = email, nombre = nombre, rol = rol)
         } else {
             null
         }
@@ -41,7 +37,7 @@ actual object SesionPersistente {
         defaults.removeObjectForKey(KEY_EMAIL)
         defaults.removeObjectForKey(KEY_NOMBRE)
         defaults.removeObjectForKey(KEY_ROL)
-        defaults.removeObjectForKey(KEY_TURNO)
+        defaults.removeObjectForKey(KEY_TURNO_LEGADO)
     }
 
     actual fun estaRecordado(): Boolean {

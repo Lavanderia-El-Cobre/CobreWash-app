@@ -61,7 +61,8 @@ fun LargeTitle(
 ) {
     val colors = CobreTheme.colors
     Row(
-        modifier = modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp),
+        // Aire bajo la barra de estado: con 8 dp el título quedaba pegado a la hora y los íconos.
+        modifier = modifier.fillMaxWidth().padding(top = 20.dp, bottom = 8.dp),
         verticalAlignment = Alignment.Bottom,
     ) {
         Column(modifier = Modifier.weight(1f)) {

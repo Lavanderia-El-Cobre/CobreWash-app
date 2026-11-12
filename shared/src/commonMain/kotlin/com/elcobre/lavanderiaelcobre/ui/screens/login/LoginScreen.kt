@@ -72,7 +72,6 @@ import com.elcobre.lavanderiaelcobre.data.auth.SesionPersistente
 import com.elcobre.lavanderiaelcobre.data.model.Administrador
 import com.elcobre.lavanderiaelcobre.data.model.Operario
 import com.elcobre.lavanderiaelcobre.data.model.Sesion
-import com.elcobre.lavanderiaelcobre.data.model.TurnoPlanta
 import com.elcobre.lavanderiaelcobre.ui.components.AvisoPrivacidad
 import com.elcobre.lavanderiaelcobre.ui.components.CobreButton
 import com.elcobre.lavanderiaelcobre.ui.components.CobreIcons
@@ -92,9 +91,8 @@ import org.jetbrains.compose.resources.painterResource
 internal fun sesionParaRol(
     rolNombre: String,
     nombre: String,
-    turno: TurnoPlanta = TurnoPlanta.turnoActual(),
 ): Sesion? = when (rolNombre.lowercase().trim()) {
-    "operario", "operario de planta" -> Sesion.DeOperario(Operario(nombre = nombre, rol = "Operario de planta", turno = turno.etiqueta))
+    "operario", "operario de planta" -> Sesion.DeOperario(Operario(nombre = nombre, rol = "Operario de planta"))
     "admin", "administrador" -> Sesion.DeAdministrador(Administrador(nombre = nombre))
     else -> null // "recepcionista" y "cliente" no tienen vista en esta app.
 }
@@ -108,7 +106,6 @@ fun LoginScreen(
     var correo by remember { mutableStateOf(sesionGuardada?.email ?: "") }
     var password by remember { mutableStateOf("") }
     var recordarme by remember { mutableStateOf(SesionPersistente.getRecordarme()) }
-    val turnoAutomatico = remember { TurnoPlanta.turnoActual() }
     var error by remember { mutableStateOf<String?>(null) }
     var visible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
@@ -145,8 +142,7 @@ fun LoginScreen(
                 is AuthResultado.Exito -> {
                     when (val perfil = perfilRepository.obtenerMiPerfil()) {
                         is PerfilResultado.Exito -> {
-                            val turno = TurnoPlanta.turnoActual()
-                            val sesion = sesionParaRol(perfil.rolNombre, perfil.nombre, turno)
+                            val sesion = sesionParaRol(perfil.rolNombre, perfil.nombre)
                             isLoading = false
                             if (sesion == null) {
                                 authRepository.cerrarSesion()
@@ -159,7 +155,6 @@ fun LoginScreen(
                                             email = correo.trim(),
                                             nombre = perfil.nombre,
                                             rol = perfil.rolNombre,
-                                            turno = turno.etiqueta,
                                         ),
                                     )
                                 } else {
@@ -196,7 +191,6 @@ fun LoginScreen(
                 onPasswordChange = { password = it; error = null },
                 recordarme = recordarme,
                 onRecordarmeChange = { recordarme = it },
-                turno = turnoAutomatico,
                 error = error,
                 isLoading = isLoading,
                 onSubmit = { intentarEntrar() },
@@ -300,7 +294,6 @@ private fun LoginCard(
     onPasswordChange: (String) -> Unit,
     recordarme: Boolean,
     onRecordarmeChange: (Boolean) -> Unit,
-    turno: TurnoPlanta,
     error: String?,
     isLoading: Boolean,
     onSubmit: () -> Unit,
@@ -336,7 +329,6 @@ private fun LoginCard(
                     onPasswordChange = onPasswordChange,
                     recordarme = recordarme,
                     onRecordarmeChange = onRecordarmeChange,
-                    turno = turno,
                     error = error,
                     isLoading = isLoading,
                     onSubmit = onSubmit,
@@ -373,7 +365,6 @@ private fun LoginForm(
     onPasswordChange: (String) -> Unit,
     recordarme: Boolean,
     onRecordarmeChange: (Boolean) -> Unit,
-    turno: TurnoPlanta,
     error: String?,
     isLoading: Boolean,
     onSubmit: () -> Unit,
@@ -429,8 +420,6 @@ private fun LoginForm(
             keyboardActions = KeyboardActions(onDone = { onSubmit() }),
         )
         Spacer(Modifier.height(12.dp))
-        TurnoDetectadoBanner(turno = turno)
-        Spacer(Modifier.height(4.dp))
         val haptic = LocalHapticFeedback.current
         var aviso by remember { mutableStateOf(false) }
         LaunchedEffect(aviso) { if (aviso) { delay(2000); aviso = false } }
@@ -499,29 +488,6 @@ private fun RecordarmeYOlvideFila(
                 .clickable(role = Role.Button, onClick = onOlvideContrasena)
                 .padding(vertical = 12.dp),
         )
-    }
-}
-
-@Composable
-private fun TurnoDetectadoBanner(turno: TurnoPlanta) {
-    val colors = CobreTheme.colors
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(CobreShapes.md)
-            .background(colors.infoContainer)
-            .padding(horizontal = 12.dp, vertical = 10.dp)
-            .semantics(mergeDescendants = true) {
-                contentDescription = "Turno de planta asignado automáticamente: ${turno.etiqueta}, horario ${turno.horario}"
-            },
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(CobreIcons.Schedule, contentDescription = null, tint = colors.info, modifier = Modifier.size(16.dp))
-            Text("${turno.etiqueta} (${turno.horario})", style = MaterialTheme.typography.labelMedium, color = colors.textPrimary)
-        }
-        Text("AUTOMÁTICO", style = CobreTheme.text.labelCaps, color = colors.info)
     }
 }
 
