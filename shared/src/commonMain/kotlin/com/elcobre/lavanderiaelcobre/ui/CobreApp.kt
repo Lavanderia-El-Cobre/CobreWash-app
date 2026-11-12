@@ -4,6 +4,8 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
@@ -15,21 +17,21 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -54,17 +56,15 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.elcobre.lavanderiaelcobre.data.FirebaseVehiculosRepository
 import com.elcobre.lavanderiaelcobre.data.model.Administrador
-import com.elcobre.lavanderiaelcobre.data.model.FiltroFlota
 import com.elcobre.lavanderiaelcobre.data.model.Operario
-import com.elcobre.lavanderiaelcobre.ui.components.AdminSidebar
 import com.elcobre.lavanderiaelcobre.ui.components.BarrasDelSistema
+import com.elcobre.lavanderiaelcobre.ui.components.ButtonVariant
 import com.elcobre.lavanderiaelcobre.ui.components.CobreBackHandler
 import com.elcobre.lavanderiaelcobre.ui.components.CobreBackdrop
-import com.elcobre.lavanderiaelcobre.ui.components.GlassSurface
+import com.elcobre.lavanderiaelcobre.ui.components.CobreButton
 import com.elcobre.lavanderiaelcobre.ui.components.LocalGlassBackdrop
 import com.elcobre.lavanderiaelcobre.ui.components.LocalRootGlassBackdrop
 import com.elcobre.lavanderiaelcobre.ui.components.LocalShellPadding
-import com.elcobre.lavanderiaelcobre.ui.components.WebTopbar
 import com.elcobre.lavanderiaelcobre.ui.components.glassBackdropSource
 import com.elcobre.lavanderiaelcobre.ui.components.rememberGlassBackdrop
 import com.elcobre.lavanderiaelcobre.ui.screens.avisos.AvisosScreen
@@ -76,21 +76,19 @@ import com.elcobre.lavanderiaelcobre.ui.screens.insumos.InsumosScreen
 import com.elcobre.lavanderiaelcobre.ui.screens.login.LoginScreen
 import com.elcobre.lavanderiaelcobre.ui.screens.vehiculos.VehiculosScreen
 import com.elcobre.lavanderiaelcobre.ui.theme.Brand400
-import com.elcobre.lavanderiaelcobre.ui.theme.CobreShapes
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 import com.elcobre.lavanderiaelcobre.ui.theme.ModoTema
 import com.elcobre.lavanderiaelcobre.ui.theme.cobreIsDark
 
-/** Pestañas del Operario en el orden de la barra: define la dirección del deslizamiento. */
-private val TabsOperario = listOf(Pantalla.Dashboard, Pantalla.Avisos, Pantalla.Insumos, Pantalla.Configuracion)
-
 /**
- * Las cuatro pestañas comparten un mismo destino de la navegación raíz: así la barra de
- * vidrio no se anima ni se recrea al cambiar de pestaña, solo el contenido de adentro.
+ * Las pestañas de cada rol comparten un mismo destino de la navegación raíz: así la barra
+ * de vidrio no se anima ni se recrea al cambiar de pestaña, solo el contenido de adentro.
  */
-private const val CLAVE_TABS_OPERARIO = "tabs-operario"
+private const val CLAVE_PESTANAS = "pestanas"
 
-private fun claveDestino(p: Pantalla): Any = if (p in TabsOperario) CLAVE_TABS_OPERARIO else p
+private fun esPestana(p: Pantalla): Boolean = NavOperario.any { it.pantalla == p } || NavAdmin.any { it.pantalla == p }
+
+private fun claveDestino(p: Pantalla): Any = if (esPestana(p)) CLAVE_PESTANAS else p
 
 // Curvas "emphasized" de Material 3: arrancan rápido y frenan suave, como iOS.
 private val EntradaEnfatizada = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
@@ -101,7 +99,6 @@ private val SalidaEnfatizada = CubicBezierEasing(0.3f, 0f, 0.8f, 0.15f)
  * transiciones animadas. El estado vive en [CobreViewModel]; las pantallas son
  * sin estado de dominio, reciben datos y delegan acciones al ViewModel.
  */
-@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun CobreApp() {
     val vm: CobreViewModel = viewModel { CobreViewModel() }
@@ -156,9 +153,9 @@ fun CobreApp() {
 }
 
 /**
- * Navegación raíz: Login, pestañas del Operario (un solo destino), Vehículos, Escáner y
- * Detalle. Entre destinos distintos desliza la pantalla completa; el cambio de pestaña lo
- * anima [OperarioTabs] dentro de la barra fija.
+ * Navegación raíz: Login, pestañas del rol (un solo destino), Escáner y Detalle. Entre
+ * destinos distintos desliza la pantalla completa; el cambio de pestaña lo anima
+ * [PestanasAnimadas] dentro de la barra fija.
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -172,8 +169,15 @@ private fun NavegacionRaiz(vm: CobreViewModel) {
             transitionSpec = { transicionRaiz() },
             label = "navegacion",
         ) { destino ->
-            if (destino in TabsOperario) {
-                OperarioTabs(tab = destino, vm = vm, sharedScope = sharedScope, animatedScope = this)
+            if (esPestana(destino)) {
+                // El rol se fija al crear el destino: al cerrar sesión la sesión ya es nula
+                // mientras la barra todavía se está yendo.
+                val esAdministrador = remember { vm.administrador != null }
+                if (esAdministrador) {
+                    AdminPestanas(tab = destino, vm = vm)
+                } else {
+                    OperarioPestanas(tab = destino, vm = vm, sharedScope = sharedScope, animatedScope = this)
+                }
             } else {
                 DestinoContent(destino = destino, vm = vm, sharedScope = sharedScope, animatedScope = this)
             }
@@ -195,39 +199,65 @@ private fun AnimatedContentTransitionScope<Pantalla>.transicionRaiz(): ContentTr
 }
 
 /**
- * Pestañas del Operario: la navegación de vidrio queda fija y el contenido entra
- * deslizándose desde el lado de la pestaña elegida, con fundido y un leve zoom.
+ * Contenido de las pestañas: entra desde el lado de la pestaña elegida siguiendo el
+ * mismo eje que la píldora de la barra (horizontal con la barra abajo, vertical con el
+ * rail), con fundido y un leve zoom, para que la barra y el contenido se muevan juntos.
  */
+@Composable
+private fun PestanasAnimadas(
+    tab: Pantalla,
+    items: List<NavItem>,
+    content: @Composable (Pantalla) -> Unit,
+) {
+    val vertical = CobreTheme.window.isLandscape
+    AnimatedContent(
+        targetState = tab,
+        transitionSpec = {
+            val dir = if (items.indexOfPantalla(targetState) >= items.indexOfPantalla(initialState)) 1 else -1
+            val entrada: EnterTransition = if (vertical) {
+                slideInVertically(tween(380, easing = EntradaEnfatizada)) { h -> dir * h / 6 }
+            } else {
+                slideInHorizontally(tween(380, easing = EntradaEnfatizada)) { w -> dir * w / 6 }
+            }
+            val salida: ExitTransition = if (vertical) {
+                slideOutVertically(tween(220, easing = SalidaEnfatizada)) { h -> -dir * h / 10 }
+            } else {
+                slideOutHorizontally(tween(220, easing = SalidaEnfatizada)) { w -> -dir * w / 10 }
+            }
+            val enter = entrada + fadeIn(tween(260, delayMillis = 60)) +
+                scaleIn(tween(380, easing = EntradaEnfatizada), initialScale = 0.98f)
+            (enter togetherWith (salida + fadeOut(tween(160)))).using(SizeTransform(clip = false))
+        },
+        label = "pestanas",
+    ) { pestana -> content(pestana) }
+}
+
+private fun List<NavItem>.indexOfPantalla(p: Pantalla): Int = indexOfFirst { it.pantalla == p }
+
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-private fun OperarioTabs(
+private fun OperarioPestanas(
     tab: Pantalla,
     vm: CobreViewModel,
     sharedScope: SharedTransitionScope,
     animatedScope: AnimatedVisibilityScope,
 ) {
-    OperarioScaffold(tabActual = tab, vm = vm) {
-        AnimatedContent(
-            targetState = tab,
-            transitionSpec = {
-                val dir = if (TabsOperario.indexOf(targetState) >= TabsOperario.indexOf(initialState)) 1 else -1
-                val entrada = slideInHorizontally(tween(380, easing = EntradaEnfatizada)) { w -> dir * w / 6 } +
-                    fadeIn(tween(260, delayMillis = 60)) +
-                    scaleIn(tween(380, easing = EntradaEnfatizada), initialScale = 0.98f)
-                val salida = slideOutHorizontally(tween(220, easing = SalidaEnfatizada)) { w -> -dir * w / 10 } +
-                    fadeOut(tween(160))
-                (entrada togetherWith salida).using(SizeTransform(clip = false))
-            },
-            label = "pestanas",
-        ) { pestana ->
-            TabContent(tab = pestana, vm = vm, sharedScope = sharedScope, animatedScope = animatedScope)
+    PestanasScaffold(
+        items = NavOperario,
+        tabActual = tab,
+        onSeleccionarTab = { vm.navegar(it) },
+        onEscanearQR = { vm.navegar(Pantalla.Escaner) },
+        badges = mapOf(Pantalla.Avisos to vm.avisosNoLeidos),
+    ) {
+        PestanasAnimadas(tab = tab, items = NavOperario) { pestana ->
+            PestanaOperario(tab = pestana, vm = vm, sharedScope = sharedScope, animatedScope = animatedScope)
         }
     }
 }
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-private fun TabContent(
+private fun PestanaOperario(
     tab: Pantalla,
     vm: CobreViewModel,
     sharedScope: SharedTransitionScope,
@@ -261,15 +291,161 @@ private fun TabContent(
             LaunchedEffect(vm.sesion) { vm.inventario.refrescar() }
             InsumosScreen(inventario = vm.inventario)
         }
-        Pantalla.Configuracion -> ConfiguracionScreen(
-            operario = recordarOperarioActivo(vm.operario),
-            modoTema = vm.modoTema,
-            onCambiarTema = { vm.cambiarModoTema(it) },
-            onCerrarSesion = { vm.cerrarSesion() },
-            reducirTransparencia = vm.reducirTransparencia,
-            onCambiarReducirTransparencia = { vm.cambiarReducirTransparencia(it) },
-        )
+        Pantalla.Configuracion -> {
+            val operario = recordarOperarioActivo(vm.operario)
+            Ajustes(vm = vm, nombre = operario.nombre, rol = operario.rol, onCerrarSesion = { vm.cerrarSesion() })
+        }
         else -> Unit
+    }
+}
+
+/** Pestañas de administración: flota de reparto y ajustes, con la misma barra de vidrio que el operario. */
+@Composable
+private fun AdminPestanas(tab: Pantalla, vm: CobreViewModel) {
+    val vehiculosVm: VehiculosViewModel = viewModel { VehiculosViewModel(repository = FirebaseVehiculosRepository()) }
+    val administrador = recordarAdministradorActivo(vm.administrador)
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val cerrarSesion = {
+        vehiculosVm.cambiarSesion(false)
+        vm.cerrarSesion()
+    }
+    LaunchedEffect(vm.sesion, lifecycle) {
+        vehiculosVm.cambiarSesion(vm.administrador != null)
+        if (vm.administrador != null) {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (true) {
+                    vehiculosVm.refrescarFlota()
+                    kotlinx.coroutines.delay(30_000)
+                }
+            }
+        }
+    }
+
+    PestanasScaffold(
+        items = NavAdmin,
+        tabActual = tab,
+        onSeleccionarTab = { vm.navegar(it) },
+        onEscanearQR = null,
+        badges = mapOf(Pantalla.Vehiculos to vehiculosVm.kpis.enRuta),
+    ) {
+        PestanasAnimadas(tab = tab, items = NavAdmin) { pestana ->
+            when (pestana) {
+                Pantalla.Vehiculos -> FlotaPestana(administrador = administrador, vehiculosVm = vehiculosVm)
+                Pantalla.Configuracion -> Ajustes(
+                    vm = vm,
+                    nombre = administrador.nombre,
+                    rol = administrador.rol,
+                    onCerrarSesion = cerrarSesion,
+                )
+                else -> Unit
+            }
+        }
+    }
+}
+
+@Composable
+private fun Ajustes(vm: CobreViewModel, nombre: String, rol: String, onCerrarSesion: () -> Unit) {
+    ConfiguracionScreen(
+        nombre = nombre,
+        rol = rol,
+        modoTema = vm.modoTema,
+        onCambiarTema = { vm.cambiarModoTema(it) },
+        onCerrarSesion = onCerrarSesion,
+        reducirTransparencia = vm.reducirTransparencia,
+        onCambiarReducirTransparencia = { vm.cambiarReducirTransparencia(it) },
+    )
+}
+
+@Composable
+private fun FlotaPestana(administrador: Administrador, vehiculosVm: VehiculosViewModel) {
+    VehiculosScreen(
+        administrador = administrador,
+        vehiculos = vehiculosVm.vehiculosFiltrados,
+        chequeoEnRuta = { id -> vehiculosVm.chequeoEnRuta(id) },
+        historialVehiculo = { id -> vehiculosVm.historialVehiculo(id) },
+        onRegistrarSalida = { id, km, fotos, obs ->
+            vehiculosVm.registrarSalidaVehiculo(id, km, fotos, obs, administrador.nombre)
+        },
+        onRegistrarEntrada = { id, km, fotos, obs -> vehiculosVm.registrarEntradaVehiculo(id, km, fotos, obs) },
+        onAgregarVehiculo = { patente, modelo, km -> vehiculosVm.registrarVehiculo(patente, modelo, km) },
+        conductores = vehiculosVm.conductores,
+        kpis = vehiculosVm.kpis,
+        filtroActual = vehiculosVm.filtro,
+        busqueda = vehiculosVm.busqueda,
+        cargando = vehiculosVm.cargando,
+        operacionEnCurso = vehiculosVm.operacionEnCurso,
+        error = vehiculosVm.error,
+        mensajeExito = vehiculosVm.mensajeExito,
+        tieneFotosPendientes = vehiculosVm::tieneFotosPendientes,
+        onDescartarReintentos = vehiculosVm::descartarReintentos,
+        onCambiarBusqueda = { vehiculosVm.actualizarBusqueda(it) },
+        onSeleccionarFiltro = { vehiculosVm.seleccionarFiltro(it) },
+        onRefrescar = { vehiculosVm.refrescarFlota() },
+        onLimpiarMensajes = { vehiculosVm.limpiarMensajes() },
+        onCambiarEstadoVehiculo = { id, activo -> vehiculosVm.cambiarEstadoVehiculo(id, activo) },
+        onRegistrarVehiculoDetallado = { patente, marca, modelo, anio, km ->
+            vehiculosVm.registrarVehiculo(
+                patente = patente,
+                modelo = modelo,
+                kilometrajeInicial = km,
+                marca = marca,
+                anio = anio,
+            )
+        },
+        onRegistrarSalidaDetallada = { id, repartidorId, responsable, km, estado, fotos, obs ->
+            vehiculosVm.registrarSalidaVehiculo(id, km, fotos, obs, responsable, repartidorId, estado)
+        },
+        onRegistrarEntradaDetallada = { id, km, estado, fotos, obs ->
+            vehiculosVm.registrarEntradaVehiculo(id, km, fotos, obs, estado)
+        },
+    )
+}
+
+/**
+ * Navegación por pestañas, la misma en teléfono y tablet y para ambos roles:
+ * - vertical: barra de pestañas flotante de vidrio, fija abajo; el contenido pasa por
+ *   debajo y basta con desplazarse para verlo completo;
+ * - horizontal: rail de vidrio permanente a la izquierda que ocupa su propio espacio,
+ *   para no quitarle alto a las listas ni tapar contenido.
+ */
+@Composable
+private fun PestanasScaffold(
+    items: List<NavItem>,
+    tabActual: Pantalla,
+    onSeleccionarTab: (Pantalla) -> Unit,
+    onEscanearQR: (() -> Unit)?,
+    badges: BadgesNav,
+    content: @Composable () -> Unit,
+) {
+    val window = CobreTheme.window
+    if (window.isLandscape) {
+        Row(modifier = Modifier.fillMaxSize()) {
+            FloatingRail(
+                items = items,
+                tabActual = tabActual,
+                onSeleccionarTab = onSeleccionarTab,
+                onEscanearQR = onEscanearQR,
+                compacto = window.isPhoneLandscape,
+                badges = badges,
+            )
+            Box(modifier = Modifier.weight(1f).fillMaxHeight()) { content() }
+        }
+    } else {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Las listas reservan este espacio como contentPadding: se desplazan por debajo
+            // del vidrio y el último elemento queda visible por encima de la barra.
+            CompositionLocalProvider(LocalShellPadding provides PaddingValues(bottom = EspacioBarraInferior)) {
+                content()
+            }
+            FloatingTabBar(
+                items = items,
+                tabActual = tabActual,
+                onSeleccionarTab = onSeleccionarTab,
+                onEscanearQR = onEscanearQR,
+                badges = badges,
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
+        }
     }
 }
 
@@ -304,7 +480,7 @@ private fun ActualizarAvisosVisibles(vm: CobreViewModel) {
     }
 }
 
-/** Destinos fuera de las pestañas del Operario, despachados desde [NavegacionRaiz]. */
+/** Destinos fuera de las pestañas, despachados desde [NavegacionRaiz]. */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun DestinoContent(
@@ -316,7 +492,6 @@ private fun DestinoContent(
     when (destino) {
         Pantalla.Login -> LoginDestino(vm)
         Pantalla.Escaner -> EscanerDestino(vm)
-        Pantalla.Vehiculos -> VehiculosDestino(vm)
         is Pantalla.Detalle -> DetalleDestino(destino, vm, sharedScope, animatedScope)
         else -> Unit
     }
@@ -347,9 +522,7 @@ private fun recordarAdministradorActivo(actual: Administrador?): Administrador {
 
 @Composable
 private fun EscanerDestino(vm: CobreViewModel) {
-    var pendingCallback by androidx.compose.runtime.remember {
-        androidx.compose.runtime.mutableStateOf<((String?) -> Unit)?>(null)
-    }
+    var pendingCallback by remember { mutableStateOf<((String?) -> Unit)?>(null) }
 
     LaunchedEffect(vm.qrPendiente) {
         val pendiente = vm.qrPendiente
@@ -357,7 +530,7 @@ private fun EscanerDestino(vm: CobreViewModel) {
             vm.procesarQrEscaneado(
                 codigoQr = pendiente,
                 onExito = { idInterno -> vm.navegar(Pantalla.Detalle(idInterno)) },
-                onError = { pendingCallback?.invoke("No encontramos esa comanda o hubo un error de red.") }
+                onError = { pendingCallback?.invoke("No encontramos esa comanda o hubo un error de red.") },
             )
         }
     }
@@ -371,7 +544,7 @@ private fun EscanerDestino(vm: CobreViewModel) {
             vm.procesarQrEscaneado(
                 codigoQr = uuid,
                 onExito = { idInterno -> vm.navegar(Pantalla.Detalle(idInterno)) },
-                onError = { onResult("No encontramos esa comanda. Verifica la red y vuelve a intentar.") }
+                onError = { onResult("No encontramos esa comanda. Verifica la red y vuelve a intentar.") },
             )
         },
         onAbrir = { pedido -> vm.navegar(Pantalla.Detalle(pedido.id)) },
@@ -381,132 +554,6 @@ private fun EscanerDestino(vm: CobreViewModel) {
             }
         },
     )
-}
-
-@Composable
-private fun VehiculosDestino(vm: CobreViewModel) {
-    val vehiculosVm: VehiculosViewModel = viewModel { VehiculosViewModel(repository = FirebaseVehiculosRepository()) }
-    val administrador = recordarAdministradorActivo(vm.administrador)
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    val isDark = cobreIsDark()
-    val cerrarSesionAdmin = {
-        vehiculosVm.cambiarSesion(false)
-        vm.cerrarSesion()
-    }
-
-    LaunchedEffect(vm.sesion, lifecycle) {
-        vehiculosVm.cambiarSesion(vm.administrador != null)
-        if (vm.administrador != null) {
-            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                while (true) {
-                    vehiculosVm.refrescarFlota()
-                    kotlinx.coroutines.delay(30_000)
-                }
-            }
-        }
-    }
-
-    AdminScaffold(
-        administrador = administrador,
-        vm = vm,
-        vehiculosVm = vehiculosVm,
-        onCerrarSesion = cerrarSesionAdmin,
-    ) { isTablet ->
-        VehiculosScreen(
-            administrador = administrador,
-            vehiculos = vehiculosVm.vehiculosFiltrados,
-            chequeoEnRuta = { id -> vehiculosVm.chequeoEnRuta(id) },
-            historialVehiculo = { id -> vehiculosVm.historialVehiculo(id) },
-            onRegistrarSalida = { id, km, fotos, obs ->
-                vehiculosVm.registrarSalidaVehiculo(id, km, fotos, obs, administrador.nombre)
-            },
-            onRegistrarEntrada = { id, km, fotos, obs -> vehiculosVm.registrarEntradaVehiculo(id, km, fotos, obs) },
-            onAgregarVehiculo = { patente, modelo, km -> vehiculosVm.registrarVehiculo(patente, modelo, km) },
-            onCerrarSesion = cerrarSesionAdmin,
-            conductores = vehiculosVm.conductores,
-            kpis = vehiculosVm.kpis,
-            filtroActual = vehiculosVm.filtro,
-            busqueda = vehiculosVm.busqueda,
-            cargando = vehiculosVm.cargando,
-            operacionEnCurso = vehiculosVm.operacionEnCurso,
-            error = vehiculosVm.error,
-            mensajeExito = vehiculosVm.mensajeExito,
-            tieneFotosPendientes = vehiculosVm::tieneFotosPendientes,
-            onDescartarReintentos = vehiculosVm::descartarReintentos,
-            mostrarTopBar = !isTablet,
-            onToggleTema = { vm.alternarTema(isDark) },
-            onCambiarBusqueda = { vehiculosVm.actualizarBusqueda(it) },
-            onSeleccionarFiltro = { vehiculosVm.seleccionarFiltro(it) },
-            onRefrescar = { vehiculosVm.refrescarFlota() },
-            onLimpiarMensajes = { vehiculosVm.limpiarMensajes() },
-            onCambiarEstadoVehiculo = { id, activo -> vehiculosVm.cambiarEstadoVehiculo(id, activo) },
-            onRegistrarVehiculoDetallado = { patente, marca, modelo, anio, km ->
-                vehiculosVm.registrarVehiculo(
-                    patente = patente,
-                    modelo = modelo,
-                    kilometrajeInicial = km,
-                    marca = marca,
-                    anio = anio,
-                )
-            },
-            onRegistrarSalidaDetallada = { id, repartidorId, responsable, km, estado, fotos, obs ->
-                vehiculosVm.registrarSalidaVehiculo(id, km, fotos, obs, responsable, repartidorId, estado)
-            },
-            onRegistrarEntradaDetallada = { id, km, estado, fotos, obs ->
-                vehiculosVm.registrarEntradaVehiculo(id, km, fotos, obs, estado)
-            },
-        )
-    }
-}
-
-@Composable
-private fun AdminScaffold(
-    administrador: Administrador,
-    vm: CobreViewModel,
-    vehiculosVm: VehiculosViewModel,
-    onCerrarSesion: () -> Unit,
-    content: @Composable (isTablet: Boolean) -> Unit,
-) {
-    val isDark = cobreIsDark()
-    val window = CobreTheme.window
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        // La barra lateral de administración solo en tablet horizontal; en vertical la
-        // pantalla usa su propia cabecera, como en el teléfono.
-        val isTablet = maxWidth >= ANCHO_TABLET && window.isLandscape && !window.isPhoneLandscape
-        if (isTablet) {
-            TabletShell(
-                sidebar = { modifier ->
-                    AdminSidebar(
-                        filtroActual = vehiculosVm.filtro,
-                        kpis = vehiculosVm.kpis,
-                        adminNombre = administrador.nombre,
-                        adminRol = administrador.rol,
-                        onSeleccionarFiltro = { vehiculosVm.seleccionarFiltro(it) },
-                        onRefrescar = { vehiculosVm.refrescarFlota() },
-                        onCerrarSesion = onCerrarSesion,
-                        modifier = modifier,
-                    )
-                },
-                topbar = { onMenu ->
-                    WebTopbar(
-                        usuarioNombre = administrador.nombre,
-                        usuarioRol = "ADMINISTRADOR",
-                        modoTema = vm.modoTema,
-                        onToggleTema = { vm.alternarTema(isDark) },
-                        showSearch = false,
-                        alertasCount = vehiculosVm.kpis.enRuta,
-                        onAlertasClick = { vehiculosVm.seleccionarFiltro(FiltroFlota.EN_RUTA) },
-                        onMenuClick = onMenu,
-                    )
-                },
-                content = { content(true) },
-            )
-        } else {
-            Box(modifier = Modifier.fillMaxSize()) {
-                content(false)
-            }
-        }
-    }
 }
 
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -523,13 +570,14 @@ private fun DetalleDestino(
     }
     if (currentPedido == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            if (vm.cargando) androidx.compose.material3.CircularProgressIndicator(color = Brand400)
-            else Column {
-                Text(vm.errorOperacion ?: "Comanda no encontrada")
-                androidx.compose.material3.TextButton(onClick = { vm.cargarPedido(destino.pedidoId) {} }) {
-                    Text("Reintentar")
+            if (vm.cargando) {
+                androidx.compose.material3.CircularProgressIndicator(color = Brand400)
+            } else {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(vm.errorOperacion ?: "Comanda no encontrada", color = CobreTheme.colors.textPrimary)
+                    CobreButton(text = "Reintentar", onClick = { vm.cargarPedido(destino.pedidoId) {} })
+                    CobreButton(text = "Volver", onClick = { vm.volver() }, variant = ButtonVariant.Tonal)
                 }
-                androidx.compose.material3.TextButton(onClick = { vm.volver() }) { Text("Volver") }
             }
         }
         return
@@ -547,96 +595,4 @@ private fun DetalleDestino(
         sharedScope = sharedScope,
         animatedScope = animatedScope,
     )
-}
-
-
-/** Ancho a partir del cual administración usa la barra lateral (breakpoint "medium" de Material 3). */
-private val ANCHO_TABLET = 600.dp
-
-/** Ancho de la barra lateral de tablet. */
-private val ANCHO_SIDEBAR = 240.dp
-
-/** Separación de los paneles de vidrio flotantes respecto del borde y del contenido. */
-private val MARGEN_VIDRIO = 12.dp
-
-/**
- * Navegación del rol Operario, la misma en teléfono y tablet:
- * - vertical: barra de pestañas flotante de vidrio, fija abajo; el contenido pasa por
- *   debajo y basta con desplazarse para verlo completo;
- * - horizontal: rail de vidrio permanente a la izquierda que ocupa su propio espacio,
- *   para no quitarle alto a las listas ni tapar contenido.
- */
-@Composable
-private fun OperarioScaffold(
-    tabActual: Pantalla,
-    vm: CobreViewModel,
-    content: @Composable () -> Unit,
-) {
-    val window = CobreTheme.window
-    val onSeleccionarTab: (Pantalla) -> Unit = { vm.navegar(it) }
-    val onEscanearQR: () -> Unit = { vm.navegar(Pantalla.Escaner) }
-    val badges: BadgesNav = mapOf(Pantalla.Avisos to vm.avisosNoLeidos)
-
-    if (window.isLandscape) {
-        Row(modifier = Modifier.fillMaxSize()) {
-            FloatingRail(
-                tabActual = tabActual,
-                onSeleccionarTab = onSeleccionarTab,
-                onEscanearQR = onEscanearQR,
-                compacto = window.isPhoneLandscape,
-                badges = badges,
-            )
-            Box(modifier = Modifier.weight(1f).fillMaxHeight()) { content() }
-        }
-    } else {
-        Box(modifier = Modifier.fillMaxSize()) {
-            // Las listas reservan este espacio como contentPadding: se desplazan por debajo
-            // del vidrio y el último elemento queda visible por encima de la barra.
-            CompositionLocalProvider(LocalShellPadding provides PaddingValues(bottom = EspacioBarraInferior)) {
-                content()
-            }
-            FloatingTabBar(
-                tabActual = tabActual,
-                onSeleccionarTab = onSeleccionarTab,
-                onEscanearQR = onEscanearQR,
-                badges = badges,
-                modifier = Modifier.align(Alignment.BottomCenter),
-            )
-        }
-    }
-}
-
-/**
- * Esqueleto de tablet horizontal de administración: barra lateral fija (no plegable) y
- * barra superior como paneles de vidrio flotantes, con el contenido a la derecha.
- */
-@Composable
-private fun TabletShell(
-    sidebar: @Composable (Modifier) -> Unit,
-    topbar: @Composable (onMenu: (() -> Unit)?) -> Unit,
-    content: @Composable () -> Unit,
-) {
-    Row(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
-        GlassSurface(
-            modifier = Modifier
-                .padding(start = MARGEN_VIDRIO, top = MARGEN_VIDRIO, bottom = MARGEN_VIDRIO)
-                .width(ANCHO_SIDEBAR)
-                .fillMaxHeight(),
-            shape = CobreShapes.lg,
-        ) {
-            sidebar(Modifier.fillMaxSize())
-        }
-        Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-            GlassSurface(
-                modifier = Modifier.fillMaxWidth().padding(MARGEN_VIDRIO),
-                shape = CobreShapes.lg,
-                floating = true,
-            ) {
-                topbar(null)
-            }
-            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                content()
-            }
-        }
-    }
 }

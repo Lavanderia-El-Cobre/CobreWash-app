@@ -1,3 +1,5 @@
+@file:Suppress("MatchingDeclarationName")
+
 package com.elcobre.lavanderiaelcobre.ui
 
 import androidx.compose.animation.animateColorAsState
@@ -37,7 +39,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -51,13 +52,20 @@ import com.elcobre.lavanderiaelcobre.ui.components.GlassSurface
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreShapes
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 
-/** Ítems de navegación del Operario, compartidos entre la barra flotante (teléfono) y el rail (horizontal, tablet). */
-private data class NavItem(val icon: ImageVector, val label: String, val pantalla: Pantalla)
+/** Ítem de navegación, compartido entre la barra flotante (vertical) y el rail (horizontal). */
+internal data class NavItem(val icon: ImageVector, val label: String, val pantalla: Pantalla)
 
-private val navItems = listOf(
+/** Pestañas del Operario. */
+internal val NavOperario = listOf(
     NavItem(CobreIcons.LocalLaundry, "Pedidos", Pantalla.Dashboard),
     NavItem(CobreIcons.Campaign, "Avisos", Pantalla.Avisos),
     NavItem(CobreIcons.Inventory, "Inventario", Pantalla.Insumos),
+    NavItem(CobreIcons.Person, "Ajustes", Pantalla.Configuracion),
+)
+
+/** Pestañas de administración. */
+internal val NavAdmin = listOf(
+    NavItem(CobreIcons.LocalShipping, "Flota", Pantalla.Vehiculos),
     NavItem(CobreIcons.Person, "Ajustes", Pantalla.Configuracion),
 )
 
@@ -66,10 +74,14 @@ private val AltoBarra = 64.dp
 private val AnchoRail = 72.dp
 private val MargenFlotante = 12.dp
 private val SeparacionContenido = 8.dp
+private val AnchoMaxBarra = 520.dp
+private val EspacioItemsRail = 4.dp
 
 // Aire entre el rail y el contenido: en teléfono horizontal las tarjetas quedaban pegadas al vidrio.
 private val SeparacionRail = 20.dp
-private val AnchoMaxBarra = 520.dp
+
+/** Resorte de la píldora: se desliza y asienta con un leve rebote, como el selector de iOS. */
+private fun <T> resortePildora() = spring<T>(dampingRatio = 0.78f, stiffness = 380f)
 
 /** Espacio que la barra inferior flotante le quita al contenido, además de la barra de navegación del sistema. */
 internal val EspacioBarraInferior: Dp = AltoBarra + MargenFlotante + SeparacionContenido
@@ -78,15 +90,16 @@ internal val EspacioBarraInferior: Dp = AltoBarra + MargenFlotante + SeparacionC
 internal typealias BadgesNav = Map<Pantalla, Int>
 
 /**
- * Barra de pestañas flotante de vidrio (teléfono vertical): una cápsula con los 4 tabs
- * y, al lado, el botón de QR en vidrio cobre — la acción más frecuente en planta
- * (RF-SP02/SP09) separada de la navegación, como el botón de búsqueda de iOS.
+ * Barra de pestañas flotante de vidrio (pantallas en vertical): una cápsula con los tabs
+ * y, al lado, el botón de QR en vidrio cobre cuando el rol lo usa — la acción más
+ * frecuente en planta, separada de la navegación como el botón de búsqueda de iOS.
  */
 @Composable
 internal fun FloatingTabBar(
+    items: List<NavItem>,
     tabActual: Pantalla,
     onSeleccionarTab: (Pantalla) -> Unit,
-    onEscanearQR: () -> Unit,
+    onEscanearQR: (() -> Unit)?,
     badges: BadgesNav = emptyMap(),
     modifier: Modifier = Modifier,
 ) {
@@ -99,7 +112,8 @@ internal fun FloatingTabBar(
         contentAlignment = Alignment.BottomCenter,
     ) {
         Row(
-            modifier = Modifier.widthIn(max = AnchoMaxBarra).fillMaxWidth(),
+            // Con pocas pestañas (administración) la cápsula no se estira a todo el ancho.
+            modifier = Modifier.widthIn(max = if (items.size > 2) AnchoMaxBarra else AnchoMaxBarra * 0.6f).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MargenFlotante),
         ) {
@@ -109,42 +123,36 @@ internal fun FloatingTabBar(
                 floating = true,
                 contentPadding = PaddingValues(6.dp),
             ) {
-                PestanasConPildora(tabActual = tabActual, onSeleccionarTab = onSeleccionarTab, badges = badges)
+                PestanasHorizontales(items = items, tabActual = tabActual, onSeleccionarTab = onSeleccionarTab, badges = badges)
             }
-            GlassIconButton(
-                icon = CobreIcons.QrCodeScanner,
-                contentDescription = "Escanear QR",
-                onClick = onEscanearQR,
-                size = AltoBarra,
-                accent = true,
-                floating = true,
-            )
+            if (onEscanearQR != null) {
+                GlassIconButton(
+                    icon = CobreIcons.QrCodeScanner,
+                    contentDescription = "Escanear QR",
+                    onClick = onEscanearQR,
+                    size = AltoBarra,
+                    accent = true,
+                    floating = true,
+                )
+            }
         }
     }
 }
 
-/** Tabs de igual ancho con una píldora cobre tenue que se desliza con spring hasta el seleccionado. */
+/** Tabs de igual ancho con una píldora cobre tenue que se desliza con resorte hasta el seleccionado. */
 @Composable
-private fun PestanasConPildora(tabActual: Pantalla, onSeleccionarTab: (Pantalla) -> Unit, badges: BadgesNav) {
-    val colors = CobreTheme.colors
-    val indice = navItems.indexOfFirst { it.pantalla == tabActual }.coerceAtLeast(0)
-    val posicion by animateFloatAsState(
-        targetValue = indice.toFloat(),
-        animationSpec = spring(dampingRatio = 0.8f, stiffness = 380f),
-        label = "pildora",
-    )
+private fun PestanasHorizontales(
+    items: List<NavItem>,
+    tabActual: Pantalla,
+    onSeleccionarTab: (Pantalla) -> Unit,
+    badges: BadgesNav,
+) {
+    val posicion by animateFloatAsState(indiceDe(items, tabActual), resortePildora(), label = "pildoraH")
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val ancho = maxWidth / navItems.size
-        Box(
-            modifier = Modifier
-                .offset(x = ancho * posicion)
-                .width(ancho)
-                .fillMaxHeight()
-                .clip(CobreShapes.full)
-                .background(colors.accentContainer),
-        )
+        val ancho = maxWidth / items.size
+        Pildora(modifier = Modifier.offset(x = ancho * posicion).width(ancho).fillMaxHeight())
         Row(modifier = Modifier.fillMaxSize()) {
-            navItems.forEach { item ->
+            items.forEach { item ->
                 TabItem(
                     item = item,
                     seleccionado = item.pantalla == tabActual,
@@ -158,15 +166,16 @@ private fun PestanasConPildora(tabActual: Pantalla, onSeleccionarTab: (Pantalla)
 }
 
 /**
- * Rail flotante de vidrio (teléfono horizontal y tablet): el QR arriba y los tabs en
- * una cápsula vertical, centrados a la izquierda. En horizontal libera el alto que la
- * barra inferior le quitaría a las listas.
+ * Rail flotante de vidrio (pantallas en horizontal): el QR arriba y los tabs en una
+ * cápsula vertical, centrados a la izquierda. La píldora se desliza verticalmente entre
+ * los tabs, igual que en la barra inferior lo hace en horizontal.
  */
 @Composable
 internal fun FloatingRail(
+    items: List<NavItem>,
     tabActual: Pantalla,
     onSeleccionarTab: (Pantalla) -> Unit,
-    onEscanearQR: () -> Unit,
+    onEscanearQR: (() -> Unit)?,
     compacto: Boolean,
     badges: BadgesNav = emptyMap(),
     modifier: Modifier = Modifier,
@@ -183,41 +192,74 @@ internal fun FloatingRail(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(MargenFlotante),
         ) {
-            GlassIconButton(
-                icon = CobreIcons.QrCodeScanner,
-                contentDescription = "Escanear QR",
-                onClick = onEscanearQR,
-                size = if (compacto) 52.dp else AnchoRail,
-                accent = true,
-                floating = true,
-            )
+            if (onEscanearQR != null) {
+                GlassIconButton(
+                    icon = CobreIcons.QrCodeScanner,
+                    contentDescription = "Escanear QR",
+                    onClick = onEscanearQR,
+                    size = if (compacto) 52.dp else AnchoRail,
+                    accent = true,
+                    floating = true,
+                )
+            }
             GlassSurface(
                 modifier = Modifier.width(AnchoRail),
                 shape = CobreShapes.full,
                 floating = true,
                 contentPadding = PaddingValues(6.dp),
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    navItems.forEach { item ->
-                        TabItem(
-                            item = item,
-                            seleccionado = item.pantalla == tabActual,
-                            badge = badges[item.pantalla] ?: 0,
-                            onClick = { onSeleccionarTab(item.pantalla) },
-                            conFondo = true,
-                            modifier = Modifier.fillMaxWidth().height(altoItem),
-                        )
-                    }
-                }
+                PestanasVerticales(
+                    items = items,
+                    tabActual = tabActual,
+                    altoItem = altoItem,
+                    onSeleccionarTab = onSeleccionarTab,
+                    badges = badges,
+                )
             }
         }
     }
 }
 
-/**
- * Un tab: ícono + etiqueta, cobre si está seleccionado. Con [conFondo] pinta su propia
- * píldora (rail); en la barra inferior la píldora es compartida y se desliza.
- */
+@Composable
+private fun PestanasVerticales(
+    items: List<NavItem>,
+    tabActual: Pantalla,
+    altoItem: Dp,
+    onSeleccionarTab: (Pantalla) -> Unit,
+    badges: BadgesNav,
+) {
+    val posicion by animateFloatAsState(indiceDe(items, tabActual), resortePildora(), label = "pildoraV")
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Pildora(
+            modifier = Modifier
+                .offset(y = (altoItem + EspacioItemsRail) * posicion)
+                .fillMaxWidth()
+                .height(altoItem),
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(EspacioItemsRail)) {
+            items.forEach { item ->
+                TabItem(
+                    item = item,
+                    seleccionado = item.pantalla == tabActual,
+                    badge = badges[item.pantalla] ?: 0,
+                    onClick = { onSeleccionarTab(item.pantalla) },
+                    modifier = Modifier.fillMaxWidth().height(altoItem),
+                )
+            }
+        }
+    }
+}
+
+private fun indiceDe(items: List<NavItem>, tab: Pantalla): Float =
+    items.indexOfFirst { it.pantalla == tab }.coerceAtLeast(0).toFloat()
+
+/** Indicador cobre tenue de la pestaña activa; una sola instancia que se desplaza. */
+@Composable
+private fun Pildora(modifier: Modifier) {
+    Box(modifier = modifier.clip(CobreShapes.full).background(CobreTheme.colors.accentContainer))
+}
+
+/** Un tab: ícono + etiqueta, cobre si está seleccionado. La píldora la dibuja el contenedor. */
 @Composable
 private fun TabItem(
     item: NavItem,
@@ -225,23 +267,16 @@ private fun TabItem(
     badge: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    conFondo: Boolean = false,
 ) {
     val colors = CobreTheme.colors
     val tinte by animateColorAsState(
         if (seleccionado) colors.accentText else colors.textSecondary,
-        tween(200),
+        tween(220),
         label = "tabTinte",
-    )
-    val fondo by animateColorAsState(
-        if (conFondo && seleccionado) colors.accentContainer else Color.Transparent,
-        tween(200),
-        label = "tabFondo",
     )
     Column(
         modifier = modifier
             .clip(CobreShapes.full)
-            .background(fondo)
             .selectable(
                 selected = seleccionado,
                 interactionSource = remember { MutableInteractionSource() },
@@ -250,7 +285,7 @@ private fun TabItem(
                 onClick = onClick,
             )
             .semantics(mergeDescendants = true) {
-                contentDescription = if (badge > 0) "${item.label}, $badge sin leer" else item.label
+                contentDescription = if (badge > 0) "${item.label}, $badge pendientes" else item.label
             },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,

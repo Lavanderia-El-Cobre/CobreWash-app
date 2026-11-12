@@ -26,15 +26,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -74,6 +70,7 @@ import com.elcobre.lavanderiaelcobre.data.model.Operario
 import com.elcobre.lavanderiaelcobre.data.model.Sesion
 import com.elcobre.lavanderiaelcobre.ui.components.AvisoPrivacidad
 import com.elcobre.lavanderiaelcobre.ui.components.CobreButton
+import com.elcobre.lavanderiaelcobre.ui.components.CobreCheckbox
 import com.elcobre.lavanderiaelcobre.ui.components.CobreIcons
 import com.elcobre.lavanderiaelcobre.ui.components.CobreTextField
 import com.elcobre.lavanderiaelcobre.ui.components.ContentCard
@@ -280,7 +277,7 @@ private fun Marca(centrada: Boolean) {
             textAlign = if (centrada) TextAlign.Center else TextAlign.Start,
         )
         Spacer(Modifier.height(4.dp))
-        Text("INTRANET DE PLANTA", style = CobreTheme.text.labelCaps, color = colors.accentText)
+        Text("Intranet de planta", style = CobreTheme.text.label, color = colors.accentText)
     }
 }
 
@@ -407,10 +404,17 @@ private fun LoginForm(
             label = "Contraseña",
             leadingIcon = CobreIcons.Lock,
             trailingIcon = {
-                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CobreShapes.full)
+                        .clickable(role = Role.Button) { passwordVisible = !passwordVisible },
+                    contentAlignment = Alignment.Center,
+                ) {
                     Icon(
                         if (passwordVisible) CobreIcons.VisibilityOff else CobreIcons.Visibility,
                         contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña",
+                        tint = colors.textSecondary,
                         modifier = Modifier.size(20.dp),
                     )
                 }
@@ -457,29 +461,14 @@ private fun RecordarmeYOlvideFila(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .clip(CobreShapes.md)
-                .toggleable(value = recordarme, role = Role.Checkbox) {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    onRecordarmeChange(it)
-                }
-                .padding(vertical = 12.dp, horizontal = 2.dp),
-        ) {
-            Checkbox(
-                checked = recordarme,
-                onCheckedChange = null,
-                colors = CheckboxDefaults.colors(
-                    checkedColor = colors.accentFill,
-                    checkmarkColor = colors.onAccentFill,
-                    uncheckedColor = colors.fieldBorder,
-                ),
-                modifier = Modifier.size(24.dp),
-            )
-            Spacer(Modifier.width(8.dp))
-            Text("Recordarme", style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
-        }
+        CobreCheckbox(
+            checked = recordarme,
+            onCheckedChange = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onRecordarmeChange(it)
+            },
+            label = "Recordarme",
+        )
         Text(
             "¿Olvidaste tu contraseña?",
             style = MaterialTheme.typography.labelMedium,
@@ -497,7 +486,7 @@ private fun LoginFooter(centrado: Boolean) {
     Column(horizontalAlignment = if (centrado) Alignment.CenterHorizontally else Alignment.Start) {
         AvisoPrivacidad()
         Spacer(Modifier.height(12.dp))
-        Text("LAVANDERÍA EL COBRE · GESTIÓN INTERNA", style = CobreTheme.text.labelCaps, color = colors.textSecondary)
+        Text("Lavandería El Cobre · Gestión interna", style = CobreTheme.text.label, color = colors.textSecondary)
         Text("Acceso seguro para personal autorizado", style = MaterialTheme.typography.labelSmall, color = colors.textSecondary)
     }
 }

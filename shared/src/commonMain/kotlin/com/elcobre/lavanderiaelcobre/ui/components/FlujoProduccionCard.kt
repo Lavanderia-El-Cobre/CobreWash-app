@@ -52,7 +52,7 @@ fun FlujoProduccionCard(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("ESTADO GLOBAL DE PRODUCCIÓN", style = CobreTheme.text.labelCaps, color = colors.textSecondary)
+                Text("Estado global de producción", style = CobreTheme.text.label, color = colors.textSecondary)
                 Text("Flujo de lavado y acondicionamiento", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
             }
             Text("$porcentaje%", style = MaterialTheme.typography.headlineSmall, color = colors.textPrimary)
@@ -160,7 +160,7 @@ private fun EtapaCadenaChip(etapaNombre: String, numero: Int, estado: EstadoChip
         }
         Column {
             Text(etapaNombre, style = MaterialTheme.typography.labelMedium, color = c.texto, fontWeight = FontWeight.Bold)
-            Text(c.subtitulo.uppercase(), style = CobreTheme.text.labelCaps, color = colors.textSecondary)
+            Text(c.subtitulo, style = CobreTheme.text.label, color = colors.textSecondary)
         }
     }
 }

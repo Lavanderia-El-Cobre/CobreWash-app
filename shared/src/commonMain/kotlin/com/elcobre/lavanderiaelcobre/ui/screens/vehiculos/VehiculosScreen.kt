@@ -1,5 +1,14 @@
 package com.elcobre.lavanderiaelcobre.ui.screens.vehiculos
 
+import com.elcobre.lavanderiaelcobre.ui.components.CobreTextField
+import com.elcobre.lavanderiaelcobre.ui.components.GlassSheet
+import com.elcobre.lavanderiaelcobre.ui.components.GlassSegmentedControl
+import com.elcobre.lavanderiaelcobre.ui.components.rememberShellContentPadding
+import com.elcobre.lavanderiaelcobre.ui.components.rememberTitleCollapsed
+import com.elcobre.lavanderiaelcobre.ui.components.CompactTitleBar
+import com.elcobre.lavanderiaelcobre.ui.components.GlassStack
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -41,7 +50,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -87,7 +95,6 @@ import com.elcobre.lavanderiaelcobre.ui.components.CobreBackHandler
 import com.elcobre.lavanderiaelcobre.ui.components.CobreBackground
 import com.elcobre.lavanderiaelcobre.ui.components.CobreButton
 import com.elcobre.lavanderiaelcobre.ui.components.CobreIcons
-import com.elcobre.lavanderiaelcobre.ui.components.CobreTopBar
 import com.elcobre.lavanderiaelcobre.ui.components.ContentCard
 import com.elcobre.lavanderiaelcobre.ui.components.GlassCard
 import com.elcobre.lavanderiaelcobre.ui.components.GlassIconButton
@@ -99,7 +106,6 @@ import com.elcobre.lavanderiaelcobre.ui.components.SelectableChip
 import com.elcobre.lavanderiaelcobre.ui.components.StatusChip
 import com.elcobre.lavanderiaelcobre.ui.components.brandHeadingColor
 import com.elcobre.lavanderiaelcobre.ui.components.brandMutedColor
-import com.elcobre.lavanderiaelcobre.ui.components.cobreFieldColors
 import com.elcobre.lavanderiaelcobre.ui.components.pressableScale
 import com.elcobre.lavanderiaelcobre.ui.components.rememberCapturadorFoto
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreShapes
@@ -129,7 +135,6 @@ fun VehiculosScreen(
     onRegistrarSalida: (vehiculoId: String, km: Int, fotos: List<FotoChequeo>, observaciones: String?) -> Unit,
     onRegistrarEntrada: (vehiculoId: String, km: Int, fotos: List<FotoChequeo>, observaciones: String?) -> Unit,
     onAgregarVehiculo: (patente: String, modelo: String, kilometrajeInicial: Int) -> Unit,
-    onCerrarSesion: () -> Unit,
     conductores: List<ConductorFlota> = emptyList(),
     kpis: KpisFlota = calcularKpisFlota(vehiculos, emptyList()),
     filtroActual: FiltroFlota = FiltroFlota.TODOS,
@@ -140,8 +145,6 @@ fun VehiculosScreen(
     mensajeExito: String? = null,
     tieneFotosPendientes: (String) -> Boolean = { false },
     onDescartarReintentos: () -> Unit = {},
-    mostrarTopBar: Boolean = true,
-    onToggleTema: (() -> Unit)? = null,
     onCambiarBusqueda: (String) -> Unit = {},
     onSeleccionarFiltro: (FiltroFlota) -> Unit = {},
     onRefrescar: () -> Unit = {},
@@ -181,16 +184,14 @@ fun VehiculosScreen(
 
     CerrarChequeoAlConfirmar(mensajeExito, onLimpiarMensajes) { vehiculoChequeoModal = null }
 
-    CobreBackground(applySystemBarsInsets = mostrarTopBar) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            if (mostrarTopBar) {
-                TopBarAdmin(
-                    administrador = administrador,
-                    onToggleTema = onToggleTema,
-                    onCerrarSesion = onCerrarSesion,
-                )
-            }
+    val gridState = rememberLazyGridState()
+    val colapsado by rememberTitleCollapsed(gridState)
+    GlassStack(
+        modifier = Modifier.fillMaxSize(),
+        background = { fuente ->
             ContenidoFlotaGrid(
+                modifier = fuente,
+                gridState = gridState,
                 vehiculos = vehiculos,
                 kpis = kpis,
                 filtroActual = filtroActual,
@@ -210,8 +211,11 @@ fun VehiculosScreen(
                 onAbrirHistorial = { vehiculoHistorialModal = it },
                 onCambiarEstadoVehiculo = onCambiarEstadoVehiculo,
             )
-        }
-    }
+        },
+        overlay = {
+            CompactTitleBar(title = "Flota de reparto", visible = colapsado, modifier = Modifier.align(Alignment.TopCenter))
+        },
+    )
 
     if (mostrandoAltaModal) {
         ModalAgregarVehiculo(
@@ -268,6 +272,8 @@ private fun CerrarChequeoAlConfirmar(mensaje: String?, limpiar: () -> Unit, cerr
 
 @Composable
 private fun ContenidoFlotaGrid(
+    modifier: Modifier,
+    gridState: LazyGridState,
     vehiculos: List<Vehiculo>,
     kpis: KpisFlota,
     filtroActual: FiltroFlota,
@@ -287,13 +293,18 @@ private fun ContenidoFlotaGrid(
     onAbrirHistorial: (Vehiculo) -> Unit,
     onCambiarEstadoVehiculo: (String, Boolean) -> Unit,
 ) {
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+    val window = CobreTheme.window
+    BoxWithConstraints(modifier = modifier) {
         val esAncho = maxWidth >= 700.dp
         val columnas = if (esAncho) GridCells.Adaptive(minSize = 340.dp) else GridCells.Fixed(1)
         LazyVerticalGrid(
             columns = columnas,
+            state = gridState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 36.dp),
+            // Barras del sistema y navegación de vidrio como contentPadding: las tarjetas pasan por debajo.
+            contentPadding = rememberShellContentPadding(
+                PaddingValues(start = window.gutter, end = window.gutter, top = 8.dp, bottom = 24.dp),
+            ),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -325,7 +336,6 @@ private fun ContenidoFlotaGrid(
                 BarraFiltroFlota(
                     busqueda = busqueda,
                     filtroActual = filtroActual,
-                    kpis = kpis,
                     onCambiarBusqueda = onCambiarBusqueda,
                     onSeleccionarFiltro = onSeleccionarFiltro,
                 )
@@ -476,8 +486,8 @@ private fun KpiFlotaCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    titulo.uppercase(),
-                    style = CobreTheme.text.labelCaps,
+                    titulo,
+                    style = CobreTheme.text.label,
                     color = colors.textSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -521,9 +531,7 @@ private fun BannersEstadoFlota(error: String?, mensajeExito: String?, onLimpiar:
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f),
                 )
-                TextButton(onClick = onLimpiar) {
-                    Text("Cerrar", color = colors.dangerText, fontWeight = FontWeight.Bold)
-                }
+                GlassIconButton(icon = CobreIcons.Close, contentDescription = "Cerrar aviso", onClick = onLimpiar, size = 36.dp)
             }
         }
         AnimatedVisibility(visible = mensajeExito != null) {
@@ -548,7 +556,6 @@ private fun BannersEstadoFlota(error: String?, mensajeExito: String?, onLimpiar:
 private fun BarraFiltroFlota(
     busqueda: String,
     filtroActual: FiltroFlota,
-    kpis: KpisFlota,
     onCambiarBusqueda: (String) -> Unit,
     onSeleccionarFiltro: (FiltroFlota) -> Unit,
 ) {
@@ -561,21 +568,12 @@ private fun BarraFiltroFlota(
             onQueryChange = onCambiarBusqueda,
             placeholder = "Buscar por patente, marca, modelo o conductor",
         )
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(FiltroFlota.entries) { opcion ->
-                val cantidad = when (opcion) {
-                    FiltroFlota.TODOS -> kpis.total
-                    FiltroFlota.DISPONIBLES -> kpis.disponibles
-                    FiltroFlota.EN_RUTA -> kpis.enRuta
-                    FiltroFlota.INACTIVOS -> kpis.inactivos
-                }
-                SelectableChip(
-                    label = "${opcion.etiqueta} ($cantidad)",
-                    seleccionado = filtroActual == opcion,
-                    onClick = { onSeleccionarFiltro(opcion) },
-                )
-            }
-        }
+        GlassSegmentedControl(
+            options = FiltroFlota.entries,
+            selected = filtroActual,
+            onSelect = onSeleccionarFiltro,
+            label = { it.etiqueta },
+        )
     }
 }
 
@@ -628,32 +626,6 @@ private fun EstadoVacioFlota(
     }
 }
 
-@Composable
-private fun TopBarAdmin(
-    administrador: Administrador,
-    onToggleTema: (() -> Unit)?,
-    onCerrarSesion: () -> Unit,
-) {
-    val colors = CobreTheme.colors
-    CobreTopBar(
-        nombre = administrador.nombre,
-        subtitulo = administrador.rol,
-        onCerrarSesion = onCerrarSesion,
-        onToggleTema = onToggleTema,
-    ) {
-        Box(
-            modifier = Modifier.size(40.dp).clip(CobreShapes.full).background(colors.primaryFill),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                administrador.nombre.trim().take(1).uppercase().ifEmpty { "A" },
-                style = MaterialTheme.typography.titleMedium,
-                color = colors.onPrimaryFill,
-            )
-        }
-    }
-}
-
 /** Estado de la unidad: color de relleno (franja, íconos) y de texto legible. */
 private data class EstadoVehiculoUi(val relleno: Color, val texto: Color, val etiqueta: String)
 
@@ -702,7 +674,7 @@ private fun CabeceraTarjetaVehiculo(vehiculo: Vehiculo, estado: EstadoVehiculoUi
         }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(vehiculo.patente.uppercase(), style = CobreTheme.text.labelCaps, color = colors.textSecondary)
+            Text(vehiculo.patente.uppercase(), style = CobreTheme.text.label, color = colors.textSecondary)
             Text(
                 vehiculo.nombreCompleto,
                 style = MaterialTheme.typography.titleMedium,
@@ -734,10 +706,10 @@ private fun MetadatosTarjetaVehiculo(vehiculo: Vehiculo, chequeo: ChequeoVehicul
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Icon(CobreIcons.Speed, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(16.dp))
-                Text("${vehiculo.kilometrajeActual} KM", style = CobreTheme.text.labelCaps, color = colors.textPrimary)
+                Text("${vehiculo.kilometrajeActual} km", style = CobreTheme.text.label, color = colors.textPrimary)
             }
             vehiculo.anio?.let { anio ->
-                Text("AÑO $anio", style = CobreTheme.text.labelCaps, color = colors.textSecondary)
+                Text("Año $anio", style = CobreTheme.text.label, color = colors.textSecondary)
             }
         }
         if (chequeo != null && chequeo.estaEnRuta) {
@@ -844,42 +816,12 @@ private fun ModalAgregarVehiculo(
 
     CobreBackHandler(enabled = true, onBack = onDismiss)
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor = CobreTheme.colors.surface,
-        sheetMaxWidth = 640.dp,
-        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+    GlassSheet(
+        onDismiss = onDismiss,
+        title = "Registrar vehículo",
+        subtitle = "Datos técnicos y odómetro inicial de la unidad.",
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "Registrar vehículo en flota",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = brandHeadingColor(),
-                        fontWeight = FontWeight.ExtraBold,
-                        modifier = Modifier.semantics { heading() },
-                    )
-                    Text(
-                        "Ingresa los datos técnicos y odómetro inicial de la unidad.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = brandMutedColor(),
-                    )
-                }
-                IconButton(onClick = onDismiss) {
-                    Icon(CobreIcons.Close, contentDescription = "Cerrar", tint = brandMutedColor())
-                }
-            }
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             CamposAgregarVehiculo(
                 patente = patente,
                 marca = marca,
@@ -906,7 +848,6 @@ private fun ModalAgregarVehiculo(
                 enabled = habilitado,
                 fillWidth = true,
             )
-            Spacer(Modifier.height(16.dp))
         }
     }
 }
@@ -926,68 +867,47 @@ private fun CamposAgregarVehiculo(
     onAnioChange: (String) -> Unit,
     onKmChange: (String) -> Unit,
 ) {
-    OutlinedTextField(
+    CobreTextField(
         value = patente,
         onValueChange = onPatenteChange,
-        label = { Text("Patente") },
-        placeholder = { Text("Ej. HLRT-24") },
-        singleLine = true,
+        label = "Patente",
+        placeholder = "Ej. HLRT-24",
         isError = errorPatente != null,
-        supportingText = errorPatente?.let { mensaje -> { Text(mensaje) } },
-        modifier = Modifier.fillMaxWidth(),
-        shape = CobreShapes.md,
-        colors = cobreFieldColors(),
+        supportingText = errorPatente,
     )
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        OutlinedTextField(
+        CobreTextField(
             value = marca,
             onValueChange = onMarcaChange,
-            label = { Text("Marca") },
-            placeholder = { Text("Ej. Suzuki") },
-            singleLine = true,
+            label = "Marca",
+            placeholder = "Ej. Suzuki",
             modifier = Modifier.weight(1f),
-            shape = CobreShapes.md,
-            colors = cobreFieldColors(),
         )
-        OutlinedTextField(
+        CobreTextField(
             value = modelo,
             onValueChange = onModeloChange,
-            label = { Text("Modelo") },
-            placeholder = { Text("Ej. APV Cargo") },
-            singleLine = true,
+            label = "Modelo",
+            placeholder = "Ej. APV Cargo",
             modifier = Modifier.weight(1f),
-            shape = CobreShapes.md,
-            colors = cobreFieldColors(),
         )
     }
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        OutlinedTextField(
+        CobreTextField(
             value = anioTexto,
             onValueChange = onAnioChange,
-            label = { Text("Año (opcional)") },
-            placeholder = { Text("2022") },
-            singleLine = true,
+            label = "Año (opcional)",
+            placeholder = "2022",
             isError = anioInvalido,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.weight(1f),
-            shape = CobreShapes.md,
-            colors = cobreFieldColors(),
         )
-        OutlinedTextField(
+        CobreTextField(
             value = kmTexto,
             onValueChange = onKmChange,
-            label = { Text("Kilometraje inicial") },
-            singleLine = true,
+            label = "Kilometraje inicial",
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            leadingIcon = { Icon(
-                CobreIcons.Speed,
-                contentDescription = null,
-                tint = CobreTheme.colors.textSecondary,
-                modifier = Modifier.size(18.dp),
-            ) },
+            leadingIcon = CobreIcons.Speed,
             modifier = Modifier.weight(1f),
-            shape = CobreShapes.md,
-            colors = cobreFieldColors(),
         )
     }
 }
@@ -1002,44 +922,14 @@ private fun ModalHistorialVehiculo(
 ) {
     val isDark = cobreIsDark()
     CobreBackHandler(enabled = true, onBack = onDismiss)
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor = CobreTheme.colors.surface,
-        sheetMaxWidth = 640.dp,
-        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+    GlassSheet(
+        onDismiss = onDismiss,
+        title = "Bitácora · ${vehiculo.patente}",
+        subtitle = "${vehiculo.nombreCompleto} · Odómetro actual: ${vehiculo.kilometrajeActual} km",
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "Bitácora · ${vehiculo.patente}",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = brandHeadingColor(),
-                        fontWeight = FontWeight.ExtraBold,
-                        modifier = Modifier.semantics { heading() },
-                    )
-                    Text(
-                        "${vehiculo.nombreCompleto} · Odómetro actual: ${vehiculo.kilometrajeActual} km",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = brandMutedColor(),
-                    )
-                }
-                IconButton(onClick = onDismiss) {
-                    Icon(CobreIcons.Close, contentDescription = "Cerrar", tint = brandMutedColor())
-                }
-            }
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (historial.isEmpty()) {
-                GlassCard(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
+                ContentCard(modifier = Modifier.fillMaxWidth()) {
                     Text(
                         "Sin registros de salida o retorno todavía para esta unidad.",
                         style = MaterialTheme.typography.bodyMedium,
@@ -1048,16 +938,14 @@ private fun ModalHistorialVehiculo(
                 }
             } else {
                 historial.forEach { chequeo ->
-                    GlassCard(
+                    ContentCard(
                         modifier = Modifier.fillMaxWidth(),
-                        elevation = 4.dp,
                         contentPadding = PaddingValues(16.dp),
                     ) {
                         HistorialFila(chequeo)
                     }
                 }
             }
-            Spacer(Modifier.height(16.dp))
         }
     }
 }
@@ -1176,41 +1064,12 @@ private fun ModalChequeoVehiculo(
     val cerrar = { if (!guardando) onDismiss() }
     CobreBackHandler(enabled = true, onBack = cerrar)
 
-    ModalBottomSheet(
-        onDismissRequest = cerrar,
-        containerColor = CobreTheme.colors.surface,
-        sheetMaxWidth = 640.dp,
-        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+    GlassSheet(
+        onDismiss = cerrar,
+        title = if (esEntrada) "Registrar retorno · ${vehiculo.patente}" else "Dar salida · ${vehiculo.patente}",
+        subtitle = "${vehiculo.nombreCompleto} · Odómetro mínimo: $kmMinimo km",
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 12.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        if (esEntrada) "Registrar Retorno · ${vehiculo.patente}" else "Dar Salida · ${vehiculo.patente}",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = brandHeadingColor(),
-                        fontWeight = FontWeight.ExtraBold,
-                        modifier = Modifier.semantics { heading() },
-                    )
-                    Text(
-                        "${vehiculo.nombreCompleto} · Odómetro mínimo: $kmMinimo km",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = brandMutedColor(),
-                    )
-                }
-                IconButton(onClick = cerrar, enabled = !guardando) {
-                    Icon(CobreIcons.Close, contentDescription = "Cerrar", tint = brandMutedColor())
-                }
-            }
+        Column {
             ChequeoForm(
                 accent = accent,
                 esEntrada = esEntrada,
@@ -1223,7 +1082,6 @@ private fun ModalChequeoVehiculo(
                 onDismiss = cerrar,
                 onConfirmar = onConfirmar,
             )
-            Spacer(Modifier.height(16.dp))
         }
     }
 }
@@ -1286,25 +1144,16 @@ private fun ChequeoForm(
         )
         Spacer(Modifier.height(12.dp))
 
-        OutlinedTextField(
+        CobreTextField(
             value = kmTexto,
             enabled = editarDatos,
             onValueChange = { kmTexto = it.filter(Char::isDigit) },
-            label = { Text(if (esEntrada) "Kilometraje de retorno" else "Kilometraje de salida") },
-            placeholder = { Text("Mínimo $kmMinimo") },
-            singleLine = true,
+            label = if (esEntrada) "Kilometraje de retorno" else "Kilometraje de salida",
+            placeholder = "Mínimo $kmMinimo",
             isError = errorKm != null,
-            supportingText = errorKm?.let { mensaje -> { Text(mensaje) } },
+            supportingText = errorKm,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            leadingIcon = { Icon(
-                CobreIcons.Speed,
-                contentDescription = null,
-                tint = CobreTheme.colors.textSecondary,
-                modifier = Modifier.size(20.dp),
-            ) },
-            modifier = Modifier.fillMaxWidth(),
-            shape = CobreShapes.md,
-            colors = cobreFieldColors(),
+            leadingIcon = CobreIcons.Speed,
         )
 
         Spacer(Modifier.height(12.dp))
@@ -1363,12 +1212,14 @@ private fun EstadoGuardadoChequeo(guardando: Boolean, confirmado: Boolean, error
 
 @Composable
 private fun ObservacionesChequeo(valor: String, enabled: Boolean, cambiar: (String) -> Unit) {
-    OutlinedTextField(
-        value = valor, enabled = enabled, onValueChange = cambiar,
-        label = { Text("Observaciones (opcional)") },
-        placeholder = { Text("Ej. Rayón leve en parachoques trasero") },
-        minLines = 2, modifier = Modifier.fillMaxWidth(),
-        shape = CobreShapes.md, colors = cobreFieldColors(),
+    CobreTextField(
+        value = valor,
+        enabled = enabled,
+        onValueChange = cambiar,
+        label = "Observaciones (opcional)",
+        placeholder = "Ej. Rayón leve en parachoques trasero",
+        singleLine = false,
+        minLines = 2,
     )
 }
 
@@ -1407,7 +1258,7 @@ private fun SelectorConductorFlota(
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(conductores, key = { it.id }) { conductor ->
                 SelectableChip(
-                    label = "${conductor.nombreCompleto} · ${conductor.rol.uppercase()}",
+                    label = "${conductor.nombreCompleto} · ${conductor.rol}",
                     seleccionado = seleccionado?.id == conductor.id,
                     onClick = { onSeleccionar(conductor) },
                 )
@@ -1486,17 +1337,16 @@ private fun SelectorFotos(accent: Color, fotos: MutableState<List<FotoChequeo>>,
             style = MaterialTheme.typography.titleSmall,
             color = brandHeadingColor(),
         )
-        TextButton(
-            enabled = enabled && fotos.value.size < 20,
+        CobreButton(
+            text = "Tomar foto",
             onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 abrirCamara()
             },
-        ) {
-            Icon(CobreIcons.PhotoCamera, contentDescription = null, tint = CobreTheme.colors.accent, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(6.dp))
-            Text("Tomar foto", color = CobreTheme.colors.accentText, fontWeight = FontWeight.Bold)
-        }
+            variant = ButtonVariant.Tonal,
+            icon = CobreIcons.PhotoCamera,
+            enabled = enabled && fotos.value.size < 20,
+        )
     }
     Spacer(Modifier.height(6.dp))
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

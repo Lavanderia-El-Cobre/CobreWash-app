@@ -208,12 +208,12 @@ private fun Modifier.superficieContenido(shape: Shape, stripe: Color?): Modifier
         .border(width = if (colors.isDark) 1.dp else 0.5.dp, color = colors.hairline, shape = shape)
 }
 
-/** Encabezado de sección en `label-caps` (Inconsolata, mayúsculas, tracking amplio), como las listas agrupadas de iOS. */
+/** Encabezado de sección de las listas agrupadas, en texto normal (sin mayúsculas forzadas). */
 @Composable
 fun SectionLabel(text: String, modifier: Modifier = Modifier) {
     Text(
-        text.uppercase(),
-        style = CobreTheme.text.labelCaps,
+        text,
+        style = CobreTheme.text.label,
         color = CobreTheme.colors.textSecondary,
         modifier = modifier.semantics { heading() },
     )

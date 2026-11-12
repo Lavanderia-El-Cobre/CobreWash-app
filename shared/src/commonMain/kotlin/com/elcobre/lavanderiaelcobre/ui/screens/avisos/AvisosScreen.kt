@@ -186,7 +186,7 @@ private fun AvisoCard(aviso: Aviso, modifier: Modifier = Modifier) {
                     Icon(CobreIcons.Person, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(13.dp))
                     Text(aviso.dirigidoA, style = MaterialTheme.typography.labelSmall, color = colors.textSecondary)
                     Spacer(Modifier.weight(1f))
-                    Text(aviso.hora.uppercase(), style = CobreTheme.text.labelCaps, color = colors.textSecondary)
+                    Text(aviso.hora, style = CobreTheme.text.label, color = colors.textSecondary)
                 }
             }
         }

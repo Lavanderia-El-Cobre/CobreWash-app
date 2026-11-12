@@ -82,7 +82,7 @@ fun EventoFila(
         Column(modifier = Modifier.weight(1f).padding(bottom = if (esUltimo) 0.dp else 12.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(titulo, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary, modifier = Modifier.weight(1f))
-                Text(hora.uppercase(), style = CobreTheme.text.labelCaps, color = colors.textSecondary)
+                Text(hora, style = CobreTheme.text.label, color = colors.textSecondary)
             }
             Spacer(Modifier.height(2.dp))
             Text(detalle, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)

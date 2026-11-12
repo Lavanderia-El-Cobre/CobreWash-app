@@ -752,7 +752,7 @@ private fun PedidoCardHeader(
         }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(pedido.comanda.uppercase(), style = CobreTheme.text.labelCaps, color = colors.textSecondary)
+            Text(pedido.comanda, style = CobreTheme.text.label, color = colors.textSecondary)
             Text(pedido.cliente, style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
         }
         Icon(

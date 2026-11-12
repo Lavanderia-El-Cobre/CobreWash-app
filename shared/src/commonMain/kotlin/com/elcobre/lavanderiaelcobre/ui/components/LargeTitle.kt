@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -145,6 +146,15 @@ fun rememberTitleCollapsed(listState: LazyListState): State<Boolean> {
 /** Variante para cuadrículas escalonadas (Dashboard en tablet y horizontal). */
 @Composable
 fun rememberTitleCollapsed(gridState: LazyStaggeredGridState): State<Boolean> {
+    val umbral = with(LocalDensity.current) { UmbralColapso.roundToPx() }
+    return remember(gridState, umbral) {
+        derivedStateOf { gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > umbral }
+    }
+}
+
+/** Variante para cuadrículas (flota de vehículos). */
+@Composable
+fun rememberTitleCollapsed(gridState: LazyGridState): State<Boolean> {
     val umbral = with(LocalDensity.current) { UmbralColapso.roundToPx() }
     return remember(gridState, umbral) {
         derivedStateOf { gridState.firstVisibleItemIndex > 0 || gridState.firstVisibleItemScrollOffset > umbral }

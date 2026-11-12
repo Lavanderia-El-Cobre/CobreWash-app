@@ -1,8 +1,19 @@
 package com.elcobre.lavanderiaelcobre.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -23,7 +34,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,6 +42,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -39,6 +52,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreShapes
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
@@ -169,9 +183,13 @@ fun GlassSearchField(
     }
 }
 
+/** Forma de los campos de formulario: un poco más amplia que la de las tarjetas, como iOS. */
+private val FormaCampo = RoundedCornerShape(12.dp)
+
 /**
- * Campo de formulario: contorno con radio `md` (8dp) de DESIGN.md sobre superficie
- * sólida. Los formularios van sobre contenido, no sobre vidrio, para que se lean bien.
+ * Campo de formulario de la app: etiqueta arriba y caja rellena de esquinas suaves que se
+ * enmarca en cobre al enfocarse (o en rojo con [isError]). Reemplaza al campo con contorno
+ * y etiqueta flotante de Material en login, formularios de flota, conteos y comentarios.
  */
 @Composable
 fun CobreTextField(
@@ -191,23 +209,194 @@ fun CobreTextField(
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     visualTransformation: VisualTransformation = VisualTransformation.None,
 ) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        modifier = modifier.fillMaxWidth(),
-        enabled = enabled,
-        label = label?.let { { Text(it) } },
-        placeholder = placeholder?.let { { Text(it, style = MaterialTheme.typography.bodyMedium) } },
-        leadingIcon = leadingIcon?.let { { Icon(it, contentDescription = null, modifier = Modifier.size(20.dp)) } },
-        trailingIcon = trailingIcon,
-        isError = isError,
-        supportingText = supportingText?.let { { Text(it) } },
-        singleLine = singleLine,
-        minLines = minLines,
-        keyboardOptions = keyboardOptions,
-        keyboardActions = keyboardActions,
-        visualTransformation = visualTransformation,
-        shape = CobreShapes.md,
-        colors = cobreFieldColors(),
+    val colors = CobreTheme.colors
+    val interaccion = remember { MutableInteractionSource() }
+    val enfocado by interaccion.collectIsFocusedAsState()
+    val borde by animateColorAsState(
+        when {
+            isError -> colors.danger
+            enfocado -> colors.accent
+            else -> colors.hairline
+        },
+        tween(160),
+        label = "bordeCampo",
     )
+    val grosor by animateDpAsState(if (enfocado || isError) 1.5.dp else 1.dp, tween(160), label = "grosorCampo")
+    val estilo = MaterialTheme.typography.bodyLarge.copy(color = if (enabled) colors.textPrimary else colors.textSecondary)
+
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (label != null) {
+            Text(
+                label,
+                style = CobreTheme.text.label,
+                color = if (isError) colors.dangerText else colors.textSecondary,
+                modifier = Modifier.padding(start = 4.dp),
+            )
+        }
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            enabled = enabled,
+            singleLine = singleLine,
+            minLines = minLines,
+            textStyle = estilo,
+            cursorBrush = SolidColor(colors.accent),
+            keyboardOptions = keyboardOptions,
+            keyboardActions = keyboardActions,
+            visualTransformation = visualTransformation,
+            interactionSource = interaccion,
+            modifier = Modifier.fillMaxWidth().semantics { if (label != null) contentDescription = label },
+            decorationBox = { campo ->
+                CajaCampo(
+                    singleLine = singleLine,
+                    enfocado = enfocado,
+                    borde = borde,
+                    grosor = grosor,
+                    leadingIcon = leadingIcon,
+                    trailingIcon = trailingIcon,
+                ) {
+                    if (value.isEmpty() && placeholder != null) {
+                        Text(placeholder, style = estilo, color = colors.textSecondary.copy(alpha = 0.7f), maxLines = 1)
+                    }
+                    campo()
+                }
+            },
+        )
+        if (supportingText != null) {
+            Text(
+                supportingText,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (isError) colors.dangerText else colors.textSecondary,
+                modifier = Modifier.padding(start = 4.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun CajaCampo(
+    singleLine: Boolean,
+    enfocado: Boolean,
+    borde: Color,
+    grosor: Dp,
+    leadingIcon: ImageVector?,
+    trailingIcon: (@Composable () -> Unit)?,
+    campo: @Composable () -> Unit,
+) {
+    val colors = CobreTheme.colors
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 52.dp)
+            .clip(FormaCampo)
+            .background(colors.surfaceMuted)
+            .border(grosor, borde, FormaCampo)
+            .padding(start = 14.dp, end = if (trailingIcon != null) 4.dp else 14.dp, top = 12.dp, bottom = 12.dp),
+        verticalAlignment = if (singleLine) Alignment.CenterVertically else Alignment.Top,
+    ) {
+        if (leadingIcon != null) {
+            Icon(
+                leadingIcon,
+                contentDescription = null,
+                tint = if (enfocado) colors.accentText else colors.textSecondary,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.width(10.dp))
+        }
+        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) { campo() }
+        if (trailingIcon != null) trailingIcon()
+    }
+}
+
+/**
+ * Casilla de la app: cuadrado de esquinas suaves que se rellena en cobre con un check
+ * que aparece con un leve rebote. Toda la fila (casilla y texto) es el área táctil.
+ */
+@Composable
+fun CobreCheckbox(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    val colors = CobreTheme.colors
+    val forma = RoundedCornerShape(7.dp)
+    val fondo by animateColorAsState(if (checked) colors.accentFill else colors.surfaceMuted, tween(160), label = "fondoCheck")
+    val borde by animateColorAsState(
+        if (checked) colors.accentFill else colors.textSecondary.copy(alpha = 0.45f),
+        tween(160),
+        label = "bordeCheck",
+    )
+    val escala by animateFloatAsState(
+        if (checked) 1f else 0.4f,
+        spring(dampingRatio = 0.5f, stiffness = 600f),
+        label = "escalaCheck",
+    )
+    Row(
+        modifier = modifier
+            .heightIn(min = 44.dp)
+            .toggleable(
+                value = checked,
+                enabled = enabled,
+                role = Role.Checkbox,
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onValueChange = onCheckedChange,
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(
+            modifier = Modifier.size(22.dp).clip(forma).background(fondo).border(1.5.dp, borde, forma),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (checked) {
+                Icon(
+                    CobreIcons.Check,
+                    contentDescription = null,
+                    tint = colors.onAccentFill,
+                    modifier = Modifier.size(16.dp).graphicsLayer {
+                        scaleX = escala
+                        scaleY = escala
+                    },
+                )
+            }
+        }
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
+    }
+}
+
+/**
+ * Interruptor de la app al estilo iOS: cápsula que se rellena en cobre y una perilla
+ * blanca que se desliza con resorte. Solo dibuja el estado; el toque lo maneja la fila
+ * que lo contiene (con `toggleable`), para que toda la fila sea el área táctil.
+ */
+@Composable
+fun CobreSwitch(checked: Boolean, modifier: Modifier = Modifier) {
+    val colors = CobreTheme.colors
+    val pista by animateColorAsState(if (checked) colors.accentFill else colors.surfaceMuted, tween(200), label = "pistaSwitch")
+    val desplazamiento by animateDpAsState(
+        if (checked) 20.dp else 0.dp,
+        spring(dampingRatio = 0.7f, stiffness = 500f),
+        label = "perillaSwitch",
+    )
+    Box(
+        modifier = modifier
+            .size(width = 51.dp, height = 31.dp)
+            .clip(CobreShapes.full)
+            .background(pista)
+            .border(1.dp, if (checked) Color.Transparent else colors.hairline, CobreShapes.full)
+            .padding(2.dp),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Box(
+            modifier = Modifier
+                .offset(x = desplazamiento)
+                .size(27.dp)
+                .shadow(2.dp, CobreShapes.full)
+                .clip(CobreShapes.full)
+                .background(Color.White),
+        )
+    }
 }

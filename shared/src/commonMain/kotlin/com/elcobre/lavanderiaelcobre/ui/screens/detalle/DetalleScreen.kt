@@ -311,8 +311,8 @@ private fun DetalleInfo(pedido: Pedido) {
         }
         Spacer(Modifier.height(16.dp))
         Text(
-            "Etapa ${pedido.indiceEtapa + 1} de ${pedido.totalEtapas} · ${pedido.etapaActual.displayName}".uppercase(),
-            style = CobreTheme.text.labelCaps,
+            "Etapa ${pedido.indiceEtapa + 1} de ${pedido.totalEtapas} · ${pedido.etapaActual.displayName}",
+            style = CobreTheme.text.label,
             color = colors.textSecondary,
         )
         Spacer(Modifier.height(8.dp))
@@ -329,7 +329,7 @@ private fun DetalleInfo(pedido: Pedido) {
 private fun DatoColumna(titulo: String, valor: String) {
     val colors = CobreTheme.colors
     Column {
-        Text(titulo.uppercase(), style = CobreTheme.text.labelCaps, color = colors.textSecondary)
+        Text(titulo, style = CobreTheme.text.label, color = colors.textSecondary)
         Spacer(Modifier.height(2.dp))
         Text(valor, style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
     }

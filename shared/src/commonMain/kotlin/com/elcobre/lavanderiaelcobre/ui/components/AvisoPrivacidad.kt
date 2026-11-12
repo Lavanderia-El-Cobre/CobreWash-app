@@ -1,32 +1,19 @@
 package com.elcobre.lavanderiaelcobre.ui.components
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -65,14 +52,14 @@ fun AvisoPrivacidad(modifier: Modifier = Modifier, mostrarTarjeta: Boolean = fal
     if (mostrarTarjeta) AccesoPrivacidadTarjeta(onClick = abrir, modifier = modifier)
     else AccesoPrivacidadCompacto(onClick = abrir, modifier = modifier)
 
-    if (abierto) ModalBottomSheet(
-        onDismissRequest = { abierto = false },
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = CobreTheme.colors.surface,
+    if (abierto) GlassSheet(
+        onDismiss = { abierto = false },
+        title = "Privacidad y mis datos",
+        subtitle = "Lavandería El Cobre · Gestión interna",
+        leading = { IconoPrivacidad() },
     ) {
         ContenidoPrivacidad(
             errorEnlace = errorEnlace,
-            onCerrar = { abierto = false },
             onAbrirEnlace = { ruta ->
                 try {
                     enlaces.openUri(ORIGEN_PRIVACIDAD + ruta)
@@ -84,24 +71,13 @@ fun AvisoPrivacidad(modifier: Modifier = Modifier, mostrarTarjeta: Boolean = fal
 
 @Composable
 private fun AccesoPrivacidadCompacto(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val accent = CobreTheme.colors.accentText
-    OutlinedButton(
+    CobreButton(
+        text = "Privacidad y mis datos",
         onClick = onClick,
-        modifier = modifier.heightIn(min = 48.dp),
-        shape = CobreShapes.md,
-        border = BorderStroke(1.dp, accent.copy(alpha = 0.22f)),
-        colors = ButtonDefaults.outlinedButtonColors(
-            contentColor = accent,
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
-        ),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-    ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(CobreIcons.Lock, contentDescription = null, modifier = Modifier.size(16.dp))
-            Text("Privacidad y mis datos", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-            Icon(CobreIcons.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
-        }
-    }
+        modifier = modifier,
+        variant = ButtonVariant.Glass,
+        icon = CobreIcons.Lock,
+    )
 }
 
 @Composable
@@ -144,27 +120,8 @@ private fun IconoPrivacidad() {
 }
 
 @Composable
-private fun ContenidoPrivacidad(errorEnlace: Boolean, onCerrar: () -> Unit, onAbrirEnlace: (String) -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconoPrivacidad()
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "Privacidad y mis datos",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = brandHeadingColor(),
-                    fontWeight = FontWeight.ExtraBold,
-                    modifier = Modifier.semantics { heading() },
-                )
-                Text("Lavandería El Cobre · Gestión interna", style = MaterialTheme.typography.bodySmall, color = brandMutedColor())
-            }
-            IconButton(onClick = onCerrar) {
-                Icon(CobreIcons.Close, contentDescription = "Cerrar privacidad", tint = brandMutedColor())
-            }
-        }
+private fun ContenidoPrivacidad(errorEnlace: Boolean, onAbrirEnlace: (String) -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
             "Consulta para qué usamos tu información y cómo puedes gestionar tus datos.",
             style = MaterialTheme.typography.bodyMedium,
@@ -180,13 +137,12 @@ private fun ContenidoPrivacidad(errorEnlace: Boolean, onCerrar: () -> Unit, onAb
             )
         }
         AccionesPrivacidad(onAbrirEnlace)
-        Spacer(Modifier.height(12.dp))
     }
 }
 
 @Composable
 private fun SeccionesPrivacidad() {
-    GlassCard(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
+    ContentCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
             SeccionPrivacidad(
                 CobreIcons.Person, "Tu cuenta y tus operaciones",
@@ -243,25 +199,17 @@ private fun SeccionPrivacidad(icon: ImageVector, titulo: String, descripcion: St
 @Composable
 private fun AccionesPrivacidad(onAbrirEnlace: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Button(
+        CobreButton(
+            text = "Leer aviso de privacidad",
             onClick = { onAbrirEnlace("/privacidad") },
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).background(BrandCtaGradient, CobreShapes.md),
-            shape = CobreShapes.md,
-            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = Color.White),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
-        ) {
-            Text("Leer aviso de privacidad", fontWeight = FontWeight.Bold)
-        }
-        OutlinedButton(
+            fillWidth = true,
+        )
+        CobreButton(
+            text = "Ejercer mis derechos",
             onClick = { onAbrirEnlace("/privacidad/derechos") },
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-            shape = CobreShapes.md,
-            border = BorderStroke(1.dp, CobreTheme.colors.accent.copy(alpha = 0.35f)),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = CobreTheme.colors.accentText),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
-        ) {
-            Text("Ejercer mis derechos", fontWeight = FontWeight.Bold)
-        }
+            variant = ButtonVariant.Tonal,
+            fillWidth = true,
+        )
     }
 }
 

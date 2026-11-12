@@ -47,14 +47,14 @@ private fun monoFamily() = FontFamily(
 data class CobreTextStyles(
     /** Título grande de pantalla estilo iOS, que se colapsa al hacer scroll. */
     val largeTitle: TextStyle,
-    /** `label-caps` de DESIGN.md: encabezados de sección, códigos de comanda, patentes, km. Escribir el texto en mayúsculas. */
-    val labelCaps: TextStyle,
+    /** Etiquetas cortas (encabezados de sección, códigos, metadatos): Inter seminegrita, sin mayúsculas forzadas ni tracking. */
+    val label: TextStyle,
     /** Cifras y códigos que deben alinearse (monoespaciado). */
     val mono: TextStyle,
 )
 
 internal val LocalCobreTextStyles = staticCompositionLocalOf {
-    CobreTextStyles(largeTitle = TextStyle.Default, labelCaps = TextStyle.Default, mono = TextStyle.Default)
+    CobreTextStyles(largeTitle = TextStyle.Default, label = TextStyle.Default, mono = TextStyle.Default)
 }
 
 private fun estilo(familia: FontFamily, peso: FontWeight, tamano: Float, alto: Float, tracking: Float = 0f) =
@@ -101,7 +101,7 @@ internal fun rememberCobreTextStyles(compact: Boolean): CobreTextStyles {
     val large = if (compact) 34f else 40f
     return CobreTextStyles(
         largeTitle = estilo(display, FontWeight.Bold, large, large * 1.15f, tight(large)),
-        labelCaps = estilo(mono, FontWeight.Medium, 12f, 16f, 12f * 0.08f),
+        label = estilo(display, FontWeight.SemiBold, 13f, 18f),
         mono = estilo(mono, FontWeight.Medium, 14f, 20f),
     )
 }

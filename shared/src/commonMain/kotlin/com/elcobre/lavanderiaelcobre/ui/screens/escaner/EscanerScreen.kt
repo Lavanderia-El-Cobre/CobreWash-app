@@ -196,8 +196,8 @@ private fun Visor(lado: Dp, activo: Boolean, onLeido: (String) -> Unit) {
         }
         Spacer(Modifier.height(12.dp))
         Text(
-            if (activo) "BUSCANDO CÓDIGO QR…" else "PREPARANDO CÁMARA…",
-            style = CobreTheme.text.labelCaps,
+            if (activo) "Buscando código QR…" else "Preparando cámara…",
+            style = CobreTheme.text.label,
             color = colors.textSecondary,
         )
     }

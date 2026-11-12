@@ -273,7 +273,7 @@ private fun KpiInsumo(titulo: String, valor: String, colorValor: Color, modifier
         modifier = modifier.semantics(mergeDescendants = true) {},
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
     ) {
-        Text(titulo.uppercase(), style = CobreTheme.text.labelCaps, color = colors.textSecondary)
+        Text(titulo, style = CobreTheme.text.label, color = colors.textSecondary)
         Spacer(Modifier.height(2.dp))
         Text(valor, style = MaterialTheme.typography.headlineSmall, color = colorValor)
     }
@@ -363,7 +363,7 @@ private fun InsumoCard(
                 )
             }
             conteo?.let { ResumenConteoEnTarjeta(it, insumo.unidad) }
-            Text("QR ${insumo.codigoQr}".uppercase(), style = CobreTheme.text.labelCaps, color = colors.textSecondary)
+            Text("Código QR · ${insumo.codigoQr}", style = CobreTheme.text.label, color = colors.textSecondary)
         }
     }
 }
