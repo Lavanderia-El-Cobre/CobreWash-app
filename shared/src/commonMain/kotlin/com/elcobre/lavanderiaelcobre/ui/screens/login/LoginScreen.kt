@@ -3,38 +3,39 @@ package com.elcobre.lavanderiaelcobre.ui.screens.login
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -46,8 +47,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -57,8 +56,11 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.elcobre.lavanderiaelcobre.data.auth.AuthRepository
@@ -71,27 +73,14 @@ import com.elcobre.lavanderiaelcobre.data.model.Administrador
 import com.elcobre.lavanderiaelcobre.data.model.Operario
 import com.elcobre.lavanderiaelcobre.data.model.Sesion
 import com.elcobre.lavanderiaelcobre.data.model.TurnoPlanta
-import com.elcobre.lavanderiaelcobre.ui.components.BrandCtaGradient
 import com.elcobre.lavanderiaelcobre.ui.components.AvisoPrivacidad
-import com.elcobre.lavanderiaelcobre.ui.components.CobreBackground
+import com.elcobre.lavanderiaelcobre.ui.components.CobreButton
 import com.elcobre.lavanderiaelcobre.ui.components.CobreIcons
-import com.elcobre.lavanderiaelcobre.ui.components.GlassCard
-import com.elcobre.lavanderiaelcobre.ui.components.brandHeadingColor
-import com.elcobre.lavanderiaelcobre.ui.components.brandMutedColor
-import com.elcobre.lavanderiaelcobre.ui.components.cobreFieldColors
-import com.elcobre.lavanderiaelcobre.ui.components.pressableScale
-import com.elcobre.lavanderiaelcobre.ui.theme.Brand400
-import com.elcobre.lavanderiaelcobre.ui.theme.Brand500
-import com.elcobre.lavanderiaelcobre.ui.theme.Brand700
-import com.elcobre.lavanderiaelcobre.ui.theme.Copper500
-import com.elcobre.lavanderiaelcobre.ui.theme.Copper600
-import com.elcobre.lavanderiaelcobre.ui.theme.DarkOutline
-import com.elcobre.lavanderiaelcobre.ui.theme.DarkSurface2
-import com.elcobre.lavanderiaelcobre.ui.theme.StatusGreen
-import com.elcobre.lavanderiaelcobre.ui.theme.StatusGreenDark
-import com.elcobre.lavanderiaelcobre.ui.theme.StatusRed
-import com.elcobre.lavanderiaelcobre.ui.theme.StatusRedDark
-import com.elcobre.lavanderiaelcobre.ui.theme.Stone200
+import com.elcobre.lavanderiaelcobre.ui.components.CobreTextField
+import com.elcobre.lavanderiaelcobre.ui.components.ContentCard
+import com.elcobre.lavanderiaelcobre.ui.components.GlassIconButton
+import com.elcobre.lavanderiaelcobre.ui.theme.CobreShapes
+import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 import com.elcobre.lavanderiaelcobre.ui.theme.cobreIsDark
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -195,77 +184,109 @@ fun LoginScreen(
         }
     }
 
-    CobreBackground {
-        val isDark = cobreIsDark()
-        Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState()),
-                ) {
-                    LoginCard(
-                        visible = visible,
-                        success = success,
-                        correo = correo,
-                        onCorreoChange = { correo = it; error = null },
-                        password = password,
-                        onPasswordChange = { password = it; error = null },
-                        recordarme = recordarme,
-                        onRecordarmeChange = { recordarme = it },
-                        turno = turnoAutomatico,
-                        error = error,
-                        isLoading = isLoading,
-                        onSubmit = { intentarEntrar() },
-                    )
-                    Spacer(Modifier.height(24.dp))
-                    LoginFooter()
-                }
-            }
+    LoginLayout(
+        esquina = { LoginThemeToggle(isDark = cobreIsDark(), onClick = onToggleTema) },
+        formulario = {
+            LoginCard(
+                visible = visible,
+                success = success,
+                correo = correo,
+                onCorreoChange = { correo = it; error = null },
+                password = password,
+                onPasswordChange = { password = it; error = null },
+                recordarme = recordarme,
+                onRecordarmeChange = { recordarme = it },
+                turno = turnoAutomatico,
+                error = error,
+                isLoading = isLoading,
+                onSubmit = { intentarEntrar() },
+            )
+        },
+    )
+}
 
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(4.dp),
-            ) {
-                LoginThemeToggle(isDark = isDark, onClick = onToggleTema)
+/** Ancho máximo del formulario. */
+private val AnchoFormulario = 420.dp
+
+/**
+ * Centra el contenido con scroll y respeta barras del sistema y teclado (`safeDrawing`).
+ * En pantallas horizontales anchas se divide en dos columnas: marca a la izquierda y
+ * formulario a la derecha, para que todo entre sin scroll en un teléfono acostado.
+ */
+@Composable
+private fun LoginLayout(esquina: @Composable () -> Unit, formulario: @Composable () -> Unit) {
+    val window = CobreTheme.window
+    val dosColumnas = window.isLandscape && window.width >= 640.dp
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.safeDrawing),
+    ) {
+        val altoDisponible = maxHeight
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .heightIn(min = altoDisponible)
+                .padding(horizontal = window.gutter, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            if (dosColumnas) {
+                Row(
+                    modifier = Modifier.widthIn(max = 960.dp).fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(48.dp),
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Marca(centrada = false)
+                        Spacer(Modifier.height(24.dp))
+                        LoginFooter(centrado = false)
+                    }
+                    Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                        formulario()
+                    }
+                }
+            } else {
+                Marca(centrada = true)
+                Spacer(Modifier.height(24.dp))
+                formulario()
+                Spacer(Modifier.height(24.dp))
+                LoginFooter(centrado = true)
             }
         }
+        Box(modifier = Modifier.align(Alignment.TopEnd).padding(12.dp)) { esquina() }
     }
 }
 
 @Composable
 private fun LoginThemeToggle(isDark: Boolean, onClick: () -> Unit) {
-    val interaction = remember { MutableInteractionSource() }
-    val btnBg = if (isDark) DarkSurface2 else Color.White
-    val borderCol = if (isDark) DarkOutline else Stone200.copy(alpha = 0.8f)
+    GlassIconButton(
+        icon = if (isDark) CobreIcons.Sun else CobreIcons.Moon,
+        contentDescription = if (isDark) "Tema oscuro activo, cambiar a claro" else "Tema claro activo, cambiar a oscuro",
+        onClick = onClick,
+        size = 44.dp,
+    )
+}
 
-    Box(
-        modifier = Modifier
-            .size(48.dp)
-            .pressableScale(interaction)
-            .clip(RoundedCornerShape(14.dp))
-            .background(btnBg)
-            .border(1.dp, borderCol, RoundedCornerShape(14.dp))
-            .clickable(
-                interactionSource = interaction,
-                indication = null,
-                role = Role.Button,
-                onClickLabel = if (isDark) "Cambiar a tema claro" else "Cambiar a tema oscuro",
-                onClick = onClick,
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            if (isDark) CobreIcons.Sun else CobreIcons.Moon,
-            contentDescription = if (isDark) "Tema oscuro activo, cambiar a claro" else "Tema claro activo, cambiar a oscuro",
-            tint = if (isDark) Brand400 else Brand500,
-            modifier = Modifier.size(20.dp),
+@Composable
+private fun Marca(centrada: Boolean) {
+    val colors = CobreTheme.colors
+    Column(horizontalAlignment = if (centrada) Alignment.CenterHorizontally else Alignment.Start) {
+        Image(
+            painter = painterResource(Res.drawable.logo),
+            contentDescription = "Lavandería El Cobre",
+            modifier = Modifier.size(if (centrada) 56.dp else 72.dp),
         )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "Lavandería El Cobre",
+            style = if (centrada) MaterialTheme.typography.titleLarge else MaterialTheme.typography.displaySmall,
+            color = colors.textPrimary,
+            textAlign = if (centrada) TextAlign.Center else TextAlign.Start,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text("INTRANET DE PLANTA", style = CobreTheme.text.labelCaps, color = colors.accentText)
     }
 }
 
@@ -284,86 +305,63 @@ private fun LoginCard(
     isLoading: Boolean,
     onSubmit: () -> Unit,
 ) {
+    val colors = CobreTheme.colors
     AnimatedVisibility(
         visible = visible,
-        enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { it / 6 },
+        enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { it / 8 },
     ) {
-        GlassCard(
-            modifier = Modifier.widthIn(max = 460.dp),
-            shape = RoundedCornerShape(24.dp),
-            contentPadding = PaddingValues(32.dp),
+        ContentCard(
+            modifier = Modifier.widthIn(max = AnchoFormulario),
+            contentPadding = PaddingValues(24.dp),
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                LoginHeader()
-                Spacer(Modifier.height(24.dp))
-                AnimatedVisibility(visible = success) {
-                    LoginSuccess()
-                }
-                AnimatedVisibility(visible = !success) {
-                    LoginForm(
-                        correo = correo,
-                        onCorreoChange = onCorreoChange,
-                        password = password,
-                        onPasswordChange = onPasswordChange,
-                        recordarme = recordarme,
-                        onRecordarmeChange = onRecordarmeChange,
-                        turno = turno,
-                        error = error,
-                        isLoading = isLoading,
-                        onSubmit = onSubmit,
-                    )
-                }
+            Text(
+                "Iniciar sesión",
+                style = MaterialTheme.typography.headlineMedium,
+                color = colors.textPrimary,
+                modifier = Modifier.semantics { heading() },
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Ingresa tus datos para acceder a la intranet.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary,
+            )
+            Spacer(Modifier.height(20.dp))
+            AnimatedVisibility(visible = success) { LoginSuccess() }
+            AnimatedVisibility(visible = !success) {
+                LoginForm(
+                    correo = correo,
+                    onCorreoChange = onCorreoChange,
+                    password = password,
+                    onPasswordChange = onPasswordChange,
+                    recordarme = recordarme,
+                    onRecordarmeChange = onRecordarmeChange,
+                    turno = turno,
+                    error = error,
+                    isLoading = isLoading,
+                    onSubmit = onSubmit,
+                )
             }
         }
     }
 }
 
-@Composable
-private fun LoginHeader() {
-    Image(
-        painter = painterResource(Res.drawable.logo),
-        contentDescription = "Lavandería El Cobre",
-        modifier = Modifier.size(50.dp),
-    )
-    Spacer(Modifier.height(12.dp))
-    Text(
-        "Iniciar Sesión",
-        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-        color = brandHeadingColor(),
-        textAlign = TextAlign.Center,
-        modifier = Modifier.semantics { heading() },
-    )
-    Spacer(Modifier.height(6.dp))
-    Text(
-        "Ingresa tus datos para acceder a tu intranet de lavandería.",
-        style = MaterialTheme.typography.bodySmall,
-        color = brandMutedColor(),
-        textAlign = TextAlign.Center,
-        modifier = Modifier.widthIn(max = 260.dp),
-    )
-}
-
 /** Check verde + mensaje, igual que el estado `authSuccess` del modal de la web antes de redirigir. */
 @Composable
 private fun LoginSuccess() {
-    val isDark = cobreIsDark()
-    val verde = if (isDark) StatusGreenDark else StatusGreen
+    val colors = CobreTheme.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .padding(vertical = 28.dp)
+            .fillMaxWidth()
+            .padding(vertical = 24.dp)
             .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
     ) {
-        Icon(CobreIcons.CheckCircle, contentDescription = null, tint = verde, modifier = Modifier.size(48.dp))
-        Spacer(Modifier.height(14.dp))
-        Text("¡Acceso Exitoso!", style = MaterialTheme.typography.titleMedium, color = brandHeadingColor(), fontWeight = FontWeight.Bold)
+        Icon(CobreIcons.CheckCircle, contentDescription = null, tint = colors.success, modifier = Modifier.size(48.dp))
+        Spacer(Modifier.height(12.dp))
+        Text("Acceso exitoso", style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
         Spacer(Modifier.height(2.dp))
-        Text(
-            "Redireccionando a tu intranet...",
-            style = MaterialTheme.typography.bodySmall,
-            color = brandMutedColor(),
-            textAlign = TextAlign.Center,
-        )
+        Text("Redireccionando a tu intranet…", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
     }
 }
 
@@ -380,53 +378,59 @@ private fun LoginForm(
     isLoading: Boolean,
     onSubmit: () -> Unit,
 ) {
-    // Column propio: al llamarse dentro de un AnimatedVisibility (que se comporta
-    // como un Box, apilando en vez de arreglar en columna), sin esto los campos y
-    // el botón quedaban todos superpuestos en el mismo punto.
+    val colors = CobreTheme.colors
+    var passwordVisible by remember { mutableStateOf(false) }
+    // Column propio: AnimatedVisibility apila como un Box.
     Column(modifier = Modifier.fillMaxWidth()) {
         AnimatedVisibility(visible = error != null) {
-            val rojo = if (cobreIsDark()) StatusRedDark else StatusRed
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 14.dp)
-                    .background(rojo.copy(alpha = 0.10f), RoundedCornerShape(12.dp))
+                    .padding(bottom = 12.dp)
+                    .clip(CobreShapes.md)
+                    .background(colors.danger.copy(alpha = 0.10f))
                     .padding(horizontal = 12.dp, vertical = 10.dp)
                     .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Icon(CobreIcons.ErrorOutline, contentDescription = null, tint = rojo, modifier = Modifier.size(18.dp))
-                Text(error.orEmpty(), style = MaterialTheme.typography.bodySmall, color = rojo)
+                Icon(CobreIcons.ErrorOutline, contentDescription = null, tint = colors.dangerText, modifier = Modifier.size(18.dp))
+                Text(error.orEmpty(), style = MaterialTheme.typography.bodySmall, color = colors.dangerText)
             }
         }
-        LoginField(
+        CobreTextField(
             value = correo,
             onValueChange = onCorreoChange,
-            label = "Correo Electrónico",
+            label = "Correo electrónico",
             leadingIcon = CobreIcons.Mail,
             keyboardOptions = KeyboardOptions(
-                keyboardType = androidx.compose.ui.text.input.KeyboardType.Email,
-                capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.None,
-                imeAction = androidx.compose.ui.text.input.ImeAction.Next,
+                keyboardType = KeyboardType.Email,
+                capitalization = KeyboardCapitalization.None,
+                imeAction = ImeAction.Next,
             ),
         )
-        Spacer(Modifier.height(16.dp))
-        LoginField(
+        Spacer(Modifier.height(12.dp))
+        CobreTextField(
             value = password,
             onValueChange = onPasswordChange,
             label = "Contraseña",
             leadingIcon = CobreIcons.Lock,
-            isPassword = true,
-            keyboardOptions = KeyboardOptions(
-                keyboardType = androidx.compose.ui.text.input.KeyboardType.Password,
-                imeAction = androidx.compose.ui.text.input.ImeAction.Done,
-            ),
-            keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { onSubmit() }),
+            trailingIcon = {
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(
+                        if (passwordVisible) CobreIcons.VisibilityOff else CobreIcons.Visibility,
+                        contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña",
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            },
+            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { onSubmit() }),
         )
         Spacer(Modifier.height(12.dp))
         TurnoDetectadoBanner(turno = turno)
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(4.dp))
         val haptic = LocalHapticFeedback.current
         var aviso by remember { mutableStateOf(false) }
         LaunchedEffect(aviso) { if (aviso) { delay(2000); aviso = false } }
@@ -442,35 +446,12 @@ private fun LoginForm(
             Text(
                 "Disponible próximamente",
                 style = MaterialTheme.typography.labelSmall,
-                color = brandMutedColor(),
+                color = colors.textSecondary,
                 modifier = Modifier.align(Alignment.End).semantics { liveRegion = LiveRegionMode.Polite },
             )
         }
-        Spacer(Modifier.height(16.dp))
-        val interaction = remember { MutableInteractionSource() }
-        Button(
-            onClick = onSubmit,
-            enabled = !isLoading,
-            interactionSource = interaction,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(54.dp)
-                .pressableScale(interaction)
-                .background(BrandCtaGradient, RoundedCornerShape(16.dp)),
-            shape = RoundedCornerShape(16.dp),
-            elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, disabledContainerColor = Color.Transparent),
-        ) {
-            if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp).semantics { contentDescription = "Verificando credenciales" },
-                    color = Color.White,
-                    strokeWidth = 2.dp,
-                )
-            } else {
-                Text("Ingresar", style = MaterialTheme.typography.labelLarge, color = Color.White, fontWeight = FontWeight.Bold)
-            }
-        }
+        Spacer(Modifier.height(12.dp))
+        CobreButton(text = "Ingresar", onClick = onSubmit, loading = isLoading, fillWidth = true)
     }
 }
 
@@ -480,154 +461,77 @@ private fun RecordarmeYOlvideFila(
     onRecordarmeChange: (Boolean) -> Unit,
     onOlvideContrasena: () -> Unit,
 ) {
+    val colors = CobreTheme.colors
     val haptic = LocalHapticFeedback.current
-    val olvideInteraction = remember { MutableInteractionSource() }
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
-                .clickable {
+                .clip(CobreShapes.md)
+                .toggleable(value = recordarme, role = Role.Checkbox) {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    onRecordarmeChange(!recordarme)
+                    onRecordarmeChange(it)
                 }
-                .padding(vertical = 4.dp, horizontal = 2.dp),
+                .padding(vertical = 12.dp, horizontal = 2.dp),
         ) {
             Checkbox(
                 checked = recordarme,
-                onCheckedChange = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    onRecordarmeChange(it)
-                },
+                onCheckedChange = null,
                 colors = CheckboxDefaults.colors(
-                    checkedColor = Copper600,
-                    checkmarkColor = Color.White,
-                    uncheckedColor = brandMutedColor().copy(alpha = 0.6f),
+                    checkedColor = colors.accentFill,
+                    checkmarkColor = colors.onAccentFill,
+                    uncheckedColor = colors.fieldBorder,
                 ),
                 modifier = Modifier.size(24.dp),
             )
-            Spacer(Modifier.width(6.dp))
-            Text(
-                "Recordarme",
-                style = MaterialTheme.typography.bodySmall,
-                color = brandHeadingColor(),
-                fontWeight = FontWeight.Medium,
-            )
+            Spacer(Modifier.width(8.dp))
+            Text("Recordarme", style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
         }
         Text(
             "¿Olvidaste tu contraseña?",
-            style = MaterialTheme.typography.labelSmall,
-            color = Copper600,
+            style = MaterialTheme.typography.labelMedium,
+            color = colors.accentText,
             modifier = Modifier
-                .clickable(
-                    interactionSource = olvideInteraction,
-                    indication = null,
-                    role = Role.Button,
-                    onClick = onOlvideContrasena,
-                )
-                .padding(vertical = 4.dp),
+                .clickable(role = Role.Button, onClick = onOlvideContrasena)
+                .padding(vertical = 12.dp),
         )
     }
 }
 
 @Composable
 private fun TurnoDetectadoBanner(turno: TurnoPlanta) {
-    val isDark = cobreIsDark()
-    val accent = if (isDark) Brand400 else Brand500
+    val colors = CobreTheme.colors
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(accent.copy(alpha = if (isDark) 0.14f else 0.08f))
-            .border(1.dp, accent.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
-            .padding(horizontal = 12.dp, vertical = 9.dp)
+            .clip(CobreShapes.md)
+            .background(colors.infoContainer)
+            .padding(horizontal = 12.dp, vertical = 10.dp)
             .semantics(mergeDescendants = true) {
                 contentDescription = "Turno de planta asignado automáticamente: ${turno.etiqueta}, horario ${turno.horario}"
             },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Icon(CobreIcons.Schedule, contentDescription = null, tint = accent, modifier = Modifier.size(16.dp))
-            Text(
-                "${turno.etiqueta} (${turno.horario})",
-                style = MaterialTheme.typography.labelMedium,
-                color = brandHeadingColor(),
-                fontWeight = FontWeight.SemiBold,
-            )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Icon(CobreIcons.Schedule, contentDescription = null, tint = colors.info, modifier = Modifier.size(16.dp))
+            Text("${turno.etiqueta} (${turno.horario})", style = MaterialTheme.typography.labelMedium, color = colors.textPrimary)
         }
-        Text(
-            "Automático",
-            style = MaterialTheme.typography.labelSmall,
-            color = accent,
-            fontWeight = FontWeight.Bold,
-        )
+        Text("AUTOMÁTICO", style = CobreTheme.text.labelCaps, color = colors.info)
     }
 }
 
 @Composable
-private fun LoginFooter() {
-    AvisoPrivacidad()
-    Spacer(Modifier.height(12.dp))
-    Text(
-        "Lavandería El Cobre · Gestión interna",
-        style = MaterialTheme.typography.labelSmall,
-        color = Brand700.copy(alpha = 0.5f),
-    )
-    Text(
-        "Acceso seguro para personal autorizado",
-        style = MaterialTheme.typography.labelSmall,
-        color = Copper500.copy(alpha = 0.4f),
-        fontWeight = FontWeight.Medium,
-    )
-}
-
-@Composable
-private fun LoginField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String?,
-    leadingIcon: ImageVector,
-    isPassword: Boolean = false,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
-    keyboardActions: androidx.compose.foundation.text.KeyboardActions = androidx.compose.foundation.text.KeyboardActions.Default,
-) {
-    var passwordVisible by remember { mutableStateOf(false) }
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = label?.let { { Text(it) } },
-        singleLine = true,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        leadingIcon = {
-            Icon(leadingIcon, contentDescription = null, tint = Brand700, modifier = Modifier.size(20.dp))
-        },
-        trailingIcon = if (isPassword) {
-            {
-                androidx.compose.material3.IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                    Icon(
-                        if (passwordVisible) CobreIcons.VisibilityOff else CobreIcons.Visibility,
-                        contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña",
-                        tint = Brand700,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-            }
-        } else null,
-        visualTransformation = if (isPassword && !passwordVisible) PasswordVisualTransformation()
-            else androidx.compose.ui.text.input.VisualTransformation.None,
-        keyboardOptions = keyboardOptions,
-        keyboardActions = keyboardActions,
-        colors = cobreFieldColors(),
-    )
+private fun LoginFooter(centrado: Boolean) {
+    val colors = CobreTheme.colors
+    Column(horizontalAlignment = if (centrado) Alignment.CenterHorizontally else Alignment.Start) {
+        AvisoPrivacidad()
+        Spacer(Modifier.height(12.dp))
+        Text("LAVANDERÍA EL COBRE · GESTIÓN INTERNA", style = CobreTheme.text.labelCaps, color = colors.textSecondary)
+        Text("Acceso seguro para personal autorizado", style = MaterialTheme.typography.labelSmall, color = colors.textSecondary)
+    }
 }

@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -27,12 +26,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.elcobre.lavanderiaelcobre.ui.theme.Brand400
-import com.elcobre.lavanderiaelcobre.ui.theme.Brand500
-import com.elcobre.lavanderiaelcobre.ui.theme.DarkSurface1
+import com.elcobre.lavanderiaelcobre.ui.theme.CobreShapes
+import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusRed
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusRedDark
-import com.elcobre.lavanderiaelcobre.ui.theme.Stone200
 import com.elcobre.lavanderiaelcobre.ui.theme.cobreIsDark
 import lavanderiaelcobre.shared.generated.resources.Res
 import lavanderiaelcobre.shared.generated.resources.logo
@@ -52,9 +49,9 @@ fun CobreTopBar(
     avatar: @Composable () -> Unit,
 ) {
     val isDark = cobreIsDark()
-    val shell = if (isDark) Color(0xFF14110F).copy(alpha = 0.55f) else Color.White.copy(alpha = 0.60f)
-    val divider = if (isDark) Color.White.copy(alpha = 0.07f) else Stone200.copy(alpha = 0.85f)
-    val innerHighlight = if (isDark) Color.White.copy(alpha = 0.05f) else Color.White.copy(alpha = 0.8f)
+    val shell = CobreTheme.colors.surface
+    val divider = CobreTheme.colors.hairline
+    val innerHighlight = Color.Transparent
 
     Row(
         modifier = Modifier
@@ -84,7 +81,7 @@ fun CobreTopBar(
             Text(
                 "El Cobre",
                 style = MaterialTheme.typography.titleSmall,
-                color = if (isDark) Brand400 else Brand500,
+                color = CobreTheme.colors.accent,
                 fontWeight = FontWeight.ExtraBold,
                 maxLines = 1,
             )
@@ -126,12 +123,12 @@ fun CobreTopBar(
 @Composable
 private fun TemaTopBarButton(isDark: Boolean, onToggleTema: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
-    val accent = if (isDark) Brand400 else Brand500
+    val accent = CobreTheme.colors.accent
     Box(
         modifier = Modifier
             .size(40.dp)
             .pressableScale(interaction)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(CobreShapes.md)
             .background(accent.copy(alpha = 0.12f))
             .clickable(interactionSource = interaction, indication = null, onClick = onToggleTema),
         contentAlignment = Alignment.Center,
@@ -153,7 +150,7 @@ private fun CerrarSesionButton(onCerrarSesion: () -> Unit) {
         modifier = Modifier
             .size(40.dp)
             .pressableScale(interaction)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(CobreShapes.md)
             .background(accent.copy(alpha = 0.10f))
             .clickable(interactionSource = interaction, indication = null) { onCerrarSesion() },
         contentAlignment = Alignment.Center,

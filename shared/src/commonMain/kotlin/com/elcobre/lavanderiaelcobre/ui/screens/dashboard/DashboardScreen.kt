@@ -8,13 +8,14 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,14 +27,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -45,11 +47,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -58,43 +60,35 @@ import com.elcobre.lavanderiaelcobre.data.model.Operario
 import com.elcobre.lavanderiaelcobre.data.model.Pedido
 import com.elcobre.lavanderiaelcobre.data.model.TipoAlerta
 import com.elcobre.lavanderiaelcobre.data.model.TipoComanda
-import com.elcobre.lavanderiaelcobre.ui.components.BrandCtaGradient
+import com.elcobre.lavanderiaelcobre.ui.components.ButtonVariant
 import com.elcobre.lavanderiaelcobre.ui.components.ChipColors
 import com.elcobre.lavanderiaelcobre.ui.components.CobreBackground
+import com.elcobre.lavanderiaelcobre.ui.components.CobreButton
 import com.elcobre.lavanderiaelcobre.ui.components.CobreIcons
-import com.elcobre.lavanderiaelcobre.ui.components.CobreTopBar
+import com.elcobre.lavanderiaelcobre.ui.components.CobreTextField
+import com.elcobre.lavanderiaelcobre.ui.components.CompactTitleBar
+import com.elcobre.lavanderiaelcobre.ui.components.ContentCard
 import com.elcobre.lavanderiaelcobre.ui.components.EtapasTimeline
 import com.elcobre.lavanderiaelcobre.ui.components.FlujoProduccionCard
 import com.elcobre.lavanderiaelcobre.ui.components.GlassCard
+import com.elcobre.lavanderiaelcobre.ui.components.GlassIconButton
+import com.elcobre.lavanderiaelcobre.ui.components.GlassSearchField
+import com.elcobre.lavanderiaelcobre.ui.components.GlassSegmentedControl
+import com.elcobre.lavanderiaelcobre.ui.components.GlassStack
 import com.elcobre.lavanderiaelcobre.ui.components.HistorialCard
-import com.elcobre.lavanderiaelcobre.ui.components.SelectableChip
+import com.elcobre.lavanderiaelcobre.ui.components.LargeTitle
+import com.elcobre.lavanderiaelcobre.ui.components.SectionLabel
 import com.elcobre.lavanderiaelcobre.ui.components.StageProgress
 import com.elcobre.lavanderiaelcobre.ui.components.StatusChip
-import com.elcobre.lavanderiaelcobre.ui.components.alertaColor
-import com.elcobre.lavanderiaelcobre.ui.components.alertaIcon
-import com.elcobre.lavanderiaelcobre.ui.components.brandHeadingColor
-import com.elcobre.lavanderiaelcobre.ui.components.brandMutedColor
-import com.elcobre.lavanderiaelcobre.ui.components.cobreFieldColors
 import com.elcobre.lavanderiaelcobre.ui.components.etapaColors
 import com.elcobre.lavanderiaelcobre.ui.components.etapaIcon
 import com.elcobre.lavanderiaelcobre.ui.components.pressableScale
 import com.elcobre.lavanderiaelcobre.ui.components.prioridadColors
+import com.elcobre.lavanderiaelcobre.ui.components.rememberTitleCollapsed
 import com.elcobre.lavanderiaelcobre.ui.components.sharedTag
 import com.elcobre.lavanderiaelcobre.ui.components.tipoIcon
-import com.elcobre.lavanderiaelcobre.ui.theme.Brand200
-import com.elcobre.lavanderiaelcobre.ui.theme.Brand400
-import com.elcobre.lavanderiaelcobre.ui.theme.Brand500
-import com.elcobre.lavanderiaelcobre.ui.theme.Brand700
-import com.elcobre.lavanderiaelcobre.ui.theme.Copper700
-import com.elcobre.lavanderiaelcobre.ui.theme.DarkOnSurface
-import com.elcobre.lavanderiaelcobre.ui.theme.DarkOutline
-import com.elcobre.lavanderiaelcobre.ui.theme.DarkSurface2
-import com.elcobre.lavanderiaelcobre.ui.theme.StatusAmber
-import com.elcobre.lavanderiaelcobre.ui.theme.StatusAmberDark
-import com.elcobre.lavanderiaelcobre.ui.theme.StatusRed
-import com.elcobre.lavanderiaelcobre.ui.theme.StatusRedDark
-import com.elcobre.lavanderiaelcobre.ui.theme.Stone200
-import com.elcobre.lavanderiaelcobre.ui.theme.cobreIsDark
+import com.elcobre.lavanderiaelcobre.ui.theme.CobreShapes
+import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 
 private val ANCHO_TABLET_SPLIT = 720.dp
 
@@ -292,34 +286,50 @@ private fun MobileDashboardLayout(
     animatedScope: AnimatedVisibilityScope?,
 ) {
     val haptic = LocalHapticFeedback.current
-    Column(modifier = Modifier.fillMaxSize()) {
-        if (mostrarTopBar) {
-            TopBar(operario = operario, onCerrarSesion = onCerrarSesion)
-        }
-
-        MisTareasResumen(
-            pedidos = pedidos,
-            modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp),
-        )
-
-        Spacer(Modifier.height(14.dp))
-
-        SearchBar(
-            query = busqueda,
-            onQueryChange = onBusquedaChange,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
-        )
-
-        FiltroTipos(
-            seleccion = filtro,
-            onSeleccion = {
-                onFiltroChange(it)
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-            },
-            modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 12.dp, top = 4.dp),
-        )
-
+    val listState = rememberLazyListState()
+    val colapsado by rememberTitleCollapsed(listState)
+    // Título grande, resumen, búsqueda y filtro van dentro de la lista y se desplazan con
+    // ella: fijos arriba le quitaban casi todo el alto a la lista en horizontal. Al
+    // colapsar el título aparece una barra de vidrio por encima del contenido.
+    GlassStack(
+        modifier = Modifier.fillMaxSize(),
+        background = { fuente ->
         PedidosListColumn(
+            state = listState,
+            encabezado = {
+                item(key = "titulo") {
+                    LargeTitle(
+                        title = "Mis tareas",
+                        subtitle = "${operario.nombre} · ${operario.turno}",
+                        trailing = if (mostrarTopBar) {
+                            {
+                                GlassIconButton(
+                                    icon = CobreIcons.Logout,
+                                    contentDescription = "Cerrar sesión",
+                                    onClick = onCerrarSesion,
+                                    size = 44.dp,
+                                )
+                            }
+                        } else {
+                            null
+                        },
+                    )
+                }
+                item(key = "resumen") {
+                    MisTareasResumen(pedidos = pedidos, conTitulo = false, modifier = Modifier.padding(bottom = 4.dp))
+                }
+                item(key = "busqueda") { SearchBar(query = busqueda, onQueryChange = onBusquedaChange) }
+                item(key = "filtros") {
+                    FiltroTipos(
+                        seleccion = filtro,
+                        onSeleccion = {
+                            onFiltroChange(it)
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        },
+                        modifier = Modifier.padding(bottom = 4.dp),
+                    )
+                }
+            },
             visibles = visibles,
             expandidoId = expandidoId,
             seleccionadoId = null,
@@ -336,15 +346,21 @@ private fun MobileDashboardLayout(
             },
             sharedScope = sharedScope,
             animatedScope = animatedScope,
-            modifier = Modifier.weight(1f),
+            modifier = fuente,
         )
-    }
+        },
+        overlay = {
+            CompactTitleBar(title = "Mis tareas", visible = colapsado, modifier = Modifier.align(Alignment.TopCenter))
+        },
+    )
 }
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun PedidosListColumn(
     visibles: List<Pedido>,
+    state: LazyListState = rememberLazyListState(),
+    encabezado: LazyListScope.() -> Unit = {},
     expandidoId: String?,
     seleccionadoId: String?,
     onToggleExpand: (String) -> Unit,
@@ -358,10 +374,12 @@ private fun PedidosListColumn(
 ) {
     val haptic = LocalHapticFeedback.current
     LazyColumn(
+        state = state,
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 28.dp, top = 4.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 28.dp, top = 8.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        encabezado()
         if (visibles.isEmpty()) {
             item {
                 EmptyState(
@@ -371,15 +389,9 @@ private fun PedidosListColumn(
             }
         } else {
             item {
-                Text(
-                    "Comandas (${visibles.size})",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = brandHeadingColor(),
-                    modifier = Modifier.padding(bottom = 4.dp),
-                )
+                SectionLabel("Comandas · ${visibles.size}", modifier = Modifier.padding(top = 4.dp, start = 4.dp))
             }
             items(visibles, key = { p -> p.id }) { pedido ->
-                val isDark = cobreIsDark()
                 val seleccionado = seleccionadoId == pedido.id
                 PedidoCard(
                     pedido = pedido,
@@ -397,7 +409,6 @@ private fun PedidosListColumn(
                     onDoubleClick = {
                         onDoubleClick(pedido)
                     },
-                    elevation = if (isDark) 3.dp else 8.dp,
                     modifier = Modifier.animateItem(
                         fadeInSpec = tween(250),
                         placementSpec = tween(250, easing = androidx.compose.animation.core.FastOutSlowInEasing),
@@ -426,38 +437,37 @@ private fun TabletDetailPane(
     modifier: Modifier = Modifier,
 ) {
     var comentarioTexto by remember(pedido?.id) { mutableStateOf("") }
-    val isDark = cobreIsDark()
-    val dividerColor = if (isDark) Color.White.copy(alpha = 0.06f) else Stone200.copy(alpha = 0.7f)
+    val colors = CobreTheme.colors
 
     Box(
         modifier = modifier
             .drawBehind {
-                drawLine(dividerColor, start = Offset(0f, 0f), end = Offset(0f, size.height))
+                drawLine(colors.hairline, start = Offset(0f, 0f), end = Offset(0f, size.height))
             }
-            .padding(horizontal = 24.dp, vertical = 20.dp),
+            .padding(horizontal = 24.dp, vertical = 16.dp),
     ) {
         if (pedido == null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(
-                        modifier = Modifier
-                            .size(72.dp)
-                            .background(Brand500.copy(alpha = 0.12f), RoundedCornerShape(20.dp)),
+                        modifier = Modifier.size(64.dp).clip(CobreShapes.lg).background(colors.surfaceMuted),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(CobreIcons.LocalLaundry, contentDescription = null, tint = Brand500, modifier = Modifier.size(36.dp))
+                        Icon(
+                            CobreIcons.LocalLaundry,
+                            contentDescription = null,
+                            tint = colors.textSecondary,
+                            modifier = Modifier.size(30.dp),
+                        )
                     }
                     Spacer(Modifier.height(16.dp))
-                    Text(
-                        "Selecciona una comanda",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = brandHeadingColor(),
-                    )
+                    Text("Selecciona una comanda", style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
                     Spacer(Modifier.height(4.dp))
                     Text(
                         "Toca cualquier comanda de la lista para ver su flujo de avance.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = brandMutedColor(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textSecondary,
+                        textAlign = TextAlign.Center,
                     )
                 }
             }
@@ -468,7 +478,6 @@ private fun TabletDetailPane(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                // Header comanda
                 TabletDetailHeader(pedido, sidebarVisible, onToggleSidebar)
 
                 // Componente idéntico a FlujoProduccion.tsx de la web
@@ -479,7 +488,6 @@ private fun TabletDetailPane(
                     onReportarIncidencia = { onAlerta(TipoAlerta.INCIDENCIA, "Reporte rápido desde tablet") },
                 )
 
-                // Agregar comentario rápido
                 TabletComentarioCard(
                     comentario = comentarioTexto,
                     onComentarioChange = { comentarioTexto = it },
@@ -489,61 +497,42 @@ private fun TabletDetailPane(
                     },
                 )
 
-                // Historial de eventos
                 HistorialCard(pedido = pedido)
             }
         }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TabletDetailHeader(
     pedido: Pedido,
     sidebarVisible: Boolean,
-    onToggleSidebar: () -> Unit
+    onToggleSidebar: () -> Unit,
 ) {
+    val colors = CobreTheme.colors
     val etapa = etapaColors(pedido.etapaActual)
     val prioridad = prioridadColors(pedido.prioridad)
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            val interaction = remember { MutableInteractionSource() }
-            val backDark = cobreIsDark()
-            Box(
-                modifier = Modifier
-                    .pressableScale(interaction)
-                    .size(46.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(if (backDark) DarkSurface2 else Color.White.copy(alpha = 0.6f))
-                    .clickable(interactionSource = interaction, indication = null, onClick = onToggleSidebar),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    if (sidebarVisible) CobreIcons.Close else CobreIcons.Menu,
-                    contentDescription = if (sidebarVisible) "Ocultar panel" else "Mostrar panel",
-                    tint = if (backDark) DarkOnSurface else Copper700,
-                    modifier = Modifier.size(24.dp),
-                )
-            }
+            GlassIconButton(
+                icon = if (sidebarVisible) CobreIcons.Close else CobreIcons.Menu,
+                contentDescription = if (sidebarVisible) "Ocultar panel" else "Mostrar panel",
+                onClick = onToggleSidebar,
+                size = 44.dp,
+            )
             Spacer(Modifier.width(16.dp))
-            Column {
-                Text(
-                    pedido.comanda,
-                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-                    color = brandHeadingColor(),
-                )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(pedido.comanda, style = CobreTheme.text.largeTitle, color = colors.textPrimary)
                 Text(
                     "${pedido.cliente} · ${pedido.piezas} prendas · ${pedido.tipoServicio}",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = brandMutedColor(),
+                    color = colors.textSecondary,
                 )
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             StatusChip(
                 label = pedido.etapaActual.corto,
                 container = etapa.container,
@@ -565,20 +554,18 @@ private fun TabletComentarioCard(
     onComentarioChange: (String) -> Unit,
     onEnviar: () -> Unit,
 ) {
-    GlassCard(modifier = Modifier.fillMaxWidth(), elevation = 6.dp) {
-        Column {
-            Text("Registrar nota de proceso", style = MaterialTheme.typography.titleSmall, color = brandHeadingColor())
-            Spacer(Modifier.height(10.dp))
-            OutlinedTextField(
+    val colors = CobreTheme.colors
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SectionLabel("Nota de proceso", modifier = Modifier.padding(start = 4.dp))
+        ContentCard {
+            CobreTextField(
                 value = comentario,
                 onValueChange = onComentarioChange,
-                placeholder = { Text("Escribe un comentario sobre esta carga o prenda...", style = MaterialTheme.typography.bodySmall) },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                colors = cobreFieldColors(),
+                placeholder = "Escribe un comentario sobre esta carga o prenda…",
+                singleLine = false,
                 trailingIcon = {
                     IconButton(onClick = onEnviar, enabled = comentario.isNotBlank()) {
-                        Icon(CobreIcons.Send, contentDescription = "Enviar", tint = Brand500, modifier = Modifier.size(18.dp))
+                        Icon(CobreIcons.Send, contentDescription = "Enviar", tint = colors.accent, modifier = Modifier.size(18.dp))
                     }
                 },
             )
@@ -586,16 +573,27 @@ private fun TabletComentarioCard(
     }
 }
 
+/**
+ * Conteo de comandas en proceso y alertas activas. Con [conTitulo] muestra además el
+ * título (panel de tablet); en teléfono el título lo pone el [LargeTitle] de la lista.
+ */
 @Composable
-private fun MisTareasResumen(pedidos: List<Pedido>, modifier: Modifier = Modifier) {
+private fun MisTareasResumen(pedidos: List<Pedido>, modifier: Modifier = Modifier, conTitulo: Boolean = true) {
+    val colors = CobreTheme.colors
     val pendientes = pedidos.count { !it.esFinal }
-    // Corrección crítica: Se contabilizan únicamente las alertas que están actualmente bloqueadas/activas.
+    // Solo cuentan las alertas que están actualmente bloqueando una comanda.
     val alertas = pedidos.count { it.estaBloqueado }
-    val isDark = cobreIsDark()
 
     Column(modifier = modifier.fillMaxWidth()) {
-        Text("Seguimiento de Producción", style = MaterialTheme.typography.headlineMedium, color = brandHeadingColor())
-        Spacer(Modifier.height(2.dp))
+        if (conTitulo) {
+            Text(
+                "Seguimiento de producción",
+                style = MaterialTheme.typography.headlineMedium,
+                color = colors.textPrimary,
+                modifier = Modifier.semantics { heading() },
+            )
+            Spacer(Modifier.height(2.dp))
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -604,29 +602,23 @@ private fun MisTareasResumen(pedidos: List<Pedido>, modifier: Modifier = Modifie
             Text(
                 if (pendientes == 1) "1 comanda en proceso" else "$pendientes comandas en proceso",
                 style = MaterialTheme.typography.bodyMedium,
-                color = brandMutedColor(),
+                color = colors.textSecondary,
                 modifier = Modifier.weight(1f),
             )
             if (alertas > 0) {
-                val accent = if (isDark) StatusRedDark else StatusRed
                 Row(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .background(accent.copy(alpha = if (isDark) 0.18f else 0.12f))
-                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                        .clip(CobreShapes.sm)
+                        .background(colors.danger.copy(alpha = if (colors.isDark) 0.18f else 0.10f))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
                         .semantics(mergeDescendants = true) {
                             contentDescription = if (alertas == 1) "1 alerta activa" else "$alertas alertas activas"
                         },
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Icon(CobreIcons.Warning, contentDescription = null, tint = accent, modifier = Modifier.size(14.dp))
-                    Text(
-                        "$alertas",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = accent,
-                        fontWeight = FontWeight.Bold,
-                    )
+                    Icon(CobreIcons.Warning, contentDescription = null, tint = colors.dangerText, modifier = Modifier.size(14.dp))
+                    Text("$alertas", style = MaterialTheme.typography.labelMedium, color = colors.dangerText, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -639,134 +631,55 @@ private fun SearchBar(
     onQueryChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    OutlinedTextField(
-        value = query,
-        onValueChange = onQueryChange,
-        placeholder = { Text("Buscar comanda o cliente...", style = MaterialTheme.typography.bodyMedium) },
-        leadingIcon = { Icon(CobreIcons.Search, contentDescription = null, modifier = Modifier.size(20.dp)) },
-        trailingIcon = if (query.isNotEmpty()) {
-            {
-                IconButton(onClick = { onQueryChange("") }) {
-                    Icon(CobreIcons.Close, contentDescription = "Limpiar búsqueda", modifier = Modifier.size(18.dp))
-                }
-            }
-        } else null,
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        singleLine = true,
-        colors = cobreFieldColors(),
+    GlassSearchField(
+        query = query,
+        onQueryChange = onQueryChange,
+        placeholder = "Buscar comanda o cliente",
+        modifier = modifier,
     )
 }
 
 @Composable
 private fun EmptyState(onLimpiar: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = CobreTheme.colors
     Column(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
     ) {
         Box(
-            modifier = Modifier
-                .size(80.dp)
-                .background(Brand200.copy(alpha = 0.2f), RoundedCornerShape(24.dp)),
+            modifier = Modifier.size(72.dp).clip(CobreShapes.lg).background(colors.surfaceMuted),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
-                CobreIcons.Inventory,
-                contentDescription = null,
-                tint = Brand500.copy(alpha = 0.45f),
-                modifier = Modifier.size(40.dp),
-            )
+            Icon(CobreIcons.Inventory, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(32.dp))
         }
         Spacer(Modifier.height(16.dp))
-        Text(
-            "No hay comandas aquí",
-            style = MaterialTheme.typography.titleMedium,
-            color = brandHeadingColor(),
-        )
-        Spacer(Modifier.height(2.dp))
+        Text("No hay comandas aquí", style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
+        Spacer(Modifier.height(4.dp))
         Text(
             "Ninguna comanda coincide con el filtro o la búsqueda actual.",
-            style = MaterialTheme.typography.bodySmall,
-            color = brandMutedColor().copy(alpha = 0.85f),
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textSecondary,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(16.dp))
-        val interaction = remember { MutableInteractionSource() }
-        Row(
-            modifier = Modifier
-                .pressableScale(interaction)
-                .clip(RoundedCornerShape(50))
-                .background(Brand500)
-                .clickable(interactionSource = interaction, indication = null) { onLimpiar() }
-                .padding(horizontal = 20.dp, vertical = 11.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Icon(CobreIcons.Inventory, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-            Text(
-                "Ver todas las comandas",
-                style = MaterialTheme.typography.labelMedium,
-                color = Color.White,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
+        CobreButton(text = "Ver todas las comandas", onClick = onLimpiar, variant = ButtonVariant.Primary)
     }
 }
 
-@Composable
-private fun TopBar(operario: Operario, onCerrarSesion: () -> Unit) {
-    CobreTopBar(
-        nombre = operario.nombre,
-        subtitulo = "${operario.rol} · ${operario.turno}",
-        onCerrarSesion = onCerrarSesion,
-    ) {
-        Box(
-            modifier = Modifier.size(40.dp).background(BrandCtaGradient, RoundedCornerShape(12.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                operario.nombre.trim().take(1).uppercase(),
-                style = MaterialTheme.typography.titleLarge,
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-    }
-}
-
+/** Filtro por tipo de comanda: control segmentado (Todas / Tienda / Domicilio). */
 @Composable
 private fun FiltroTipos(
     seleccion: TipoComanda?,
     onSeleccion: (TipoComanda?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
+    GlassSegmentedControl(
+        options = listOf<TipoComanda?>(null) + TipoComanda.entries,
+        selected = seleccion,
+        onSelect = onSeleccion,
+        label = { it?.corto ?: "Todas" },
         modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Icon(CobreIcons.FilterList, contentDescription = null, tint = Brand700, modifier = Modifier.size(18.dp))
-        LazyRowChips(seleccion = seleccion, onSeleccion = onSeleccion)
-    }
-}
-
-@Composable
-private fun LazyRowChips(seleccion: TipoComanda?, onSeleccion: (TipoComanda?) -> Unit) {
-    androidx.compose.foundation.lazy.LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        item {
-            SelectableChip(label = "Todas", seleccionado = seleccion == null, onClick = { onSeleccion(null) })
-        }
-        items(TipoComanda.entries) { tipo ->
-            SelectableChip(
-                label = tipo.displayName,
-                seleccionado = seleccion == tipo,
-                onClick = { onSeleccion(tipo) },
-            )
-        }
-    }
+    )
 }
 
 @OptIn(ExperimentalSharedTransitionApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -779,51 +692,38 @@ private fun PedidoCard(
     onAvanzar: () -> Unit,
     onVerDetalle: () -> Unit,
     onDoubleClick: (() -> Unit)? = null,
-    elevation: androidx.compose.ui.unit.Dp = 18.dp,
     modifier: Modifier = Modifier,
     sharedScope: SharedTransitionScope? = null,
     animatedScope: AnimatedVisibilityScope? = null,
 ) {
+    val colors = CobreTheme.colors
     val interaction = remember { MutableInteractionSource() }
     val etapa = etapaColors(pedido.etapaActual)
     val prioridad = prioridadColors(pedido.prioridad)
-    val chevronRotacion by animateFloatAsState(
-        targetValue = if (expandido) 90f else 0f,
-        animationSpec = tween(300),
-        label = "chevron",
-    )
 
     GlassCard(
         modifier = modifier
             .fillMaxWidth()
-            .then(
-                if (seleccionado) Modifier.border(2.dp, Brand500, RoundedCornerShape(18.dp))
-                else Modifier,
-            )
-            .pressableScale(interaction)
+            .then(if (seleccionado) Modifier.border(2.dp, colors.accent, CobreShapes.lg) else Modifier)
+            .pressableScale(interaction, pressedScale = 0.98f)
             .combinedClickable(
                 interactionSource = interaction,
                 indication = null,
-                onClick = {
-                    if (seleccionado) onToggleExpand() else onVerDetalle()
-                },
-                onDoubleClick = {
-                    onDoubleClick?.invoke()
-                }
+                onClick = { if (seleccionado) onToggleExpand() else onVerDetalle() },
+                onDoubleClick = { onDoubleClick?.invoke() },
             ),
-        tint = etapa.accent,
-        elevation = if (seleccionado) 14.dp else elevation,
+        contentPadding = PaddingValues(16.dp),
         stripe = prioridad.accent,
     ) {
         Column {
-            PedidoCardHeader(pedido, etapa, expandido, chevronRotacion, sharedScope, animatedScope)
+            PedidoCardHeader(pedido, etapa, expandido, sharedScope, animatedScope)
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TipoPill(pedido.tipo)
                 Text(
                     pedido.tipoServicio,
                     style = MaterialTheme.typography.bodySmall,
-                    color = brandMutedColor(),
+                    color = colors.textSecondary,
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -837,7 +737,7 @@ private fun PedidoCard(
             Spacer(Modifier.height(12.dp))
             PedidoCardChips(pedido, etapa, prioridad)
             AnimatedVisibility(visible = expandido) {
-                PedidoCardExpandido(pedido, etapa, onAvanzar, onVerDetalle)
+                PedidoCardExpandido(pedido, onAvanzar, onVerDetalle)
             }
         }
     }
@@ -849,37 +749,46 @@ private fun PedidoCardHeader(
     pedido: Pedido,
     etapa: ChipColors,
     expandido: Boolean,
-    chevronRotacion: Float,
     sharedScope: SharedTransitionScope?,
     animatedScope: AnimatedVisibilityScope?,
 ) {
+    val colors = CobreTheme.colors
+    val rotacion by animateFloatAsState(if (expandido) 90f else 0f, tween(300), label = "chevron")
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
                 .sharedTag("icono-${pedido.comanda}", sharedScope, animatedScope)
-                .size(42.dp)
-                .background(etapa.accent.copy(alpha = 0.16f), RoundedCornerShape(12.dp)),
+                .size(40.dp)
+                .clip(CobreShapes.md)
+                .background(etapa.container),
             contentAlignment = Alignment.Center,
         ) {
             Icon(etapaIcon(pedido.etapaActual), contentDescription = null, tint = etapa.accent, modifier = Modifier.size(22.dp))
         }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(pedido.comanda, style = MaterialTheme.typography.titleMedium, color = brandHeadingColor())
-            Text(pedido.cliente, style = MaterialTheme.typography.bodyMedium, color = brandMutedColor())
+            Text(pedido.comanda.uppercase(), style = CobreTheme.text.labelCaps, color = colors.textSecondary)
+            Text(pedido.cliente, style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
         }
         Icon(
             CobreIcons.ArrowForward,
             contentDescription = if (expandido) "Contraer" else "Expandir",
-            tint = etapa.accent,
-            modifier = Modifier.size(20.dp).graphicsLayer { rotationZ = chevronRotacion },
+            tint = colors.textSecondary,
+            modifier = Modifier.size(20.dp).graphicsLayer { rotationZ = rotacion },
         )
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PedidoCardChips(pedido: Pedido, etapa: ChipColors, prioridad: ChipColors) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+    val colors = CobreTheme.colors
+    // FlowRow: en tarjetas angostas el plazo baja de línea en vez de cortarse.
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) {
         StatusChip(
             label = pedido.etapaActual.corto,
             container = etapa.container,
@@ -891,14 +800,13 @@ private fun PedidoCardChips(pedido: Pedido, etapa: ChipColors, prioridad: ChipCo
             container = prioridad.container,
             content = prioridad.content,
         )
-        Spacer(Modifier.weight(1f))
         val urgente = pedido.plazoEntrega.startsWith("Hoy")
-        val plazoColor = when {
-            !urgente -> brandMutedColor()
-            cobreIsDark() -> StatusAmberDark
-            else -> StatusAmber
-        }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        val plazoColor = if (urgente) colors.warningText else colors.textSecondary
+        Row(
+            modifier = Modifier.padding(vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
             Icon(CobreIcons.Schedule, contentDescription = null, tint = plazoColor, modifier = Modifier.size(14.dp))
             Text(
                 pedido.plazoEntrega,
@@ -911,74 +819,43 @@ private fun PedidoCardChips(pedido: Pedido, etapa: ChipColors, prioridad: ChipCo
 }
 
 @Composable
-private fun PedidoCardExpandido(pedido: Pedido, etapa: ChipColors, onAvanzar: () -> Unit, onVerDetalle: () -> Unit) {
+private fun PedidoCardExpandido(pedido: Pedido, onAvanzar: () -> Unit, onVerDetalle: () -> Unit) {
+    val colors = CobreTheme.colors
     Column(modifier = Modifier.padding(top = 14.dp)) {
-        Box(Modifier.fillMaxWidth().height(1.dp).background(brandMutedColor().copy(alpha = 0.12f)))
+        Box(Modifier.fillMaxWidth().height(0.5.dp).background(colors.hairline))
         Spacer(Modifier.height(14.dp))
         EtapasTimeline(flujo = pedido.flujo, indiceActual = pedido.indiceEtapa)
-        Spacer(Modifier.height(4.dp))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            val interactionAvanzar = remember { MutableInteractionSource() }
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .pressableScale(interactionAvanzar)
-                    .clip(RoundedCornerShape(50))
-                    .background(if (pedido.esFinal || pedido.estaBloqueado) etapa.accent.copy(alpha = 0.35f) else etapa.accent)
-                    .then(
-                        if (!pedido.esFinal && !pedido.estaBloqueado) {
-                            Modifier.clickable(interactionSource = interactionAvanzar, indication = null) { onAvanzar() }
-                        } else Modifier,
-                    )
-                    .padding(vertical = 12.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    when {
-                        pedido.estaBloqueado -> "Resuelve la alerta para avanzar"
-                        pedido.siguienteEtapa != null -> "Avanzar a ${pedido.siguienteEtapa!!.corto}"
-                        else -> "Proceso completado"
-                    },
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.White,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-            val interactionDetalle = remember { MutableInteractionSource() }
-            Row(
-                modifier = Modifier
-                    .pressableScale(interactionDetalle)
-                    .clip(RoundedCornerShape(50))
-                    .border(1.dp, etapa.accent.copy(alpha = 0.4f), RoundedCornerShape(50))
-                    .clickable(interactionSource = interactionDetalle, indication = null) { onVerDetalle() }
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    "Ver detalle",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = etapa.accent,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
+        Spacer(Modifier.height(8.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            val siguiente = pedido.siguienteEtapa
+            CobreButton(
+                text = when {
+                    pedido.estaBloqueado -> "Resuelve la alerta"
+                    siguiente != null -> "Avanzar a ${siguiente.corto}"
+                    else -> "Completado"
+                },
+                onClick = onAvanzar,
+                enabled = !pedido.esFinal && !pedido.estaBloqueado,
+                modifier = Modifier.weight(1f),
+            )
+            CobreButton(text = "Detalle", onClick = onVerDetalle, variant = ButtonVariant.Tonal)
         }
     }
 }
 
+/** Distintivo compacto del tipo de comanda (tienda / domicilio). */
 @Composable
 private fun TipoPill(tipo: TipoComanda) {
-    val isDark = cobreIsDark()
-    val accent = if (isDark) Brand400 else Copper700
+    val colors = CobreTheme.colors
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(50))
-            .background(accent.copy(alpha = if (isDark) 0.16f else 0.10f))
+            .clip(CobreShapes.sm)
+            .background(colors.surfaceMuted)
             .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Icon(tipoIcon(tipo), contentDescription = null, tint = accent, modifier = Modifier.size(13.dp))
-        Text(tipo.corto, style = MaterialTheme.typography.labelSmall, color = accent, fontWeight = FontWeight.SemiBold)
+        Icon(tipoIcon(tipo), contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(13.dp))
+        Text(tipo.corto, style = MaterialTheme.typography.labelSmall, color = colors.textSecondary, fontWeight = FontWeight.SemiBold)
     }
 }

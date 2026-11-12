@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -49,12 +48,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.elcobre.lavanderiaelcobre.ui.theme.BackgroundWarm
-import com.elcobre.lavanderiaelcobre.ui.theme.Brand400
-import com.elcobre.lavanderiaelcobre.ui.theme.Brand500
-import com.elcobre.lavanderiaelcobre.ui.theme.Brand700
+import com.elcobre.lavanderiaelcobre.ui.theme.CobreShapes
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 import com.elcobre.lavanderiaelcobre.ui.theme.DarkSurface1
-import com.elcobre.lavanderiaelcobre.ui.theme.cobreIsDark
 
 private const val ORIGEN_PRIVACIDAD = "https://lavanderia-elcobre.vercel.app"
 
@@ -72,7 +68,7 @@ fun AvisoPrivacidad(modifier: Modifier = Modifier, mostrarTarjeta: Boolean = fal
     if (abierto) ModalBottomSheet(
         onDismissRequest = { abierto = false },
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = if (cobreIsDark()) DarkSurface1 else BackgroundWarm,
+        containerColor = CobreTheme.colors.surface,
     ) {
         ContenidoPrivacidad(
             errorEnlace = errorEnlace,
@@ -88,11 +84,11 @@ fun AvisoPrivacidad(modifier: Modifier = Modifier, mostrarTarjeta: Boolean = fal
 
 @Composable
 private fun AccesoPrivacidadCompacto(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val accent = if (cobreIsDark()) Brand400 else Brand700
+    val accent = CobreTheme.colors.accentText
     OutlinedButton(
         onClick = onClick,
         modifier = modifier.heightIn(min = 48.dp),
-        shape = RoundedCornerShape(14.dp),
+        shape = CobreShapes.md,
         border = BorderStroke(1.dp, accent.copy(alpha = 0.22f)),
         colors = ButtonDefaults.outlinedButtonColors(
             contentColor = accent,
@@ -114,7 +110,7 @@ private fun AccesoPrivacidadTarjeta(onClick: () -> Unit, modifier: Modifier = Mo
     GlassCard(
         modifier = modifier.fillMaxWidth()
             .pressableScale(interaction)
-            .clip(RoundedCornerShape(18.dp))
+            .clip(CobreShapes.lg)
             .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick),
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -130,7 +126,7 @@ private fun AccesoPrivacidadTarjeta(onClick: () -> Unit, modifier: Modifier = Mo
             Icon(
                 CobreIcons.ArrowForward,
                 contentDescription = null,
-                tint = if (cobreIsDark()) Brand400 else Brand500,
+                tint = CobreTheme.colors.accent,
                 modifier = Modifier.size(20.dp),
             )
         }
@@ -140,7 +136,7 @@ private fun AccesoPrivacidadTarjeta(onClick: () -> Unit, modifier: Modifier = Mo
 @Composable
 private fun IconoPrivacidad() {
     Box(
-        modifier = Modifier.size(44.dp).background(BrandCtaGradient, RoundedCornerShape(14.dp)),
+        modifier = Modifier.size(44.dp).background(BrandCtaGradient, CobreShapes.md),
         contentAlignment = Alignment.Center,
     ) {
         Icon(CobreIcons.Lock, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
@@ -226,10 +222,10 @@ private fun SeccionesPrivacidad() {
 
 @Composable
 private fun SeccionPrivacidad(icon: ImageVector, titulo: String, descripcion: String) {
-    val accent = if (cobreIsDark()) Brand400 else Brand700
+    val accent = CobreTheme.colors.accentText
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
         Box(
-            modifier = Modifier.size(34.dp).background(Brand500.copy(alpha = 0.10f), RoundedCornerShape(10.dp)),
+            modifier = Modifier.size(34.dp).background(CobreTheme.colors.accentContainer, CobreShapes.md),
             contentAlignment = Alignment.Center,
         ) {
             Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(18.dp))
@@ -249,8 +245,8 @@ private fun AccionesPrivacidad(onAbrirEnlace: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Button(
             onClick = { onAbrirEnlace("/privacidad") },
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).background(BrandCtaGradient, RoundedCornerShape(14.dp)),
-            shape = RoundedCornerShape(14.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).background(BrandCtaGradient, CobreShapes.md),
+            shape = CobreShapes.md,
             colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = Color.White),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
         ) {
@@ -259,9 +255,9 @@ private fun AccionesPrivacidad(onAbrirEnlace: (String) -> Unit) {
         OutlinedButton(
             onClick = { onAbrirEnlace("/privacidad/derechos") },
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-            shape = RoundedCornerShape(14.dp),
-            border = BorderStroke(1.dp, Brand500.copy(alpha = 0.35f)),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = if (cobreIsDark()) Brand400 else Brand700),
+            shape = CobreShapes.md,
+            border = BorderStroke(1.dp, CobreTheme.colors.accent.copy(alpha = 0.35f)),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = CobreTheme.colors.accentText),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
         ) {
             Text("Ejercer mis derechos", fontWeight = FontWeight.Bold)
@@ -272,11 +268,11 @@ private fun AccionesPrivacidad(onAbrirEnlace: (String) -> Unit) {
 @Composable
 fun RecordatorioPrivacidadFotos() {
     Row(
-        modifier = Modifier.fillMaxWidth().background(Brand500.copy(alpha = 0.06f), RoundedCornerShape(12.dp)).padding(12.dp),
+        modifier = Modifier.fillMaxWidth().background(CobreTheme.colors.accentContainer, CobreShapes.md).padding(12.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Icon(
-            CobreIcons.Lock, contentDescription = null, tint = if (cobreIsDark()) Brand400 else Brand700,
+            CobreIcons.Lock, contentDescription = null, tint = CobreTheme.colors.accentText,
             modifier = Modifier.size(16.dp),
         )
         Text(

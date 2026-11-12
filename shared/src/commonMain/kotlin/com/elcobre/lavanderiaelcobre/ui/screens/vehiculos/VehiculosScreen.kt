@@ -1,6 +1,7 @@
 package com.elcobre.lavanderiaelcobre.ui.screens.vehiculos
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -9,6 +10,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,14 +25,12 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -62,9 +63,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -81,13 +82,19 @@ import com.elcobre.lavanderiaelcobre.data.model.calcularKpisFlota
 import com.elcobre.lavanderiaelcobre.data.model.esPatenteChilenaValida
 import com.elcobre.lavanderiaelcobre.data.model.esRolConductorORepartidor
 import com.elcobre.lavanderiaelcobre.data.model.normalizarPatenteChilena
-import com.elcobre.lavanderiaelcobre.ui.components.BrandCtaGradient
+import com.elcobre.lavanderiaelcobre.ui.components.ButtonVariant
 import com.elcobre.lavanderiaelcobre.ui.components.CobreBackHandler
 import com.elcobre.lavanderiaelcobre.ui.components.CobreBackground
+import com.elcobre.lavanderiaelcobre.ui.components.CobreButton
 import com.elcobre.lavanderiaelcobre.ui.components.CobreIcons
 import com.elcobre.lavanderiaelcobre.ui.components.CobreTopBar
+import com.elcobre.lavanderiaelcobre.ui.components.ContentCard
 import com.elcobre.lavanderiaelcobre.ui.components.GlassCard
+import com.elcobre.lavanderiaelcobre.ui.components.GlassIconButton
+import com.elcobre.lavanderiaelcobre.ui.components.GlassSearchField
+import com.elcobre.lavanderiaelcobre.ui.components.LargeTitle
 import com.elcobre.lavanderiaelcobre.ui.components.MiniaturaFotoChequeo
+import com.elcobre.lavanderiaelcobre.ui.components.RecordatorioPrivacidadFotos
 import com.elcobre.lavanderiaelcobre.ui.components.SelectableChip
 import com.elcobre.lavanderiaelcobre.ui.components.StatusChip
 import com.elcobre.lavanderiaelcobre.ui.components.brandHeadingColor
@@ -95,20 +102,14 @@ import com.elcobre.lavanderiaelcobre.ui.components.brandMutedColor
 import com.elcobre.lavanderiaelcobre.ui.components.cobreFieldColors
 import com.elcobre.lavanderiaelcobre.ui.components.pressableScale
 import com.elcobre.lavanderiaelcobre.ui.components.rememberCapturadorFoto
-import com.elcobre.lavanderiaelcobre.ui.components.RecordatorioPrivacidadFotos
-import com.elcobre.lavanderiaelcobre.ui.theme.Brand400
-import com.elcobre.lavanderiaelcobre.ui.theme.Brand500
-import com.elcobre.lavanderiaelcobre.ui.theme.Brand700
-import com.elcobre.lavanderiaelcobre.ui.theme.DarkOutline
-import com.elcobre.lavanderiaelcobre.ui.theme.DarkSurface1
-import com.elcobre.lavanderiaelcobre.ui.theme.DarkSurface2
+import com.elcobre.lavanderiaelcobre.ui.theme.CobreShapes
+import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusAmber
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusAmberDark
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusGreen
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusGreenDark
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusRed
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusRedDark
-import com.elcobre.lavanderiaelcobre.ui.theme.Stone200
 import com.elcobre.lavanderiaelcobre.ui.theme.cobreIsDark
 import kotlinx.coroutines.delay
 
@@ -292,9 +293,9 @@ private fun ContenidoFlotaGrid(
         LazyVerticalGrid(
             columns = columnas,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 36.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 36.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 CabeceraFlota(
@@ -365,98 +366,20 @@ private fun CabeceraFlota(
     onRefrescar: () -> Unit,
     onAbrirAlta: () -> Unit,
 ) {
-    val isDark = cobreIsDark()
-    val refreshInteraction = remember { MutableInteractionSource() }
-    val addInteraction = remember { MutableInteractionSource() }
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                "Flota de Reparto",
-                style = MaterialTheme.typography.headlineMedium,
-                color = brandHeadingColor(),
-                modifier = Modifier.semantics { heading() },
+    LargeTitle(
+        title = "Flota de reparto",
+        subtitle = "Control de unidades, despacho a ruta e inspección técnica",
+        trailing = {
+            GlassIconButton(
+                icon = CobreIcons.History,
+                contentDescription = "Actualizar flota",
+                onClick = onRefrescar,
+                size = 44.dp,
+                enabled = !cargando,
             )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                "Control de unidades, despacho a ruta e inspección técnica",
-                style = MaterialTheme.typography.bodyMedium,
-                color = brandMutedColor(),
-            )
-        }
-        Spacer(Modifier.width(12.dp))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .pressableScale(refreshInteraction)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(if (isDark) DarkSurface2 else Color.White.copy(alpha = 0.7f))
-                    .border(
-                        1.dp,
-                        if (isDark) DarkOutline else Stone200.copy(alpha = 0.8f),
-                        RoundedCornerShape(14.dp),
-                    )
-                    .semantics {
-                        role = Role.Button
-                        contentDescription = "Actualizar flota"
-                    }
-                    .clickable(
-                        interactionSource = refreshInteraction,
-                        indication = null,
-                        enabled = !cargando,
-                        onClick = onRefrescar,
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (cargando) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = Brand400,
-                        strokeWidth = 2.2.dp,
-                    )
-                } else {
-                    Icon(
-                        CobreIcons.History,
-                        contentDescription = null,
-                        tint = if (isDark) Brand400 else Brand700,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
-            }
-
-            Row(
-                modifier = Modifier
-                    .height(48.dp)
-                    .pressableScale(addInteraction)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(BrandCtaGradient)
-                    .semantics {
-                        role = Role.Button
-                        contentDescription = "Registrar nuevo vehículo"
-                    }
-                    .clickable(interactionSource = addInteraction, indication = null, onClick = onAbrirAlta)
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Icon(CobreIcons.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
-                Text(
-                    "Nuevo vehículo",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        }
-    }
+            CobreButton(text = "Nuevo", onClick = onAbrirAlta, icon = CobreIcons.Add)
+        },
+    )
 }
 
 private data class KpiDescriptor(
@@ -475,62 +398,49 @@ private fun ResumenKpiFlota(
     esAncho: Boolean,
     onSeleccionarFiltro: (FiltroFlota) -> Unit,
 ) {
-    val isDark = cobreIsDark()
-    val colorTotal = if (isDark) Brand400 else Brand500
-    val colorDisponible = if (isDark) StatusGreenDark else StatusGreen
-    val colorEnRuta = if (isDark) StatusAmberDark else StatusAmber
-    val colorInactivo = if (kpis.inactivos > 0) (if (isDark) StatusRedDark else StatusRed) else brandMutedColor()
-
+    val colors = CobreTheme.colors
     val items = listOf(
         KpiDescriptor(
-            "Total Flota", "Unidades registradas", "${kpis.total}",
-            CobreIcons.LocalShipping, colorTotal, FiltroFlota.TODOS,
+            "Total flota",
+            "Unidades registradas",
+            "${kpis.total}",
+            CobreIcons.LocalShipping,
+            colors.textPrimary,
+            FiltroFlota.TODOS,
         ),
         KpiDescriptor(
-            "Disponibles", "Listos en planta", "${kpis.disponibles}",
-            CobreIcons.CheckCircle, colorDisponible, FiltroFlota.DISPONIBLES,
+            "Disponibles",
+            "Listos en planta",
+            "${kpis.disponibles}",
+            CobreIcons.CheckCircle,
+            colors.successText,
+            FiltroFlota.DISPONIBLES,
         ),
+        KpiDescriptor("En ruta", "Despachos activos", "${kpis.enRuta}", CobreIcons.Speed, colors.warningText, FiltroFlota.EN_RUTA),
         KpiDescriptor(
-            "En Ruta", "Despachos activos", "${kpis.enRuta}",
-            CobreIcons.Speed, colorEnRuta, FiltroFlota.EN_RUTA,
-        ),
-        KpiDescriptor(
-            "Mantención", "Fuera de servicio", "${kpis.inactivos}",
-            CobreIcons.Warning, colorInactivo, FiltroFlota.INACTIVOS,
+            "Mantención",
+            "Fuera de servicio",
+            "${kpis.inactivos}",
+            CobreIcons.Warning,
+            if (kpis.inactivos > 0) colors.dangerText else colors.textSecondary,
+            FiltroFlota.INACTIVOS,
         ),
     )
-
-    if (esAncho) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            items.forEach { item ->
-                KpiFlotaCard(
-                    titulo = item.titulo,
-                    subtitulo = item.subtitulo,
-                    valor = item.valor,
-                    icono = item.icono,
-                    accent = item.accent,
-                    seleccionado = filtroActual == item.filtro,
-                    onClick = { onSeleccionarFiltro(item.filtro) },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-    } else {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            items.chunked(2).forEach { par ->
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    par.forEach { item ->
-                        KpiFlotaCard(
-                            titulo = item.titulo,
-                            subtitulo = item.subtitulo,
-                            valor = item.valor,
-                            icono = item.icono,
-                            accent = item.accent,
-                            seleccionado = filtroActual == item.filtro,
-                            onClick = { onSeleccionarFiltro(item.filtro) },
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
+    val filas = if (esAncho) listOf(items) else items.chunked(2)
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        filas.forEach { fila ->
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                fila.forEach { item ->
+                    KpiFlotaCard(
+                        titulo = item.titulo,
+                        subtitulo = item.subtitulo,
+                        valor = item.valor,
+                        icono = item.icono,
+                        accent = item.accent,
+                        seleccionado = filtroActual == item.filtro,
+                        onClick = { onSeleccionarFiltro(item.filtro) },
+                        modifier = Modifier.weight(1f),
+                    )
                 }
             }
         }
@@ -548,16 +458,16 @@ private fun KpiFlotaCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val interaction = remember { MutableInteractionSource() }
-    GlassCard(
+    val colors = CobreTheme.colors
+    ContentCard(
         modifier = modifier
-            .pressableScale(interaction)
-            .semantics(mergeDescendants = true) { role = Role.Tab }
-            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
-        elevation = if (seleccionado) 10.dp else 6.dp,
-        tint = accent,
-        stripe = if (seleccionado) accent else null,
+            .then(if (seleccionado) Modifier.border(2.dp, colors.accent, CobreShapes.lg) else Modifier)
+            .semantics(mergeDescendants = true) {
+                role = Role.Tab
+                selected = seleccionado
+            },
+        onClick = onClick,
+        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -566,89 +476,69 @@ private fun KpiFlotaCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    titulo,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = brandMutedColor(),
-                    fontWeight = FontWeight.SemiBold,
+                    titulo.uppercase(),
+                    style = CobreTheme.text.labelCaps,
+                    color = colors.textSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Spacer(Modifier.height(2.dp))
-                Text(
-                    valor,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = accent,
-                    fontWeight = FontWeight.ExtraBold,
-                )
+                Text(valor, style = MaterialTheme.typography.headlineSmall, color = accent)
                 Text(
                     subtitulo,
                     style = MaterialTheme.typography.labelSmall,
-                    color = brandMutedColor().copy(alpha = 0.8f),
+                    color = colors.textSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
             Spacer(Modifier.width(8.dp))
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(accent.copy(alpha = 0.14f), RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(icono, contentDescription = null, tint = accent, modifier = Modifier.size(20.dp))
-            }
+            Icon(icono, contentDescription = null, tint = accent, modifier = Modifier.size(20.dp))
         }
     }
 }
 
 @Composable
 private fun BannersEstadoFlota(error: String?, mensajeExito: String?, onLimpiar: () -> Unit) {
-    val isDark = cobreIsDark()
+    val colors = CobreTheme.colors
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         AnimatedVisibility(visible = error != null) {
-            val rojo = if (isDark) StatusRedDark else StatusRed
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(rojo.copy(alpha = 0.14f), RoundedCornerShape(14.dp))
-                    .border(1.dp, rojo.copy(alpha = 0.3f), RoundedCornerShape(14.dp))
-                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                    .clip(CobreShapes.md)
+                    .background(colors.danger.copy(alpha = 0.10f))
+                    .padding(start = 14.dp, end = 4.dp, top = 4.dp, bottom = 4.dp)
                     .semantics { liveRegion = LiveRegionMode.Polite },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(CobreIcons.ErrorOutline, contentDescription = null, tint = rojo, modifier = Modifier.size(18.dp))
+                Icon(CobreIcons.ErrorOutline, contentDescription = null, tint = colors.dangerText, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(
                     error.orEmpty(),
                     style = MaterialTheme.typography.bodySmall,
-                    color = rojo,
+                    color = colors.dangerText,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f),
                 )
                 TextButton(onClick = onLimpiar) {
-                    Text("Cerrar", color = rojo, fontWeight = FontWeight.Bold)
+                    Text("Cerrar", color = colors.dangerText, fontWeight = FontWeight.Bold)
                 }
             }
         }
         AnimatedVisibility(visible = mensajeExito != null) {
-            val verde = if (isDark) StatusGreenDark else StatusGreen
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(verde.copy(alpha = 0.14f), RoundedCornerShape(14.dp))
-                    .border(1.dp, verde.copy(alpha = 0.3f), RoundedCornerShape(14.dp))
+                    .clip(CobreShapes.md)
+                    .background(colors.success.copy(alpha = 0.12f))
                     .padding(horizontal = 14.dp, vertical = 12.dp)
                     .semantics { liveRegion = LiveRegionMode.Polite },
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Icon(CobreIcons.CheckCircle, contentDescription = null, tint = verde, modifier = Modifier.size(18.dp))
-                Text(
-                    mensajeExito.orEmpty(),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = verde,
-                    fontWeight = FontWeight.Bold,
-                )
+                Icon(CobreIcons.CheckCircle, contentDescription = null, tint = colors.successText, modifier = Modifier.size(18.dp))
+                Text(mensajeExito.orEmpty(), style = MaterialTheme.typography.labelMedium, color = colors.successText)
             }
         }
     }
@@ -666,27 +556,10 @@ private fun BarraFiltroFlota(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        OutlinedTextField(
-            value = busqueda,
-            onValueChange = onCambiarBusqueda,
-            label = { Text("Buscar por patente, marca, modelo o conductor") },
-            singleLine = true,
-            leadingIcon = {
-                Icon(CobreIcons.Search, contentDescription = null, tint = Brand500, modifier = Modifier.size(20.dp))
-            },
-            trailingIcon = if (busqueda.isNotEmpty()) {
-                {
-                    IconButton(onClick = { onCambiarBusqueda("") }) {
-                        Icon(CobreIcons.Close, contentDescription = "Limpiar búsqueda", modifier = Modifier.size(18.dp))
-                    }
-                }
-            } else {
-                null
-            },
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = cobreFieldColors(),
+        GlassSearchField(
+            query = busqueda,
+            onQueryChange = onCambiarBusqueda,
+            placeholder = "Buscar por patente, marca, modelo o conductor",
         )
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(FiltroFlota.entries) { opcion ->
@@ -714,31 +587,27 @@ private fun EstadoVacioFlota(
     onLimpiarFiltros: () -> Unit,
     onRefrescar: () -> Unit,
 ) {
+    val colors = CobreTheme.colors
     val hayFiltrosActivos = busqueda.isNotBlank() || filtroActual != FiltroFlota.TODOS
-    GlassCard(modifier = Modifier.fillMaxWidth(), elevation = 6.dp) {
+    ContentCard {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 20.dp)
                 .semantics { liveRegion = LiveRegionMode.Polite },
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (cargando) {
-                CircularProgressIndicator(color = Brand400)
+                CircularProgressIndicator(color = colors.accent)
                 Text(
                     "Sincronizando flota de vehículos…",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = brandMutedColor(),
+                    color = colors.textSecondary,
                     textAlign = TextAlign.Center,
                 )
             } else {
-                Icon(
-                    imageVector = CobreIcons.LocalShipping,
-                    contentDescription = null,
-                    tint = Brand500,
-                    modifier = Modifier.size(32.dp),
-                )
+                Icon(CobreIcons.LocalShipping, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(32.dp))
                 Text(
                     text = if (hayFiltrosActivos) {
                         "No hay vehículos que coincidan con el filtro seleccionado."
@@ -746,17 +615,14 @@ private fun EstadoVacioFlota(
                         "No hay vehículos registrados en la flota."
                     },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = brandMutedColor(),
+                    color = colors.textSecondary,
                     textAlign = TextAlign.Center,
                 )
-                TextButton(
+                CobreButton(
+                    text = if (hayFiltrosActivos) "Limpiar filtros" else "Actualizar flota",
                     onClick = if (hayFiltrosActivos) onLimpiarFiltros else onRefrescar,
-                ) {
-                    Text(
-                        if (hayFiltrosActivos) "Limpiar filtros" else "Actualizar flota",
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
+                    variant = ButtonVariant.Primary,
+                )
             }
         }
     }
@@ -768,6 +634,7 @@ private fun TopBarAdmin(
     onToggleTema: (() -> Unit)?,
     onCerrarSesion: () -> Unit,
 ) {
+    val colors = CobreTheme.colors
     CobreTopBar(
         nombre = administrador.nombre,
         subtitulo = administrador.rol,
@@ -775,18 +642,20 @@ private fun TopBarAdmin(
         onToggleTema = onToggleTema,
     ) {
         Box(
-            modifier = Modifier.size(40.dp).background(BrandCtaGradient, RoundedCornerShape(12.dp)),
+            modifier = Modifier.size(40.dp).clip(CobreShapes.full).background(colors.primaryFill),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 administrador.nombre.trim().take(1).uppercase().ifEmpty { "A" },
                 style = MaterialTheme.typography.titleMedium,
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
+                color = colors.onPrimaryFill,
             )
         }
     }
 }
+
+/** Estado de la unidad: color de relleno (franja, íconos) y de texto legible. */
+private data class EstadoVehiculoUi(val relleno: Color, val texto: Color, val etiqueta: String)
 
 @Composable
 private fun VehiculoCard(
@@ -797,32 +666,21 @@ private fun VehiculoCard(
     onAbrirHistorial: () -> Unit,
     onToggleActivo: () -> Unit,
 ) {
+    val colors = CobreTheme.colors
     val enRuta = chequeo != null && chequeo.estaEnRuta
-    val isDark = cobreIsDark()
-    val accent = when {
-        enRuta -> if (isDark) StatusAmberDark else StatusAmber
-        vehiculo.activo -> if (isDark) StatusGreenDark else StatusGreen
-        else -> if (isDark) StatusRedDark else StatusRed
-    }
-    val etiquetaEstado = when {
-        enRuta -> "En ruta"
-        vehiculo.activo -> "Disponible"
-        else -> "Mantención"
+    val estado = when {
+        enRuta -> EstadoVehiculoUi(colors.warning, colors.warningText, "En ruta")
+        vehiculo.activo -> EstadoVehiculoUi(colors.success, colors.successText, "Disponible")
+        else -> EstadoVehiculoUi(colors.danger, colors.dangerText, "Mantención")
     }
 
-    GlassCard(
-        modifier = Modifier.fillMaxWidth(),
-        tint = accent,
-        stripe = accent,
-        elevation = 8.dp,
-    ) {
+    ContentCard(stripe = estado.relleno) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            CabeceraTarjetaVehiculo(vehiculo = vehiculo, accent = accent, etiquetaEstado = etiquetaEstado)
-            MetadatosTarjetaVehiculo(vehiculo = vehiculo, chequeo = chequeo, accent = accent)
+            CabeceraTarjetaVehiculo(vehiculo = vehiculo, estado = estado)
+            MetadatosTarjetaVehiculo(vehiculo = vehiculo, chequeo = chequeo, estado = estado)
             AccionesTarjetaVehiculo(
                 activo = vehiculo.activo,
                 enRuta = enRuta,
-                accent = accent,
                 totalHistorial = totalHistorial,
                 onAbrirChequeo = onAbrirChequeo,
                 onAbrirHistorial = onAbrirHistorial,
@@ -833,56 +691,39 @@ private fun VehiculoCard(
 }
 
 @Composable
-private fun CabeceraTarjetaVehiculo(vehiculo: Vehiculo, accent: Color, etiquetaEstado: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+private fun CabeceraTarjetaVehiculo(vehiculo: Vehiculo, estado: EstadoVehiculoUi) {
+    val colors = CobreTheme.colors
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Box(
-            modifier = Modifier
-                .size(44.dp)
-                .background(accent.copy(alpha = 0.15f), RoundedCornerShape(12.dp)),
+            modifier = Modifier.size(40.dp).clip(CobreShapes.md).background(estado.relleno.copy(alpha = 0.14f)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(CobreIcons.LocalShipping, contentDescription = null, tint = accent, modifier = Modifier.size(24.dp))
+            Icon(CobreIcons.LocalShipping, contentDescription = null, tint = estado.texto, modifier = Modifier.size(22.dp))
         }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                vehiculo.patente,
-                style = MaterialTheme.typography.titleMedium,
-                color = brandHeadingColor(),
-                fontWeight = FontWeight.ExtraBold,
-            )
+            Text(vehiculo.patente.uppercase(), style = CobreTheme.text.labelCaps, color = colors.textSecondary)
             Text(
                 vehiculo.nombreCompleto,
-                style = MaterialTheme.typography.bodyMedium,
-                color = brandMutedColor(),
+                style = MaterialTheme.typography.titleMedium,
+                color = colors.textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
         Spacer(Modifier.width(8.dp))
-        StatusChip(
-            label = etiquetaEstado,
-            container = accent.copy(alpha = 0.16f),
-            content = accent,
-        )
+        StatusChip(label = estado.etiqueta, container = estado.relleno.copy(alpha = 0.14f), content = estado.texto)
     }
 }
 
 @Composable
-private fun MetadatosTarjetaVehiculo(vehiculo: Vehiculo, chequeo: ChequeoVehiculo?, accent: Color) {
-    val isDark = cobreIsDark()
-    val infoBg = if (isDark) DarkSurface2.copy(alpha = 0.65f) else Color.White.copy(alpha = 0.55f)
-    val infoBorder = if (isDark) DarkOutline else Stone200.copy(alpha = 0.7f)
-
+private fun MetadatosTarjetaVehiculo(vehiculo: Vehiculo, chequeo: ChequeoVehiculo?, estado: EstadoVehiculoUi) {
+    val colors = CobreTheme.colors
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(infoBg)
-            .border(1.dp, infoBorder, RoundedCornerShape(12.dp))
+            .clip(CobreShapes.md)
+            .background(colors.surfaceMuted)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -892,33 +733,20 @@ private fun MetadatosTarjetaVehiculo(vehiculo: Vehiculo, chequeo: ChequeoVehicul
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(CobreIcons.Speed, contentDescription = null, tint = Brand500, modifier = Modifier.size(16.dp))
-                Text(
-                    "Odómetro: ${vehiculo.kilometrajeActual} km",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = brandHeadingColor(),
-                    fontWeight = FontWeight.Bold,
-                )
+                Icon(CobreIcons.Speed, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(16.dp))
+                Text("${vehiculo.kilometrajeActual} KM", style = CobreTheme.text.labelCaps, color = colors.textPrimary)
             }
             vehiculo.anio?.let { anio ->
-                Text(
-                    "Año $anio",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = brandMutedColor(),
-                    fontWeight = FontWeight.SemiBold,
-                )
+                Text("AÑO $anio", style = CobreTheme.text.labelCaps, color = colors.textSecondary)
             }
         }
         if (chequeo != null && chequeo.estaEnRuta) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Icon(CobreIcons.Person, contentDescription = null, tint = accent, modifier = Modifier.size(15.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(CobreIcons.Person, contentDescription = null, tint = estado.texto, modifier = Modifier.size(15.dp))
                 Text(
                     "En ruta: ${chequeo.responsable} · Salida ${chequeo.horaSalida ?: "En curso"}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = accent,
+                    color = estado.texto,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -932,7 +760,7 @@ private fun MetadatosTarjetaVehiculo(vehiculo: Vehiculo, chequeo: ChequeoVehicul
                     "Unidad fuera de servicio por mantención preventiva"
                 },
                 style = MaterialTheme.typography.bodySmall,
-                color = brandMutedColor(),
+                color = colors.textSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -940,124 +768,43 @@ private fun MetadatosTarjetaVehiculo(vehiculo: Vehiculo, chequeo: ChequeoVehicul
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AccionesTarjetaVehiculo(
     activo: Boolean,
     enRuta: Boolean,
-    accent: Color,
     totalHistorial: Int,
     onAbrirChequeo: () -> Unit,
     onAbrirHistorial: () -> Unit,
     onToggleActivo: () -> Unit,
 ) {
-    val isDark = cobreIsDark()
-    val secondaryBg = if (isDark) DarkSurface2 else Color.White.copy(alpha = 0.75f)
-    val secondaryBorder = if (isDark) DarkOutline else Stone200
-
-    Row(
+    // FlowRow: en tarjetas angostas los botones secundarios bajan de línea en vez de cortarse.
+    FlowRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         if (activo || enRuta) {
-            BotonPrincipalTarjetaVehiculo(
-                enRuta = enRuta,
-                accent = accent,
-                isDark = isDark,
+            CobreButton(
+                text = if (enRuta) "Registrar retorno" else "Dar salida",
                 onClick = onAbrirChequeo,
-                modifier = Modifier.weight(1f),
+                variant = if (enRuta) ButtonVariant.Primary else ButtonVariant.Accent,
+                icon = if (enRuta) CobreIcons.CheckCircle else CobreIcons.LocalShipping,
             )
         }
-        val historialInteraction = remember { MutableInteractionSource() }
-        Row(
-            modifier = Modifier
-                .height(44.dp)
-                .pressableScale(historialInteraction)
-                .clip(RoundedCornerShape(12.dp))
-                .background(secondaryBg)
-                .border(1.dp, secondaryBorder, RoundedCornerShape(12.dp))
-                .clickable(interactionSource = historialInteraction, indication = null, onClick = onAbrirHistorial)
-                .padding(horizontal = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(5.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(CobreIcons.History, contentDescription = null, tint = Brand500, modifier = Modifier.size(16.dp))
-            Text(
-                if (totalHistorial > 0) "Bitácora ($totalHistorial)" else "Bitácora",
-                style = MaterialTheme.typography.labelMedium,
-                color = brandHeadingColor(),
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-            )
-        }
+        CobreButton(
+            text = if (totalHistorial > 0) "Bitácora ($totalHistorial)" else "Bitácora",
+            onClick = onAbrirHistorial,
+            variant = ButtonVariant.Tonal,
+            icon = CobreIcons.History,
+        )
         if (!enRuta) {
-            val mantencionInteraction = remember { MutableInteractionSource() }
-            val colorTexto = if (activo) brandMutedColor() else (if (isDark) StatusGreenDark else StatusGreen)
-            Row(
-                modifier = Modifier
-                    .height(44.dp)
-                    .pressableScale(mantencionInteraction)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(secondaryBg)
-                    .border(1.dp, secondaryBorder, RoundedCornerShape(12.dp))
-                    .clickable(interactionSource = mantencionInteraction, indication = null, onClick = onToggleActivo)
-                    .padding(horizontal = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    if (activo) "Mantención" else "Habilitar",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = colorTexto,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun BotonPrincipalTarjetaVehiculo(
-    enRuta: Boolean,
-    accent: Color,
-    isDark: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val interaction = remember { MutableInteractionSource() }
-    val colorContenido = if (enRuta) accent else Color.White
-    Row(
-        modifier = modifier
-            .height(44.dp)
-            .pressableScale(interaction)
-            .clip(RoundedCornerShape(12.dp))
-            .then(
-                if (enRuta) {
-                    Modifier.background(accent.copy(alpha = if (isDark) 0.22f else 0.15f))
-                        .border(1.dp, accent.copy(alpha = 0.45f), RoundedCornerShape(12.dp))
-                } else {
-                    Modifier.background(BrandCtaGradient)
-                },
+            CobreButton(
+                text = if (activo) "Mantención" else "Habilitar",
+                onClick = onToggleActivo,
+                variant = if (activo) ButtonVariant.Danger else ButtonVariant.Tonal,
             )
-            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
-            .padding(horizontal = 12.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = if (enRuta) CobreIcons.CheckCircle else CobreIcons.LocalShipping,
-            contentDescription = null,
-            tint = colorContenido,
-            modifier = Modifier.size(17.dp),
-        )
-        Spacer(Modifier.width(6.dp))
-        Text(
-            if (enRuta) "Registrar retorno" else "Dar salida",
-            style = MaterialTheme.typography.labelLarge,
-            color = colorContenido,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-        )
+        }
     }
 }
 
@@ -1099,7 +846,9 @@ private fun ModalAgregarVehiculo(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = if (isDark) DarkSurface1 else Color(0xFFFBF8F5),
+        containerColor = CobreTheme.colors.surface,
+        sheetMaxWidth = 640.dp,
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
     ) {
         Column(
             modifier = Modifier
@@ -1146,33 +895,17 @@ private fun ModalAgregarVehiculo(
                 onKmChange = { kmTexto = it.filter(Char::isDigit) },
             )
             Spacer(Modifier.height(4.dp))
-            Button(
+            CobreButton(
+                text = "Agregar a la flota",
                 onClick = {
-                    val kmValido = km ?: return@Button
+                    val kmValido = km ?: return@CobreButton
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     onAgregar(normalizarPatenteChilena(patente), marca, modelo, anio, kmValido)
                 },
+                icon = CobreIcons.Add,
                 enabled = habilitado,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp)
-                    .then(
-                        if (habilitado) Modifier.background(BrandCtaGradient, RoundedCornerShape(14.dp))
-                        else Modifier.background(Brand500.copy(alpha = 0.30f), RoundedCornerShape(14.dp)),
-                    ),
-                shape = RoundedCornerShape(14.dp),
-                elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, disabledContainerColor = Color.Transparent),
-            ) {
-                Icon(CobreIcons.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    "Agregar a la flota",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
+                fillWidth = true,
+            )
             Spacer(Modifier.height(16.dp))
         }
     }
@@ -1202,7 +935,7 @@ private fun CamposAgregarVehiculo(
         isError = errorPatente != null,
         supportingText = errorPatente?.let { mensaje -> { Text(mensaje) } },
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = CobreShapes.md,
         colors = cobreFieldColors(),
     )
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -1213,7 +946,7 @@ private fun CamposAgregarVehiculo(
             placeholder = { Text("Ej. Suzuki") },
             singleLine = true,
             modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(14.dp),
+            shape = CobreShapes.md,
             colors = cobreFieldColors(),
         )
         OutlinedTextField(
@@ -1223,7 +956,7 @@ private fun CamposAgregarVehiculo(
             placeholder = { Text("Ej. APV Cargo") },
             singleLine = true,
             modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(14.dp),
+            shape = CobreShapes.md,
             colors = cobreFieldColors(),
         )
     }
@@ -1237,7 +970,7 @@ private fun CamposAgregarVehiculo(
             isError = anioInvalido,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(14.dp),
+            shape = CobreShapes.md,
             colors = cobreFieldColors(),
         )
         OutlinedTextField(
@@ -1246,9 +979,14 @@ private fun CamposAgregarVehiculo(
             label = { Text("Kilometraje inicial") },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            leadingIcon = { Icon(CobreIcons.Speed, contentDescription = null, tint = Brand700, modifier = Modifier.size(18.dp)) },
+            leadingIcon = { Icon(
+                CobreIcons.Speed,
+                contentDescription = null,
+                tint = CobreTheme.colors.textSecondary,
+                modifier = Modifier.size(18.dp),
+            ) },
             modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(14.dp),
+            shape = CobreShapes.md,
             colors = cobreFieldColors(),
         )
     }
@@ -1266,7 +1004,9 @@ private fun ModalHistorialVehiculo(
     CobreBackHandler(enabled = true, onBack = onDismiss)
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = if (isDark) DarkSurface1 else Color(0xFFFBF8F5),
+        containerColor = CobreTheme.colors.surface,
+        sheetMaxWidth = 640.dp,
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
     ) {
         Column(
             modifier = Modifier
@@ -1365,7 +1105,7 @@ private fun HistorialFila(chequeo: ChequeoVehiculo) {
         val totalFotos = chequeo.fotosSalida.size + chequeo.fotosEntrada.size
         if (totalFotos > 0) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Icon(CobreIcons.PhotoCamera, contentDescription = null, tint = Brand500, modifier = Modifier.size(14.dp))
+                Icon(CobreIcons.PhotoCamera, contentDescription = null, tint = CobreTheme.colors.accent, modifier = Modifier.size(14.dp))
                 Text(
                     "$totalFotos foto${if (totalFotos == 1) "" else "s"} de inspección " +
                         "(${chequeo.fotosSalida.size} salida / ${chequeo.fotosEntrada.size} retorno)",
@@ -1438,7 +1178,9 @@ private fun ModalChequeoVehiculo(
 
     ModalBottomSheet(
         onDismissRequest = cerrar,
-        containerColor = if (isDark) DarkSurface1 else Color(0xFFFBF8F5),
+        containerColor = CobreTheme.colors.surface,
+        sheetMaxWidth = 640.dp,
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
     ) {
         Column(
             modifier = Modifier
@@ -1554,9 +1296,14 @@ private fun ChequeoForm(
             isError = errorKm != null,
             supportingText = errorKm?.let { mensaje -> { Text(mensaje) } },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            leadingIcon = { Icon(CobreIcons.Speed, contentDescription = null, tint = Brand700, modifier = Modifier.size(20.dp)) },
+            leadingIcon = { Icon(
+                CobreIcons.Speed,
+                contentDescription = null,
+                tint = CobreTheme.colors.textSecondary,
+                modifier = Modifier.size(20.dp),
+            ) },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
+            shape = CobreShapes.md,
             colors = cobreFieldColors(),
         )
 
@@ -1579,7 +1326,7 @@ private fun ChequeoForm(
                 modifier = Modifier
                     .weight(1f)
                     .height(50.dp),
-                shape = RoundedCornerShape(14.dp),
+                shape = CobreShapes.md,
                 border = BorderStroke(1.dp, brandMutedColor().copy(alpha = 0.35f)),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = brandHeadingColor()),
             ) {
@@ -1587,7 +1334,6 @@ private fun ChequeoForm(
             }
             BotonConfirmarChequeo(
                 modifier = Modifier.weight(1.5f),
-                accent = accent,
                 esEntrada = esEntrada,
                 habilitado = habilitado,
                 onClick = {
@@ -1622,40 +1368,25 @@ private fun ObservacionesChequeo(valor: String, enabled: Boolean, cambiar: (Stri
         label = { Text("Observaciones (opcional)") },
         placeholder = { Text("Ej. Rayón leve en parachoques trasero") },
         minLines = 2, modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp), colors = cobreFieldColors(),
+        shape = CobreShapes.md, colors = cobreFieldColors(),
     )
 }
 
 @Composable
 private fun BotonConfirmarChequeo(
-    accent: Color,
     esEntrada: Boolean,
     habilitado: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier.fillMaxWidth(),
 ) {
-    Button(
+    CobreButton(
+        text = if (esEntrada) "Confirmar retorno" else "Confirmar salida",
         onClick = onClick,
+        icon = CobreIcons.Check,
         enabled = habilitado,
-        modifier = modifier
-            .height(50.dp)
-            .then(
-                if (habilitado) Modifier.background(BrandCtaGradient, RoundedCornerShape(14.dp))
-                else Modifier.background(accent.copy(alpha = 0.30f), RoundedCornerShape(14.dp)),
-            ),
-        shape = RoundedCornerShape(14.dp),
-        elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, disabledContainerColor = Color.Transparent),
-    ) {
-        Icon(CobreIcons.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(8.dp))
-        Text(
-            if (esEntrada) "Confirmar retorno" else "Confirmar salida",
-            style = MaterialTheme.typography.labelLarge,
-            color = Color.White,
-            fontWeight = FontWeight.Bold,
-        )
-    }
+        fillWidth = true,
+        modifier = modifier,
+    )
 }
 
 @Composable
@@ -1708,7 +1439,7 @@ private fun SelectorCondicionVehiculo(
             }
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(CobreShapes.md)
                     .background(if (activo) colorOpcion else colorOpcion.copy(alpha = 0.12f))
                     .clickable { onSeleccionar(opcion) }
                     .padding(horizontal = 12.dp, vertical = 9.dp),
@@ -1762,9 +1493,9 @@ private fun SelectorFotos(accent: Color, fotos: MutableState<List<FotoChequeo>>,
                 abrirCamara()
             },
         ) {
-            Icon(CobreIcons.PhotoCamera, contentDescription = null, tint = Brand500, modifier = Modifier.size(16.dp))
+            Icon(CobreIcons.PhotoCamera, contentDescription = null, tint = CobreTheme.colors.accent, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(6.dp))
-            Text("Tomar foto", color = Brand500, fontWeight = FontWeight.Bold)
+            Text("Tomar foto", color = CobreTheme.colors.accentText, fontWeight = FontWeight.Bold)
         }
     }
     Spacer(Modifier.height(6.dp))
@@ -1772,7 +1503,7 @@ private fun SelectorFotos(accent: Color, fotos: MutableState<List<FotoChequeo>>,
         items(fotos.value, key = { it.id }) { foto ->
             Column(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(CobreShapes.md)
                     .background(accent.copy(alpha = 0.14f))
                     .clickable(enabled = enabled) { fotos.value = fotos.value.filterNot { it.id == foto.id } }
                     .padding(horizontal = 8.dp, vertical = 6.dp),
@@ -1784,7 +1515,7 @@ private fun SelectorFotos(accent: Color, fotos: MutableState<List<FotoChequeo>>,
                     tint = accent,
                     modifier = Modifier
                         .size(44.dp)
-                        .clip(RoundedCornerShape(8.dp)),
+                        .clip(CobreShapes.md),
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
@@ -1800,8 +1531,8 @@ private fun SelectorFotos(accent: Color, fotos: MutableState<List<FotoChequeo>>,
                 modifier = Modifier
                     .size(72.dp)
                     .pressableScale(interaction)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Brand500.copy(alpha = 0.10f))
+                    .clip(CobreShapes.md)
+                    .background(CobreTheme.colors.accentContainer)
                     .clickable(enabled = enabled && fotos.value.size < 20, interactionSource = interaction, indication = null) {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         abrirCamara()
@@ -1809,9 +1540,19 @@ private fun SelectorFotos(accent: Color, fotos: MutableState<List<FotoChequeo>>,
                 contentAlignment = Alignment.Center,
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(CobreIcons.PhotoCamera, contentDescription = "Tomar foto", tint = Brand500, modifier = Modifier.size(22.dp))
+                    Icon(
+                        CobreIcons.PhotoCamera,
+                        contentDescription = "Tomar foto",
+                        tint = CobreTheme.colors.accent,
+                        modifier = Modifier.size(22.dp),
+                    )
                     Spacer(Modifier.height(2.dp))
-                    Text("Cámara", style = MaterialTheme.typography.labelSmall, color = Brand500, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Cámara",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CobreTheme.colors.accentText,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                 }
             }
         }

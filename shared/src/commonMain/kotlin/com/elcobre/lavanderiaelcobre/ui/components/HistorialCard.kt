@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -22,27 +21,22 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.elcobre.lavanderiaelcobre.data.model.Pedido
 import com.elcobre.lavanderiaelcobre.data.model.TipoEvento
-import com.elcobre.lavanderiaelcobre.ui.theme.Brand700
+import com.elcobre.lavanderiaelcobre.ui.theme.CobreShapes
+import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 
 /**
- * Tarjeta con la cronología de eventos del pedido (avances, comentarios, alertas).
+ * Cronología de eventos del pedido (avances, comentarios, alertas), como lista agrupada:
+ * encabezado en `label-caps` y una tarjeta sólida con la línea de tiempo.
  * Compartida entre DetalleScreen y el panel derecho de la tablet en DashboardScreen.
  */
 @Composable
 fun HistorialCard(pedido: Pedido, modifier: Modifier = Modifier) {
-    GlassCard(modifier = modifier.fillMaxWidth(), elevation = 8.dp) {
-        Column {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(CobreIcons.History, contentDescription = null, tint = brandHeadingColor(), modifier = Modifier.size(20.dp))
-                Text("Historial de avances y comentarios", style = MaterialTheme.typography.titleMedium, color = brandHeadingColor())
-            }
-            Spacer(Modifier.height(14.dp))
+    val colors = CobreTheme.colors
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SectionLabel("Historial", modifier = Modifier.padding(start = 4.dp))
+        ContentCard {
             if (pedido.historial.isEmpty()) {
-                Text(
-                    "Sin eventos registrados todavía.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = brandMutedColor().copy(alpha = 0.85f),
-                )
+                Text("Sin eventos registrados todavía.", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
             }
             pedido.historial.forEachIndexed { index, evento ->
                 EventoFila(
@@ -67,36 +61,32 @@ fun EventoFila(
     autor: String,
     esUltimo: Boolean,
 ) {
+    val colors = CobreTheme.colors
     val color = eventoColor(tipo)
     Row(modifier = Modifier.fillMaxWidth()) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Box(
                 modifier = Modifier
                     .size(32.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(color.copy(alpha = 0.15f)),
+                    .clip(CobreShapes.full)
+                    .background(color.copy(alpha = 0.14f)),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(eventoIcon(tipo), contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
             }
             if (!esUltimo) {
-                Box(
-                    modifier = Modifier
-                        .width(2.dp)
-                        .height(26.dp)
-                        .background(Brand700.copy(alpha = 0.12f)),
-                )
+                Box(modifier = Modifier.width(1.dp).height(26.dp).background(colors.hairline))
             }
         }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f).padding(bottom = if (esUltimo) 0.dp else 12.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(titulo, style = MaterialTheme.typography.titleSmall, color = brandHeadingColor(), modifier = Modifier.weight(1f))
-                Text(hora, style = MaterialTheme.typography.labelSmall, color = brandMutedColor())
+                Text(titulo, style = MaterialTheme.typography.titleSmall, color = colors.textPrimary, modifier = Modifier.weight(1f))
+                Text(hora.uppercase(), style = CobreTheme.text.labelCaps, color = colors.textSecondary)
             }
             Spacer(Modifier.height(2.dp))
-            Text(detalle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f))
-            Text("· $autor", style = MaterialTheme.typography.labelSmall, color = brandMutedColor().copy(alpha = 0.8f))
+            Text(detalle, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
+            Text(autor, style = MaterialTheme.typography.labelSmall, color = colors.textSecondary)
         }
     }
 }
