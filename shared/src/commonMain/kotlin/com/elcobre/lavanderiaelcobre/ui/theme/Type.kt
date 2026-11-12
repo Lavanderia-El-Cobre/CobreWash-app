@@ -2,23 +2,26 @@ package com.elcobre.lavanderiaelcobre.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import lavanderiaelcobre.shared.generated.resources.Res
+import lavanderiaelcobre.shared.generated.resources.inconsolata_bold
+import lavanderiaelcobre.shared.generated.resources.inconsolata_medium
 import lavanderiaelcobre.shared.generated.resources.inter_bold
 import lavanderiaelcobre.shared.generated.resources.inter_medium
 import lavanderiaelcobre.shared.generated.resources.inter_regular
 import lavanderiaelcobre.shared.generated.resources.inter_semibold
-import lavanderiaelcobre.shared.generated.resources.outfit_bold
-import lavanderiaelcobre.shared.generated.resources.outfit_extrabold
-import lavanderiaelcobre.shared.generated.resources.outfit_medium
-import lavanderiaelcobre.shared.generated.resources.outfit_semibold
+import lavanderiaelcobre.shared.generated.resources.open_sans_regular
+import lavanderiaelcobre.shared.generated.resources.open_sans_semibold
 import org.jetbrains.compose.resources.Font
 
-// Tipografía de marca: Inter para el cuerpo, Outfit para títulos, con el mismo
-// tracking negativo en headings que el CSS de la web (`letter-spacing: -0.02em`).
+// Tipografía de DESIGN.md: display = Inter, cuerpo = Open Sans, etiquetas = Inconsolata.
+// Solo se incluyen los pesos que usa la escala (licencias OFL en docs/licenses/).
+
 @Composable
 private fun interFamily() = FontFamily(
     Font(Res.font.inter_regular, FontWeight.Normal),
@@ -28,35 +31,77 @@ private fun interFamily() = FontFamily(
 )
 
 @Composable
-private fun outfitFamily() = FontFamily(
-    Font(Res.font.outfit_medium, FontWeight.Medium),
-    Font(Res.font.outfit_semibold, FontWeight.SemiBold),
-    Font(Res.font.outfit_bold, FontWeight.Bold),
-    Font(Res.font.outfit_extrabold, FontWeight.ExtraBold),
+private fun bodyFamily() = FontFamily(
+    Font(Res.font.open_sans_regular, FontWeight.Normal),
+    Font(Res.font.open_sans_semibold, FontWeight.SemiBold),
 )
 
-private fun estilo(familia: FontFamily, peso: FontWeight, tamano: Float, alto: Float, tracking: Float) =
+@Composable
+private fun monoFamily() = FontFamily(
+    Font(Res.font.inconsolata_medium, FontWeight.Medium),
+    Font(Res.font.inconsolata_bold, FontWeight.Bold),
+)
+
+/** Estilos fuera de la escala de Material 3. */
+@Immutable
+data class CobreTextStyles(
+    /** Título grande de pantalla estilo iOS, que se colapsa al hacer scroll. */
+    val largeTitle: TextStyle,
+    /** `label-caps` de DESIGN.md: encabezados de sección, códigos de comanda, patentes, km. Escribir el texto en mayúsculas. */
+    val labelCaps: TextStyle,
+    /** Cifras y códigos que deben alinearse (monoespaciado). */
+    val mono: TextStyle,
+)
+
+internal val LocalCobreTextStyles = staticCompositionLocalOf {
+    CobreTextStyles(largeTitle = TextStyle.Default, labelCaps = TextStyle.Default, mono = TextStyle.Default)
+}
+
+private fun estilo(familia: FontFamily, peso: FontWeight, tamano: Float, alto: Float, tracking: Float = 0f) =
     TextStyle(fontFamily = familia, fontWeight = peso, fontSize = tamano.sp, lineHeight = alto.sp, letterSpacing = tracking.sp)
 
+/** Tracking de títulos: -0.02em, igual que el CSS de la web. */
+private fun tight(tamano: Float) = -0.02f * tamano
+
+/**
+ * Escala tipográfica. DESIGN.md parte de una escala de escritorio (h1 = 48px); en
+ * teléfono [compact] la reduce para que un título no ocupe media pantalla.
+ */
 @Composable
-fun rememberCobreTypography(): Typography {
-    val display = outfitFamily()
-    val body = interFamily()
+fun rememberCobreTypography(compact: Boolean): Typography {
+    val display = interFamily()
+    val body = bodyFamily()
+    val h1 = if (compact) 34f else 48f
+    val h2 = if (compact) 28f else 36f
+    val h3 = if (compact) 24f else 28f
 
     return Typography(
-        displayLarge = estilo(display, FontWeight.SemiBold, 40f, 46f, -0.8f),
-        displayMedium = estilo(display, FontWeight.SemiBold, 32f, 38f, -0.64f),
-        displaySmall = estilo(display, FontWeight.SemiBold, 24f, 32f, -0.48f),
-        headlineLarge = estilo(display, FontWeight.SemiBold, 28f, 34f, -0.56f),
-        headlineMedium = estilo(display, FontWeight.SemiBold, 24f, 30f, -0.48f),
-        titleLarge = estilo(display, FontWeight.SemiBold, 20f, 26f, -0.4f),
-        titleMedium = estilo(display, FontWeight.SemiBold, 17f, 24f, -0.34f),
-        titleSmall = estilo(display, FontWeight.SemiBold, 15f, 20f, -0.3f),
-        bodyLarge = estilo(body, FontWeight.Normal, 16f, 24f, 0f),
-        bodyMedium = estilo(body, FontWeight.Normal, 14f, 20f, 0f),
-        bodySmall = estilo(body, FontWeight.Normal, 12f, 16f, 0f),
-        labelLarge = estilo(body, FontWeight.SemiBold, 14f, 18f, 0.1f),
-        labelMedium = estilo(body, FontWeight.SemiBold, 12f, 16f, 0.1f),
-        labelSmall = estilo(body, FontWeight.Medium, 11f, 14f, 0.1f),
+        displayLarge = estilo(display, FontWeight.Bold, h1, h1 * 1.15f, tight(h1)),
+        displayMedium = estilo(display, FontWeight.Bold, h2, h2 * 1.18f, tight(h2)),
+        displaySmall = estilo(display, FontWeight.Bold, h3, h3 * 1.2f, tight(h3)),
+        headlineLarge = estilo(display, FontWeight.Bold, h3, h3 * 1.2f, tight(h3)),
+        headlineMedium = estilo(display, FontWeight.Bold, 22f, 28f, tight(22f)),
+        headlineSmall = estilo(display, FontWeight.SemiBold, 20f, 26f, tight(20f)),
+        titleLarge = estilo(display, FontWeight.SemiBold, 18f, 24f, tight(18f)),
+        titleMedium = estilo(display, FontWeight.SemiBold, 16f, 22f, tight(16f)),
+        titleSmall = estilo(display, FontWeight.SemiBold, 14f, 20f, tight(14f)),
+        bodyLarge = estilo(body, FontWeight.Normal, 16f, 24f),
+        bodyMedium = estilo(body, FontWeight.Normal, 14f, 20f),
+        bodySmall = estilo(body, FontWeight.Normal, 12f, 16f),
+        labelLarge = estilo(display, FontWeight.SemiBold, 15f, 20f),
+        labelMedium = estilo(display, FontWeight.SemiBold, 13f, 18f),
+        labelSmall = estilo(display, FontWeight.Medium, 11f, 14f, 0.1f),
+    )
+}
+
+@Composable
+internal fun rememberCobreTextStyles(compact: Boolean): CobreTextStyles {
+    val display = interFamily()
+    val mono = monoFamily()
+    val large = if (compact) 34f else 40f
+    return CobreTextStyles(
+        largeTitle = estilo(display, FontWeight.Bold, large, large * 1.15f, tight(large)),
+        labelCaps = estilo(mono, FontWeight.Medium, 12f, 16f, 12f * 0.08f),
+        mono = estilo(mono, FontWeight.Medium, 14f, 20f),
     )
 }

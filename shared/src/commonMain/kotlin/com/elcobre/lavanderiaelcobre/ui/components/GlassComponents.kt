@@ -15,18 +15,17 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -38,46 +37,29 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import com.elcobre.lavanderiaelcobre.data.model.EtapaProceso
-import com.elcobre.lavanderiaelcobre.ui.theme.BackgroundWarm
-import com.elcobre.lavanderiaelcobre.ui.theme.Brand100
-import com.elcobre.lavanderiaelcobre.ui.theme.Brand200
-import com.elcobre.lavanderiaelcobre.ui.theme.Brand400
-import com.elcobre.lavanderiaelcobre.ui.theme.Brand50
-import com.elcobre.lavanderiaelcobre.ui.theme.Brand500
-import com.elcobre.lavanderiaelcobre.ui.theme.Brand700
-import com.elcobre.lavanderiaelcobre.ui.theme.Copper200
-import com.elcobre.lavanderiaelcobre.ui.theme.Copper600
-import com.elcobre.lavanderiaelcobre.ui.theme.DarkBg
-import com.elcobre.lavanderiaelcobre.ui.theme.DarkOnSurface
-import com.elcobre.lavanderiaelcobre.ui.theme.DarkOnSurfaceMuted
-import com.elcobre.lavanderiaelcobre.ui.theme.DarkOutline
-import com.elcobre.lavanderiaelcobre.ui.theme.DarkSurface1
-import com.elcobre.lavanderiaelcobre.ui.theme.DarkSurface2
-import com.elcobre.lavanderiaelcobre.ui.theme.ForegroundStone
-import com.elcobre.lavanderiaelcobre.ui.theme.Neutral50
-import com.elcobre.lavanderiaelcobre.ui.theme.Sky200
-import com.elcobre.lavanderiaelcobre.ui.theme.Sky500
-import com.elcobre.lavanderiaelcobre.ui.theme.Stone200
+import com.elcobre.lavanderiaelcobre.ui.theme.CobreShapes
+import com.elcobre.lavanderiaelcobre.ui.theme.CobreSpacing
+import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusGreen
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusGreenDark
-import com.elcobre.lavanderiaelcobre.ui.theme.TextSecondaryLight
 import com.elcobre.lavanderiaelcobre.ui.theme.cobreIsDark
 
 /** Escala sutil al presionar; usa el mismo InteractionSource que el clickable del elemento. */
@@ -99,83 +81,46 @@ fun Modifier.pressableScale(
 }
 
 /**
- * Fondo de pantalla con gradiente de marca y blobs de color desenfocados, replica los
- * valores de `app/intranet/layout.tsx`. Se monta una sola vez en la raíz de la app
- * ([com.elcobre.lavanderiaelcobre.ui.CobreApp]), detrás de la navegación: si se
- * recreara en cada pantalla (como antes), el blur —costoso— se recalcularía en cada
- * cambio de destino y el fondo se deslizaría junto con la transición, dando la
- * sensación de que toda la pantalla se recarga en vez de solo su contenido.
+ * Fondo de la app: el `background` del tema con dos manchas de color muy tenues
+ * (cobre arriba, índigo abajo) para que el vidrio de la navegación tenga algo que
+ * refractar sin romper el minimalismo. Se monta una sola vez en la raíz
+ * ([com.elcobre.lavanderiaelcobre.ui.CobreApp]), detrás de la navegación, para no
+ * recrearlo ni deslizarlo en cada cambio de pantalla.
+ *
+ * Las manchas son degradados radiales (ya difusos): sin `Modifier.blur`, que era
+ * costoso y en Android < 12 no hacía nada.
  */
 @Composable
 fun CobreBackdrop(modifier: Modifier = Modifier) {
-    val isDark = cobreIsDark()
-    val bgGradient = if (isDark) {
-        Brush.verticalGradient(colors = listOf(DarkBg, DarkBg, DarkSurface1))
-    } else {
-        Brush.verticalGradient(
-            colors = listOf(BackgroundWarm, Brand100.copy(alpha = 0.16f), BackgroundWarm),
-        )
-    }
-
+    val colors = CobreTheme.colors
+    val alphaCobre = if (colors.isDark) 0.10f else 0.14f
+    val alphaIndigo = if (colors.isDark) 0.10f else 0.08f
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(bgGradient),
+            .background(colors.background),
     ) {
-        // Los 3 blobs se mantienen en ambos temas (solo baja su opacidad en oscuro)
-        // para que el fondo oscuro no quede plano.
-        val brandBlobAlpha = if (isDark) 0.10f else 0.25f
-        val copperBlobAlpha = if (isDark) 0.10f else 0.28f
-        val skyBlobAlpha = if (isDark) 0.05f else 0.12f
-        val brandBlobColor = if (isDark) Brand500 else Brand200
-        val copperBlobColor = if (isDark) Copper600 else Copper200
-        val skyBlobColor = if (isDark) Sky500 else Sky200
-
         Box(
             modifier = Modifier
-                .size(360.dp)
-                .graphicsLayer { translationX = 140f; translationY = -160f }
-                .blur(100.dp)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(copperBlobColor.copy(alpha = copperBlobAlpha), Color.Transparent),
-                    ),
-                    shape = RoundedCornerShape(percent = 50),
-                ),
+                .size(420.dp)
+                .align(Alignment.TopEnd)
+                .graphicsLayer { translationX = 160f; translationY = -180f }
+                .background(Brush.radialGradient(listOf(colors.accent.copy(alpha = alphaCobre), Color.Transparent))),
         )
         Box(
             modifier = Modifier
-                .size(400.dp)
+                .size(460.dp)
                 .align(Alignment.BottomStart)
-                .graphicsLayer { translationX = -60f; translationY = 160f }
-                .blur(110.dp)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(brandBlobColor.copy(alpha = brandBlobAlpha), Color.Transparent),
-                    ),
-                    shape = RoundedCornerShape(percent = 50),
-                ),
-        )
-        Box(
-            modifier = Modifier
-                .size(300.dp)
-                .align(Alignment.CenterStart)
-                .graphicsLayer { translationX = -100f; translationY = -120f }
-                .blur(100.dp)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(skyBlobColor.copy(alpha = skyBlobAlpha), Color.Transparent),
-                    ),
-                    shape = RoundedCornerShape(percent = 50),
-                ),
+                .graphicsLayer { translationX = -180f; translationY = 200f }
+                .background(Brush.radialGradient(listOf(colors.info.copy(alpha = alphaIndigo), Color.Transparent))),
         )
     }
 }
 
 /**
- * Contenedor de contenido de pantalla: solo aplica el inset de `systemBars` para que
- * nada quede tapado por las barras de Android. El fondo visual lo pinta [CobreBackdrop]
- * una sola vez en la raíz; este composable ya no lo dibuja para no recrearlo por pantalla.
+ * Contenedor de pantalla: aplica el inset de `systemBars` (si [applySystemBarsInsets])
+ * y el espacio de la navegación flotante ([LocalShellPadding]) para que nada quede
+ * tapado por las barras del sistema ni por el vidrio.
  */
 @Composable
 fun CobreBackground(
@@ -186,87 +131,119 @@ fun CobreBackground(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .then(
-                if (applySystemBarsInsets) Modifier.windowInsetsPadding(WindowInsets.systemBars)
-                else Modifier,
-            ),
+            .then(if (applySystemBarsInsets) Modifier.windowInsetsPadding(WindowInsets.systemBars) else Modifier)
+            .padding(LocalShellPadding.current),
     ) {
         content()
     }
 }
 
 /**
- * Superficie principal de la app, equivalente a las tarjetas de la intranet web.
- * El vidrio y las sombras se mantienen deliberadamente sutiles: el color de marca
- * queda reservado para estados y acciones, en vez de teñir cada bloque de contenido.
+ * Tarjeta de contenido. Pese al nombre ya no es vidrio: con Liquid Glass el vidrio
+ * queda para la capa de navegación y el contenido usa superficies sólidas con borde
+ * fino (como [ContentCard]). [elevation] y [tint] se conservan por compatibilidad con
+ * las llamadas existentes: la tarjeta minimal no lleva sombra teñida.
  */
+@Suppress("UnusedParameter")
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
-    shape: RoundedCornerShape = RoundedCornerShape(18.dp),
+    shape: RoundedCornerShape = CobreShapes.lg,
     contentPadding: PaddingValues = PaddingValues(20.dp),
-    elevation: Dp = 8.dp,
-    tint: Color = Brand500,
+    elevation: Dp = 0.dp,
+    tint: Color = Color.Unspecified,
     stripe: Color? = null,
     content: @Composable () -> Unit,
 ) {
-    val isDark = cobreIsDark()
+    Box(modifier = modifier.superficieContenido(shape, stripe).padding(contentPadding)) {
+        content()
+    }
+}
 
-    val bgColor = if (isDark) DarkSurface1.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.62f)
-    val borderColor = if (isDark) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.7f)
-    val innerHighlight = if (isDark) Color.White.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.75f)
-
-    Box(
+/**
+ * Tarjeta de contenido: superficie sólida, borde fino, sin sombra. Con [onClick] se
+ * hunde levemente al presionarla. [stripe] dibuja una franja de color a la izquierda
+ * (estado o prioridad).
+ */
+@Composable
+fun ContentCard(
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    contentPadding: PaddingValues = PaddingValues(CobreSpacing.s16),
+    stripe: Color? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    // Las tarjetas son bloques: ocupan todo el ancho que les da su contenedor.
+    Column(
         modifier = modifier
-            .shadow(
-                elevation = if (isDark) (elevation / 2f) else elevation,
-                shape = shape,
-                ambientColor = if (isDark) Color.Black else Color.Black.copy(alpha = 0.02f),
-                spotColor = if (isDark) Color.Black else tint.copy(alpha = 0.14f),
-            )
-            .clip(shape)
-            .background(bgColor)
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.pressableScale(interaction, pressedScale = 0.98f) else Modifier)
+            .superficieContenido(CobreShapes.lg, stripe)
             .then(
-                if (stripe != null) {
-                    Modifier.drawBehind {
-                        drawRect(color = stripe.copy(alpha = 0.9f), size = Size(3.dp.toPx(), size.height))
-                    }
+                if (onClick != null) {
+                    Modifier.clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick)
                 } else {
                     Modifier
                 },
             )
-            .drawBehind {
-                // Inset highlight (simula inset 0 1px 0 rgba(...))
-                drawLine(
-                    color = innerHighlight,
-                    start = androidx.compose.ui.geometry.Offset(0f, 1f),
-                    end = androidx.compose.ui.geometry.Offset(size.width, 1f),
-                    strokeWidth = 2f
-                )
-            }
-            .border(width = 1.dp, color = borderColor, shape = shape)
             .padding(contentPadding),
-    ) {
-        content()
-    }
+        content = content,
+    )
+}
+
+@Composable
+private fun Modifier.superficieContenido(shape: Shape, stripe: Color?): Modifier {
+    val colors = CobreTheme.colors
+    return this
+        .clip(shape)
+        .background(colors.surface)
+        .then(
+            if (stripe != null) {
+                Modifier.drawBehind { drawRect(color = stripe, size = Size(4.dp.toPx(), size.height)) }
+            } else {
+                Modifier
+            },
+        )
+        .border(width = if (colors.isDark) 1.dp else 0.5.dp, color = colors.hairline, shape = shape)
+}
+
+/** Encabezado de sección en `label-caps` (Inconsolata, mayúsculas, tracking amplio), como las listas agrupadas de iOS. */
+@Composable
+fun SectionLabel(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text.uppercase(),
+        style = CobreTheme.text.labelCaps,
+        color = CobreTheme.colors.textSecondary,
+        modifier = modifier.semantics { heading() },
+    )
 }
 
 /** Colores unificados para los campos de texto (login, búsqueda, comentario). */
 @Composable
 fun cobreFieldColors(): TextFieldColors {
-    val isDark = cobreIsDark()
+    val colors = CobreTheme.colors
     return OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = if (isDark) Brand400 else Brand500,
-        unfocusedBorderColor = if (isDark) DarkOutline else Brand500.copy(alpha = 0.35f),
-        focusedLabelColor = if (isDark) Brand400 else Brand700,
-        unfocusedLabelColor = if (isDark) DarkOnSurfaceMuted else Brand700.copy(alpha = 0.75f),
-        cursorColor = if (isDark) Brand400 else Copper600,
-        focusedContainerColor = if (isDark) DarkSurface2 else Color.White.copy(alpha = 0.5f),
-        unfocusedContainerColor = if (isDark) DarkSurface1 else Color.White.copy(alpha = 0.35f),
-        focusedTextColor = if (isDark) DarkOnSurface else ForegroundStone,
-        unfocusedTextColor = if (isDark) DarkOnSurface else ForegroundStone,
-        focusedPlaceholderColor = if (isDark) DarkOnSurfaceMuted else Brand700.copy(alpha = 0.6f),
-        unfocusedPlaceholderColor = if (isDark) DarkOnSurfaceMuted else Brand700.copy(alpha = 0.6f),
+        focusedBorderColor = colors.accent,
+        unfocusedBorderColor = colors.fieldBorder,
+        focusedLabelColor = colors.accentText,
+        unfocusedLabelColor = colors.textSecondary,
+        cursorColor = colors.accent,
+        focusedContainerColor = colors.surface,
+        unfocusedContainerColor = colors.surface,
+        focusedTextColor = colors.textPrimary,
+        unfocusedTextColor = colors.textPrimary,
+        focusedPlaceholderColor = colors.textSecondary,
+        unfocusedPlaceholderColor = colors.textSecondary,
+        focusedLeadingIconColor = colors.textSecondary,
+        unfocusedLeadingIconColor = colors.textSecondary,
+        focusedTrailingIconColor = colors.textSecondary,
+        unfocusedTrailingIconColor = colors.textSecondary,
+        errorBorderColor = colors.danger,
+        errorLabelColor = colors.dangerText,
+        errorCursorColor = colors.danger,
+        errorSupportingTextColor = colors.dangerText,
+        errorContainerColor = colors.surface,
     )
 }
 
@@ -338,7 +315,7 @@ private fun etapaEstadoAccent(completada: Boolean, activa: Boolean): Color? {
     val isDark = cobreIsDark()
     return when {
         completada -> if (isDark) StatusGreenDark else StatusGreen
-        activa -> if (isDark) Brand400 else Brand500
+        activa -> CobreTheme.colors.info
         else -> null
     }
 }
@@ -359,9 +336,9 @@ private fun EtapaTimelineRow(
     val isDark = cobreIsDark()
     val estadoAccent = etapaEstadoAccent(completada, activa)
     val activo = completada || activa
-    val inactiveCircle = if (isDark) DarkSurface2 else Color.White.copy(alpha = 0.6f)
-    val inactiveContent = if (isDark) DarkOnSurfaceMuted else Brand700.copy(alpha = 0.55f)
-    val lineTrack = if (isDark) DarkOutline else Brand700.copy(alpha = 0.15f)
+    val inactiveCircle = CobreTheme.colors.surfaceMuted
+    val inactiveContent = CobreTheme.colors.textSecondary
+    val lineTrack = CobreTheme.colors.hairline
 
     Row(modifier = Modifier.fillMaxWidth()) {
         EtapaNodo(
@@ -482,12 +459,12 @@ fun StatusChip(
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
 ) {
+    // Etiqueta (no control): radio `sm` de DESIGN.md, sin borde.
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(50))
+            .clip(CobreShapes.sm)
             .background(container)
-            .border(1.dp, content.copy(alpha = 0.1f), RoundedCornerShape(50))
-            .padding(horizontal = 14.dp, vertical = 8.dp),
+            .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -508,41 +485,27 @@ fun StatusChip(
     }
 }
 
-/** Chip de filtro/selección (no de estado): esquinas `rounded-xl` de la web, no píldora. Usado en Dashboard e Insumos. */
+/**
+ * Chip de filtro/selección (no de estado): radio `md` de DESIGN.md. Seleccionado va en
+ * negro (Ink), no en cobre, para no competir con la acción principal de la pantalla.
+ */
 @Composable
 fun SelectableChip(label: String, seleccionado: Boolean, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
-    val isDark = cobreIsDark()
-    val fondo = when {
-        seleccionado -> Brand500
-        isDark -> DarkSurface2
-        else -> Color.White
-    }
-    val texto = when {
-        seleccionado -> Color.White
-        isDark -> DarkOnSurface
-        else -> TextSecondaryLight
-    }
-    val borde = when {
-        seleccionado -> Color.Transparent
-        isDark -> DarkOutline
-        else -> Stone200
-    }
+    val colors = CobreTheme.colors
+    val fondo = if (seleccionado) colors.primaryFill else colors.surface
+    val texto = if (seleccionado) colors.onPrimaryFill else colors.textSecondary
+    val borde = if (seleccionado) Color.Transparent else colors.hairline
     Row(
         modifier = Modifier
             .pressableScale(interaction)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(CobreShapes.md)
             .background(fondo)
-            .border(1.dp, borde, RoundedCornerShape(12.dp))
-            .semantics(mergeDescendants = true) {
-                role = Role.Tab
-                selected = seleccionado
-            }
-            .clickable(interactionSource = interaction, indication = null) { onClick() }
-            .padding(horizontal = 16.dp, vertical = 11.dp),
+            .border(1.dp, borde, CobreShapes.md)
+            .selectable(selected = seleccionado, interactionSource = interaction, indication = null, role = Role.Tab) { onClick() }
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = texto, fontWeight = FontWeight.SemiBold)
     }
 }
-

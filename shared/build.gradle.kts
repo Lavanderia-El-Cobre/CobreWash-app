@@ -67,6 +67,8 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
+            // Desenfoque real del fondo (backdrop blur) para las superficies Liquid Glass.
+            implementation(libs.haze)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

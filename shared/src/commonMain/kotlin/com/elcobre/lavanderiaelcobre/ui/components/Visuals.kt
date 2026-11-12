@@ -3,6 +3,7 @@ package com.elcobre.lavanderiaelcobre.ui.components
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.elcobre.lavanderiaelcobre.data.model.EtapaProceso
@@ -11,15 +12,11 @@ import com.elcobre.lavanderiaelcobre.data.model.SeveridadStock
 import com.elcobre.lavanderiaelcobre.data.model.TipoAlerta
 import com.elcobre.lavanderiaelcobre.data.model.TipoComanda
 import com.elcobre.lavanderiaelcobre.data.model.TipoEvento
-import com.elcobre.lavanderiaelcobre.ui.theme.Brand400
-import com.elcobre.lavanderiaelcobre.ui.theme.Brand500
-import com.elcobre.lavanderiaelcobre.ui.theme.Brand600
-import com.elcobre.lavanderiaelcobre.ui.theme.Brand700
-import com.elcobre.lavanderiaelcobre.ui.theme.Copper500
+import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
+import com.elcobre.lavanderiaelcobre.ui.theme.Copper600
 import com.elcobre.lavanderiaelcobre.ui.theme.Copper700
-import com.elcobre.lavanderiaelcobre.ui.theme.DarkOnSurface
-import com.elcobre.lavanderiaelcobre.ui.theme.DarkOnSurfaceMuted
-import com.elcobre.lavanderiaelcobre.ui.theme.ForegroundStone
+import com.elcobre.lavanderiaelcobre.ui.theme.Indigo
+import com.elcobre.lavanderiaelcobre.ui.theme.IndigoLight
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusAmber
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusAmberDark
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusBlue
@@ -32,24 +29,24 @@ import com.elcobre.lavanderiaelcobre.ui.theme.StatusRose
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusRoseDark
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusSlate
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusSlateDark
-import com.elcobre.lavanderiaelcobre.ui.theme.TextSecondaryLight
 import com.elcobre.lavanderiaelcobre.ui.theme.cobreIsDark
 
-/** Color de título/encabezado: en claro es carboncillo piedra, no cobre, para que el cobre quede reservado a acentos (CTAs, logo). */
+/** Color de título/encabezado (Ink en claro); equivale a `CobreTheme.colors.textPrimary`. */
 @Composable
-fun brandHeadingColor(): Color =
-    if (cobreIsDark()) DarkOnSurface else ForegroundStone
+fun brandHeadingColor(): Color = CobreTheme.colors.textPrimary
 
-/** Color de texto secundario/de soporte (gris cálido en claro), AA en ambos temas. */
+/** Color de texto secundario/de soporte, AA en ambos temas; equivale a `CobreTheme.colors.textSecondary`. */
 @Composable
-fun brandMutedColor(): Color =
-    if (cobreIsDark()) DarkOnSurfaceMuted else TextSecondaryLight
+fun brandMutedColor(): Color = CobreTheme.colors.textSecondary
 
-/** Espeja `.bg-gradient-brand` del CSS de la web. */
-val BrandCtaGradient: Brush = Brush.linearGradient(listOf(Brand500, Copper500))
+/**
+ * Relleno de los CTA heredados. DESIGN.md es minimal: el degradado cobre pasa a un
+ * cobre sólido (4.8:1 con texto blanco, en ambos temas). Los CTA nuevos usan [CobreButton].
+ */
+val BrandCtaGradient: Brush = SolidColor(Copper600)
 
-/** Espeja `.text-gradient` del CSS de la web; para títulos destacados en tema claro. */
-val BrandTextGradient: Brush = Brush.linearGradient(listOf(Brand600, Copper500, Copper700))
+/** Títulos destacados heredados: cobre sólido legible como texto, sin degradado. */
+val BrandTextGradient: Brush = SolidColor(Copper700)
 
 /**
  * Color resuelto de un estado (etapa, prioridad, alerta), ya adaptado al tema
@@ -82,14 +79,14 @@ private fun statusColors(light: Color, dark: Color): ChipColors {
 }
 
 /**
- * Color por estado, igual que `estadoConfig` de la web (`lib/mock/comandas.ts`):
- * marca mientras está en curso, verde solo en la etapa final ("Listo"). No varía
- * por tipo de etapa, a diferencia de una versión anterior de este archivo.
+ * Color por estado: índigo (secondary de DESIGN.md) mientras está en proceso, verde
+ * solo en la etapa final ("Listo"). El cobre queda reservado a las acciones, así que
+ * un estado nunca compite visualmente con el botón "Avanzar".
  */
 @Composable
 fun etapaColors(etapa: EtapaProceso): ChipColors = when (etapa) {
     EtapaProceso.ENTREGA, EtapaProceso.ENTREGA_DOMICILIO -> statusColors(StatusGreen, StatusGreenDark)
-    else -> statusColors(Brand500, Brand400)
+    else -> statusColors(Indigo, IndigoLight)
 }
 
 /** Ícono del tipo de comanda (tienda vs. domicilio). */

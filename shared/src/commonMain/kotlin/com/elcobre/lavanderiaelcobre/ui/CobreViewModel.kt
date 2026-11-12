@@ -150,6 +150,12 @@ class CobreViewModel(
         modoTema = if (esOscuroActual) ModoTema.CLARO else ModoTema.OSCURO
     }
 
+    /** Accesibilidad: superficies de vidrio opacas en vez de translúcidas (equivalente a "Reducir transparencia" de iOS). */
+    var reducirTransparencia by mutableStateOf(false)
+        private set
+
+    fun cambiarReducirTransparencia(activo: Boolean) { reducirTransparencia = activo }
+
     fun cambiarTurno(nuevoTurno: String) {
         val actual = operario ?: return
         val limpio = nuevoTurno.trim()
