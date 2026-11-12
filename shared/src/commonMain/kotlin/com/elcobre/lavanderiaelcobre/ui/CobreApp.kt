@@ -12,30 +12,22 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.BottomAppBar
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,16 +37,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -68,10 +59,8 @@ import com.elcobre.lavanderiaelcobre.data.model.Operario
 import com.elcobre.lavanderiaelcobre.ui.components.AdminSidebar
 import com.elcobre.lavanderiaelcobre.ui.components.CobreBackHandler
 import com.elcobre.lavanderiaelcobre.ui.components.CobreBackdrop
-import com.elcobre.lavanderiaelcobre.ui.components.CobreIcons
 import com.elcobre.lavanderiaelcobre.ui.components.WebSidebar
 import com.elcobre.lavanderiaelcobre.ui.components.WebTopbar
-import com.elcobre.lavanderiaelcobre.ui.components.pressableScale
 import com.elcobre.lavanderiaelcobre.ui.screens.avisos.AvisosScreen
 import com.elcobre.lavanderiaelcobre.ui.screens.configuracion.ConfiguracionScreen
 import com.elcobre.lavanderiaelcobre.ui.screens.dashboard.DashboardScreen
@@ -81,7 +70,12 @@ import com.elcobre.lavanderiaelcobre.ui.screens.insumos.InsumosScreen
 import com.elcobre.lavanderiaelcobre.ui.screens.login.LoginScreen
 import com.elcobre.lavanderiaelcobre.ui.screens.vehiculos.VehiculosScreen
 import com.elcobre.lavanderiaelcobre.ui.theme.Brand400
-import com.elcobre.lavanderiaelcobre.ui.theme.Brand500
+import com.elcobre.lavanderiaelcobre.ui.components.GlassSurface
+import com.elcobre.lavanderiaelcobre.ui.components.LocalGlassBackdrop
+import com.elcobre.lavanderiaelcobre.ui.components.LocalRootGlassBackdrop
+import com.elcobre.lavanderiaelcobre.ui.components.glassBackdropSource
+import com.elcobre.lavanderiaelcobre.ui.components.rememberGlassBackdrop
+import com.elcobre.lavanderiaelcobre.ui.theme.CobreShapes
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 import com.elcobre.lavanderiaelcobre.ui.theme.ModoTema
 import com.elcobre.lavanderiaelcobre.ui.theme.cobreIsDark
@@ -116,15 +110,21 @@ fun CobreApp() {
         vm.volver()
     }
 
-    CobreTheme(darkTheme = temaOscuro) {
+    CobreTheme(darkTheme = temaOscuro, reduceTransparency = vm.reducirTransparencia) {
         val pantalla = vm.pantalla
+        // Fondo que desenfoca cualquier superficie de vidrio de la app. Es hermano (no
+        // ancestro) de las pantallas, así ningún vidrio se desenfoca a sí mismo.
+        val fondoVidrio = rememberGlassBackdrop()
 
         Box(modifier = Modifier.fillMaxSize()) {
             // Fondo persistente detrás de toda la navegación: no se recrea en cada
-            // cambio de pantalla, así el blur no se recalcula por navegación y el
-            // fondo no se desliza junto con la transición (evita la sensación de
-            // "recarga completa" al cambiar de pantalla).
-            CobreBackdrop()
+            // cambio de pantalla ni se desliza junto con la transición.
+            CobreBackdrop(modifier = Modifier.glassBackdropSource(fondoVidrio))
+
+            CompositionLocalProvider(
+                LocalRootGlassBackdrop provides fondoVidrio,
+                LocalGlassBackdrop provides fondoVidrio,
+            ) {
 
             // Permite que el icono de etapa "vuele" de la tarjeta del Dashboard a la cabecera del Detalle.
             SharedTransitionLayout {
@@ -157,6 +157,7 @@ fun CobreApp() {
                         animatedScope = this,
                     )
                 }
+            }
             }
             vm.errorOperacion?.let { mensaje ->
                 Text(
@@ -264,6 +265,8 @@ private fun ConfiguracionDestino(destino: Pantalla, vm: CobreViewModel) {
             onCambiarTema = { vm.cambiarModoTema(it) },
             onCerrarSesion = { vm.cerrarSesion() },
             applySystemBarsInsets = !isTablet,
+            reducirTransparencia = vm.reducirTransparencia,
+            onCambiarReducirTransparencia = { vm.cambiarReducirTransparencia(it) },
         )
     }
 }
@@ -416,22 +419,12 @@ private fun AdminScaffold(
     content: @Composable (isTablet: Boolean) -> Unit,
 ) {
     val isDark = cobreIsDark()
+    val window = CobreTheme.window
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val isTablet = maxWidth >= ANCHO_TABLET
+        val isTablet = maxWidth >= ANCHO_TABLET && !window.isPhoneLandscape
         if (isTablet) {
-            var sidebarVisible by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(true) }
-            val sidebarWidth by androidx.compose.animation.core.animateDpAsState(
-                targetValue = if (sidebarVisible) 240.dp else 0.dp,
-                animationSpec = tween(350, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-                label = "adminSidebarWidth",
-            )
-            Row(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
-                Box(
-                    modifier = Modifier
-                        .width(sidebarWidth)
-                        .fillMaxHeight()
-                        .clipToBounds(),
-                ) {
+            TabletShell(
+                sidebar = { modifier ->
                     AdminSidebar(
                         filtroActual = vehiculosVm.filtro,
                         kpis = vehiculosVm.kpis,
@@ -440,10 +433,10 @@ private fun AdminScaffold(
                         onSeleccionarFiltro = { vehiculosVm.seleccionarFiltro(it) },
                         onRefrescar = { vehiculosVm.refrescarFlota() },
                         onCerrarSesion = onCerrarSesion,
-                        modifier = Modifier.requiredWidth(240.dp),
+                        modifier = modifier,
                     )
-                }
-                Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                },
+                topbar = { onMenu ->
                     WebTopbar(
                         usuarioNombre = administrador.nombre,
                         usuarioRol = "ADMINISTRADOR",
@@ -452,13 +445,11 @@ private fun AdminScaffold(
                         showSearch = false,
                         alertasCount = vehiculosVm.kpis.enRuta,
                         onAlertasClick = { vehiculosVm.seleccionarFiltro(FiltroFlota.EN_RUTA) },
-                        onMenuClick = { sidebarVisible = !sidebarVisible },
+                        onMenuClick = onMenu,
                     )
-                    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                        content(true)
-                    }
-                }
-            }
+                },
+                content = { content(true) },
+            )
         } else {
             Box(modifier = Modifier.fillMaxSize()) {
                 content(false)
@@ -507,24 +498,20 @@ private fun DetalleDestino(
     )
 }
 
-/** Ítems de navegación del Operario, compartidos entre el bottom nav (teléfono) y el rail (tablet ancha). */
-private data class NavItem(val icon: ImageVector, val label: String, val pantalla: Pantalla)
-
-private val navItems = listOf(
-    NavItem(CobreIcons.LocalLaundry, "Pedidos", Pantalla.Dashboard),
-    NavItem(CobreIcons.Campaign, "Avisos", Pantalla.Avisos),
-    NavItem(CobreIcons.Inventory, "Inventario", Pantalla.Insumos),
-    NavItem(CobreIcons.Person, "Ajustes", Pantalla.Configuracion),
-)
-
-/** Ancho a partir del cual se usa el rail lateral en vez del bottom nav (breakpoint "medium" de Material 3). */
+/** Ancho a partir del cual se usa la barra lateral de tablet (breakpoint "medium" de Material 3). */
 private val ANCHO_TABLET = 600.dp
 
+/** Ancho de la barra lateral de tablet. */
+private val ANCHO_SIDEBAR = 240.dp
+
+/** Separación de los paneles de vidrio flotantes respecto del borde y del contenido. */
+private val MARGEN_VIDRIO = 12.dp
+
 /**
- * Navegación del rol Operario, adaptativa según el ancho disponible (NFR05: la app
- * debe operarse en tablets de 10"): bottom nav en teléfono, rail lateral en pantallas
- * anchas — el equivalente adaptativo del sidebar colapsado de la web, en vez de
- * forzar un patrón de teléfono en un ancho donde sobra espacio horizontal.
+ * Navegación del rol Operario, adaptativa (NFR05: la app debe operarse en tablets de 10"):
+ * - teléfono vertical: barra de pestañas flotante de vidrio con el QR al lado;
+ * - teléfono horizontal: rail flotante a la izquierda, para no quitarle alto a las listas;
+ * - tablet: barra lateral y barra superior de vidrio (las de la intranet web).
  */
 @Composable
 private fun OperarioScaffold(
@@ -533,26 +520,16 @@ private fun OperarioScaffold(
     content: @Composable (isTablet: Boolean) -> Unit,
 ) {
     val isDark = cobreIsDark()
+    val window = CobreTheme.window
     val onSeleccionarTab: (Pantalla) -> Unit = { vm.navegar(it) }
     val onEscanearQR: () -> Unit = { vm.navegar(Pantalla.Escaner) }
+    val badges: BadgesNav = mapOf(Pantalla.Avisos to vm.avisosNoLeidos)
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val isTablet = maxWidth >= ANCHO_TABLET
-        if (isTablet) {
-            var sidebarVisible by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(true) }
-            val sidebarWidth by androidx.compose.animation.core.animateDpAsState(
-                targetValue = if (sidebarVisible) 240.dp else 0.dp,
-                animationSpec = tween(350, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-                label = "mainSidebarWidth",
-            )
-
-            Row(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
-                Box(
-                    modifier = Modifier
-                        .width(sidebarWidth)
-                        .fillMaxHeight()
-                        .clipToBounds() // Recorta el contenido para evitar que los textos se vean al colapsar
-                ) {
+        val isTablet = maxWidth >= ANCHO_TABLET && !window.isPhoneLandscape
+        when {
+            isTablet -> TabletShell(
+                sidebar = { modifier ->
                     WebSidebar(
                         tabActual = tabActual,
                         onSeleccionarTab = onSeleccionarTab,
@@ -563,10 +540,10 @@ private fun OperarioScaffold(
                         operarioNombre = vm.operario?.nombre ?: "Operario Planta",
                         operarioRol = vm.operario?.turno ?: "Turno Mañana",
                         onCerrarSesion = { vm.cerrarSesion() },
-                        modifier = Modifier.requiredWidth(240.dp) // Fuerza a que no se redimensione, solo se recorte
+                        modifier = modifier,
                     )
-                }
-                Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                },
+                topbar = { onMenu ->
                     WebTopbar(
                         usuarioNombre = vm.operario?.nombre ?: "Operario Planta",
                         usuarioRol = "OPERARIO - " + (vm.operario?.turno ?: "PLANTA"),
@@ -575,159 +552,78 @@ private fun OperarioScaffold(
                         showSearch = false,
                         alertasCount = vm.pedidos.count { it.estaBloqueado } + vm.avisosNoLeidos,
                         onAlertasClick = { vm.navegar(Pantalla.Avisos) },
-                        onMenuClick = { sidebarVisible = !sidebarVisible },
+                        onMenuClick = onMenu,
                     )
-                    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                        content(true)
-                    }
-                }
-            }
-        } else {
-            Scaffold(
-                containerColor = Color.Transparent,
-                // Los insets de status/navigation bar los maneja CobreBackground dentro de
-                // content() (igual que en las pantallas sin Scaffold); si Scaffold también
-                // los reservara aquí, se aplicarían dos veces y el layout queda mal calculado.
-                contentWindowInsets = WindowInsets(0, 0, 0, 0),
-                bottomBar = {
-                    BottomAppBar(containerColor = MaterialTheme.colorScheme.surface) {
-                        BottomNavRow(tabActual, onSeleccionarTab, onEscanearQR, avisosNoLeidos = vm.avisosNoLeidos)
-                    }
                 },
-            ) { padding ->
-                Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                    content(false)
-                }
+                content = { content(true) },
+            )
+            window.isPhoneLandscape -> Box(modifier = Modifier.fillMaxSize()) {
+                Box(modifier = Modifier.fillMaxSize().padding(start = EspacioRail)) { content(false) }
+                FloatingRail(
+                    tabActual = tabActual,
+                    onSeleccionarTab = onSeleccionarTab,
+                    onEscanearQR = onEscanearQR,
+                    compacto = true,
+                    badges = badges,
+                    modifier = Modifier.align(Alignment.CenterStart),
+                )
+            }
+            else -> Box(modifier = Modifier.fillMaxSize()) {
+                // Las pantallas aplican el inset de la barra del sistema; aquí solo se
+                // reserva lo que ocupa la barra flotante por encima de ella.
+                Box(modifier = Modifier.fillMaxSize().padding(bottom = EspacioBarraInferior)) { content(false) }
+                FloatingTabBar(
+                    tabActual = tabActual,
+                    onSeleccionarTab = onSeleccionarTab,
+                    onEscanearQR = onEscanearQR,
+                    badges = badges,
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                )
             }
         }
     }
 }
 
 /**
- * Barra inferior: 4 tabs con un botón circular central para escanear el QR de la
- * comanda (RF-SP02/SP09), la acción más frecuente en planta. El tab activo se
- * resalta con la misma superficie cobriza discreta que usa el sidebar de la web.
+ * Esqueleto de tablet compartido por Operario y Administrador: barra lateral plegable y
+ * barra superior como paneles de vidrio flotantes, con el contenido a la derecha.
  */
 @Composable
-private fun BottomNavRow(
-    tabActual: Pantalla,
-    onSeleccionarTab: (Pantalla) -> Unit,
-    onEscanearQR: () -> Unit,
-    avisosNoLeidos: Int = 0,
+private fun TabletShell(
+    sidebar: @Composable (Modifier) -> Unit,
+    topbar: @Composable (onMenu: () -> Unit) -> Unit,
+    content: @Composable () -> Unit,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        NavTabButton(
-            icon = navItems[0].icon,
-            label = navItems[0].label,
-            seleccionado = tabActual == navItems[0].pantalla,
-            onClick = { onSeleccionarTab(navItems[0].pantalla) },
-            modifier = Modifier.weight(1f),
-        )
-        NavTabButton(
-            icon = navItems[1].icon,
-            label = navItems[1].label,
-            seleccionado = tabActual == navItems[1].pantalla,
-            badgeCount = avisosNoLeidos,
-            onClick = { onSeleccionarTab(navItems[1].pantalla) },
-            modifier = Modifier.weight(1f),
-        )
-        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-            QrTabButton(onClick = onEscanearQR)
-        }
-        NavTabButton(
-            icon = navItems[2].icon,
-            label = navItems[2].label,
-            seleccionado = tabActual == navItems[2].pantalla,
-            onClick = { onSeleccionarTab(navItems[2].pantalla) },
-            modifier = Modifier.weight(1f),
-        )
-        NavTabButton(
-            icon = navItems[3].icon,
-            label = navItems[3].label,
-            seleccionado = tabActual == navItems[3].pantalla,
-            onClick = { onSeleccionarTab(navItems[3].pantalla) },
-            modifier = Modifier.weight(1f),
-        )
-    }
-}
-
-/** Botón circular destacado (marca) para la acción principal del Operario: escanear QR. */
-@Composable
-private fun QrTabButton(onClick: () -> Unit) {
-    val interaction = remember { MutableInteractionSource() }
-    Box(
-        modifier = Modifier
-            .size(48.dp)
-            .pressableScale(interaction)
-            .clip(RoundedCornerShape(50))
-            .background(Brand500)
-            .semantics {
-                role = Role.Button
-                contentDescription = "Escanear código QR"
-            }
-            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            CobreIcons.QrCodeScanner,
-            contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier.size(24.dp),
-        )
-    }
-}
-
-@Composable
-private fun NavTabButton(
-    icon: ImageVector,
-    label: String,
-    seleccionado: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    badgeCount: Int = 0,
-) {
-    val accent = if (seleccionado) Brand500 else MaterialTheme.colorScheme.onSurfaceVariant
-    val interaction = remember { MutableInteractionSource() }
-    val desc = if (badgeCount > 0) "$label, $badgeCount sin leer" else label
-    Column(
-        modifier = modifier
-            .padding(horizontal = 3.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(if (seleccionado) Brand500.copy(alpha = 0.11f) else Color.Transparent)
-            .semantics(mergeDescendants = true) {
-                role = Role.Tab
-                selected = seleccionado
-                contentDescription = desc
-            }
-            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
-            .padding(vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Box(contentAlignment = Alignment.TopEnd) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = accent,
-                modifier = Modifier.padding(horizontal = 6.dp).size(22.dp),
-            )
-            if (badgeCount > 0) {
-                Box(
-                    modifier = Modifier
-                        .background(Brand500, RoundedCornerShape(50))
-                        .padding(horizontal = 5.dp, vertical = 1.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = if (badgeCount > 9) "9+" else badgeCount.toString(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White,
-                    )
-                }
+    var sidebarVisible by remember { mutableStateOf(true) }
+    val sidebarWidth by animateDpAsState(
+        targetValue = if (sidebarVisible) ANCHO_SIDEBAR + MARGEN_VIDRIO else 0.dp,
+        animationSpec = tween(350, easing = FastOutSlowInEasing),
+        label = "sidebarWidth",
+    )
+    Row(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
+        // clipToBounds: al plegarse, el panel se recorta en vez de comprimir su contenido.
+        Box(modifier = Modifier.width(sidebarWidth).fillMaxHeight().clipToBounds()) {
+            GlassSurface(
+                modifier = Modifier
+                    .requiredWidth(ANCHO_SIDEBAR + MARGEN_VIDRIO)
+                    .fillMaxHeight()
+                    .padding(start = MARGEN_VIDRIO, top = MARGEN_VIDRIO, bottom = MARGEN_VIDRIO),
+                shape = CobreShapes.lg,
+            ) {
+                sidebar(Modifier.requiredWidth(ANCHO_SIDEBAR))
             }
         }
-        Text(label, style = MaterialTheme.typography.labelSmall, color = accent)
+        Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+            GlassSurface(
+                modifier = Modifier.fillMaxWidth().padding(MARGEN_VIDRIO),
+                shape = CobreShapes.lg,
+                floating = true,
+            ) {
+                topbar { sidebarVisible = !sidebarVisible }
+            }
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                content()
+            }
+        }
     }
 }
