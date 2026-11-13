@@ -30,3 +30,11 @@ fun extraerQrInsumo(raw: String): String? {
         else -> null
     }
 }
+
+private const val URL_SEGUIMIENTO = "https://lavanderia-elcobre.vercel.app/seguimiento?qr="
+
+/**
+ * Enlace público que lleva el QR del comprobante, igual que `crearUrlSeguimiento` de la
+ * web: UUID canónico en minúsculas. `null` si el código guardado no es un UUID válido.
+ */
+fun urlSeguimientoComanda(codigoQr: String): String? = extraerQrInsumo(codigoQr)?.let { URL_SEGUIMIENTO + it }

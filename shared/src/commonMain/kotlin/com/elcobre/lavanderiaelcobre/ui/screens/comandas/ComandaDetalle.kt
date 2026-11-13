@@ -18,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.animation.animateContentSize
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,12 +28,14 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.elcobre.lavanderiaelcobre.data.model.ComandaGestion
+import com.elcobre.lavanderiaelcobre.data.model.EstadoComanda
 import com.elcobre.lavanderiaelcobre.data.model.EstadoEtapaProduccion
 import com.elcobre.lavanderiaelcobre.data.model.EtapaComanda
 import com.elcobre.lavanderiaelcobre.data.model.EventoComanda
 import com.elcobre.lavanderiaelcobre.data.model.clp
 import com.elcobre.lavanderiaelcobre.ui.components.ButtonVariant
 import com.elcobre.lavanderiaelcobre.ui.components.ChipTono
+import com.elcobre.lavanderiaelcobre.ui.components.CodigoQr
 import com.elcobre.lavanderiaelcobre.ui.components.CobreButton
 import com.elcobre.lavanderiaelcobre.ui.components.CobreIcons
 import com.elcobre.lavanderiaelcobre.ui.components.CobreTextField
@@ -43,6 +46,7 @@ import com.elcobre.lavanderiaelcobre.ui.components.SectionLabel
 import com.elcobre.lavanderiaelcobre.ui.components.Tono
 import com.elcobre.lavanderiaelcobre.ui.components.tonoEstadoComanda
 import com.elcobre.lavanderiaelcobre.ui.gestion.ComandasViewModel
+import com.elcobre.lavanderiaelcobre.ui.screens.escaner.urlSeguimientoComanda
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreShapes
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 
@@ -62,6 +66,7 @@ internal fun ComandaDetalleContenido(comanda: ComandaGestion, vm: ComandasViewMo
             )
         }
         AccionesComanda(comanda, vm, onAnular = { anulando = true }, onEntregar = { entregando = true })
+        if (comanda.estado != EstadoComanda.ANULADA) QrSeguimiento(comanda)
         Bloque("Cliente") {
             FilaDato("Nombre", comanda.cliente.nombre)
             FilaDato("Tipo", comanda.cliente.tipo.etiqueta)
@@ -274,5 +279,45 @@ private fun AnularComandaSheet(comanda: ComandaGestion, vm: ComandasViewModel, o
             loading = vm.guardando,
             fillWidth = true,
         )
+    }
+}
+
+/**
+ * QR del comprobante, como en `ComandaDetalle.tsx` de la web: lleva al seguimiento
+ * público de la comanda. "Mostrar al cliente" lo agranda para escanearlo desde la tablet.
+ */
+@Composable
+private fun QrSeguimiento(comanda: ComandaGestion) {
+    val url = remember(comanda.codigoQr) { urlSeguimientoComanda(comanda.codigoQr) }
+    var grande by remember(comanda.id) { mutableStateOf(false) }
+    val colors = CobreTheme.colors
+    Bloque("Seguimiento del cliente") {
+        if (url == null) {
+            Text("El código QR de la comanda no está disponible.", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
+            return@Bloque
+        }
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            CodigoQr(
+                valor = url,
+                descripcion = "Código QR de seguimiento de ${comanda.numero}",
+                tamano = if (grande) 300.dp else 150.dp,
+                modifier = Modifier.animateContentSize(),
+            )
+            Text(
+                "${comanda.numero} · El cliente lo escanea para ver el avance de su pedido.",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.textSecondary,
+            )
+            CobreButton(
+                text = if (grande) "Reducir" else "Mostrar al cliente",
+                onClick = { grande = !grande },
+                variant = ButtonVariant.Tonal,
+                icon = CobreIcons.QrCodeScanner,
+            )
+        }
     }
 }

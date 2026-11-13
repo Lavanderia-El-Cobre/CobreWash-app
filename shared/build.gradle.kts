@@ -69,6 +69,8 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtimeCompose)
             // Desenfoque real del fondo (backdrop blur) para las superficies Liquid Glass.
             implementation(libs.haze)
+            // QR de comprobantes e insumos, dibujado en Compose (sin depender de la red).
+            implementation(libs.qrose)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

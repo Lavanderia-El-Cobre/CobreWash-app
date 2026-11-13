@@ -34,6 +34,7 @@ import com.elcobre.lavanderiaelcobre.data.model.TipoMovimientoInventario
 import com.elcobre.lavanderiaelcobre.ui.components.AvisoExito
 import com.elcobre.lavanderiaelcobre.ui.components.ButtonVariant
 import com.elcobre.lavanderiaelcobre.ui.components.ChipTono
+import com.elcobre.lavanderiaelcobre.ui.components.CodigoQr
 import com.elcobre.lavanderiaelcobre.ui.components.CobreButton
 import com.elcobre.lavanderiaelcobre.ui.components.CobreIcons
 import com.elcobre.lavanderiaelcobre.ui.components.CobreSwitch
@@ -50,6 +51,7 @@ import com.elcobre.lavanderiaelcobre.ui.components.Tono
 import com.elcobre.lavanderiaelcobre.ui.components.TituloGrupo
 import com.elcobre.lavanderiaelcobre.ui.components.readableWidth
 import com.elcobre.lavanderiaelcobre.ui.gestion.StockViewModel
+import com.elcobre.lavanderiaelcobre.ui.screens.escaner.extraerQrInsumo
 import com.elcobre.lavanderiaelcobre.ui.screens.produccion.ErrorHoja
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 
@@ -272,6 +274,7 @@ private fun FichaInsumoSheet(
         title = insumo.nombre,
         subtitle = "Stock actual: ${cantidad(insumo.stockActual)} ${insumo.unidad}",
     ) {
+        EtiquetaQrInsumo(insumo)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             CobreButton(
                 "Entrada",
@@ -446,5 +449,24 @@ private fun ResolverConteoSheet(vm: StockViewModel, conteo: ConteoGestion, aprob
             fillWidth = true,
             onClick = { vm.resolverConteo(conteo, aprobar, motivo) { p -> if (p == null) onCerrar() else error = p } },
         )
+    }
+}
+
+/** Etiqueta de inventario (`QrInsumo.tsx`): el QR que se escanea desde Inventario en la app. */
+@Composable
+private fun EtiquetaQrInsumo(insumo: InsumoInventario) {
+    val codigo = remember(insumo.codigoQr) { extraerQrInsumo(insumo.codigoQr) } ?: return
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        CodigoQr(valor = codigo, descripcion = "Código QR del insumo ${insumo.nombre}", tamano = 200.dp)
+        Text(
+            "Escanéalo desde Inventario en la app para registrar un conteo.",
+            style = MaterialTheme.typography.bodySmall,
+            color = CobreTheme.colors.textSecondary,
+        )
+        Text(codigo, style = CobreTheme.text.label, color = CobreTheme.colors.textSecondary)
     }
 }
