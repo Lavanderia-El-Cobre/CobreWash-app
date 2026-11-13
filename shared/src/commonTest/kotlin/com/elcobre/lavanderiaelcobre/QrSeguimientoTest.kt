@@ -12,7 +12,7 @@ class QrSeguimientoTest {
 
     @Test
     fun urlSeguimiento_usaElDominioYUuidCanonicoDeLaWeb() {
-        assertEquals("https://lavanderia-elcobre.vercel.app/seguimiento?qr=$uuid", urlSeguimientoComanda(uuid))
+        assertEquals("https://www.lavanderiaelcobrespa.com/seguimiento?qr=$uuid", urlSeguimientoComanda(uuid))
         assertEquals(urlSeguimientoComanda(uuid), urlSeguimientoComanda(uuid.uppercase().replace("-", "")))
     }
 

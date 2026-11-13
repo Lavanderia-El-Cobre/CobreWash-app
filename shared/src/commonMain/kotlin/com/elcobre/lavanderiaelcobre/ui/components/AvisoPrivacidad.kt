@@ -39,7 +39,7 @@ import com.elcobre.lavanderiaelcobre.ui.theme.CobreShapes
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 import com.elcobre.lavanderiaelcobre.ui.theme.DarkSurface1
 
-private const val ORIGEN_PRIVACIDAD = "https://lavanderia-elcobre.vercel.app"
+private const val ORIGEN_PRIVACIDAD = com.elcobre.lavanderiaelcobre.data.ORIGEN_WEB
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

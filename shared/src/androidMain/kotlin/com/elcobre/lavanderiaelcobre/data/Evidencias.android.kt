@@ -14,7 +14,7 @@ import kotlinx.coroutines.withContext
 
 private const val MAX_FOTO = 3 * 1024 * 1024
 // Dominio oficial confirmado y autorizado por el propietario del proyecto.
-private const val API_ORIGEN = "https://lavanderia-elcobre.vercel.app"
+private const val API_ORIGEN = ORIGEN_WEB
 
 internal fun validarArchivosEvidencia(fotos: List<FotoChequeo>) {
     if (fotos.size > 20) throw OperacionComandaException("Máximo 20 fotografías por inspección.")

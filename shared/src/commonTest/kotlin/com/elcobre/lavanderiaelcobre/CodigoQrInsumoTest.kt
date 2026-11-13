@@ -32,7 +32,7 @@ class CodigoQrInsumoTest {
             compacto.dropLast(1), "${compacto}0", "g${compacto.drop(1)}",
             "${compacto.take(8)}-${compacto.drop(8)}", "insumo:$compacto",
             "https://otro.com/?qr=$compacto",
-            "https://lavanderia-elcobre.vercel.app/seguimiento?qr=$canonico",
+            "https://www.lavanderiaelcobrespa.com/seguimiento?qr=$canonico",
         ).forEach { assertNull(extraerQrInsumo(it), it) }
     }
 

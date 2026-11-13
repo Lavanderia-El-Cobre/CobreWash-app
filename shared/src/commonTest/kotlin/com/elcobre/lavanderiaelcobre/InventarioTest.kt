@@ -48,7 +48,7 @@ class InventarioTest {
     @Test fun distingueQrDeInsumoYComandaSinAceptarUrlsAjenas() {
         assertEquals(codigo, extraerQrInsumo(codigo))
         assertNull(extraerQrInsumo("https://otro.com/?qr=$codigo"))
-        assertNull(extraerQrInsumo("https://lavanderia-elcobre.vercel.app/seguimiento?qr=$codigo"))
+        assertNull(extraerQrInsumo("https://www.lavanderiaelcobrespa.com/seguimiento?qr=$codigo"))
         assertNull(extraerCodigoQr(codigo))
         assertNull(extraerQrInsumo("no-es-uuid"))
     }

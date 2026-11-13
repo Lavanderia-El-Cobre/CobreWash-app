@@ -97,7 +97,13 @@ class FlujoFirebaseTest {
     @Test fun qr_rechazaDominiosYParametrosManipulados() {
         val codigo = "00000000-0000-4000-8000-000000000010"
         val extraer = ::extraerCodigoQr
+        assertEquals(codigo, extraer("https://www.lavanderiaelcobrespa.com/seguimiento?qr=$codigo"))
+        assertEquals(codigo, extraer("https://lavanderiaelcobrespa.com/seguimiento?qr=$codigo"))
+        // Comprobantes impresos antes del cambio de dominio siguen abriendo su comanda.
         assertEquals(codigo, extraer("https://lavanderia-elcobre.vercel.app/seguimiento?qr=$codigo"))
+        assertEquals(null, extraer("http://www.lavanderiaelcobrespa.com/seguimiento?qr=$codigo"))
+        assertEquals(null, extraer("https://www.lavanderiaelcobrespa.com.evil.test/seguimiento?qr=$codigo"))
+        assertEquals(null, extraer("https://www.lavanderiaelcobrespa.com/seguimiento?qr=$codigo&qr=$codigo"))
         assertEquals(null, extraer("http://lavanderia-elcobre.vercel.app/seguimiento?qr=$codigo"))
         assertEquals(null, extraer("https://otro.test/seguimiento?qr=$codigo"))
         assertEquals(null, extraer("https://lavanderia-elcobre.vercel.app/seguimiento?qr=$codigo&qr=$codigo"))
