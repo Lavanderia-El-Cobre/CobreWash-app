@@ -198,7 +198,7 @@ private class FirebaseAdministracionRepository : AdministracionRepository {
 
     override suspend fun historial(insumoId: String?, offset: Int, limit: Int): PaginaMovimientos = solicitud {
         val data = dc.getHistorialInventario.ref {
-            this.insumoId = insumoId?.let(UUID::fromString)
+            if (insumoId != null) this.insumoId = UUID.fromString(insumoId)
             this.offset = offset
             this.limit = limit
         }.execute(SERVIDOR).data
@@ -222,7 +222,7 @@ private class FirebaseAdministracionRepository : AdministracionRepository {
 
     override suspend fun conteos(estado: String?): List<ConteoGestion> = solicitud {
         dc.getConteosInventario.ref {
-            this.estado = estado?.let(EstadoConteoInventario::valueOf)
+            if (estado != null) this.estado = EstadoConteoInventario.valueOf(estado)
             limit = 100
         }.execute(SERVIDOR).data.conteoInventarios.map {
             ConteoGestion(

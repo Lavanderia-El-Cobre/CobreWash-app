@@ -113,8 +113,10 @@ private class FirebaseRecepcionRepository : RecepcionRepository {
         val data = dc.getComandasPaginadas.ref {
             this.limit = limit
             this.offset = offset
-            estados = filtro.estados.takeIf { it.isNotEmpty() }?.map { ComandaEstado.valueOf(it.name) }
-            cliente = filtro.cliente.trim().ifEmpty { null }
+            // Los filtros vacíos se omiten (como `undefined` en la web): un null explícito
+            // llega a `contains: null` y el servidor rechaza la consulta ("$cliente is null").
+            if (filtro.estados.isNotEmpty()) estados = filtro.estados.map { ComandaEstado.valueOf(it.name) }
+            filtro.cliente.trim().takeIf { it.isNotEmpty() }?.let { cliente = it }
         }.execute(SERVER).data
         PaginaComandas(
             comandas = data.comandas.map { it.aGestion() },

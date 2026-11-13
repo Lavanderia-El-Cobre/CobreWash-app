@@ -21,7 +21,8 @@ private class FirebaseComunicacionRepository : ComunicacionRepository {
 
     override suspend fun solicitudes(estado: EstadoSolicitud?, offset: Int, limit: Int): PaginaSolicitudes = solicitud {
         val data = dc.getSolicitudesContacto.ref {
-            this.estado = estado?.let { SolicitudContactoEstado.valueOf(it.name) }
+            // Sin filtro se omite la variable: un null explícito no equivale a "todas".
+            if (estado != null) this.estado = SolicitudContactoEstado.valueOf(estado.name)
             this.offset = offset
             this.limit = limit
         }.execute(QueryRef.FetchPolicy.SERVER_ONLY).data
