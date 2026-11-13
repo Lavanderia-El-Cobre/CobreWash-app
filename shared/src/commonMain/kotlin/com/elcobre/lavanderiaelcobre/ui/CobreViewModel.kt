@@ -30,13 +30,7 @@ import com.elcobre.lavanderiaelcobre.ui.screens.login.sesionParaRol
 import com.elcobre.lavanderiaelcobre.ui.theme.ModoTema
 
 /** Destinos de nivel superior: navegar a uno de estos reemplaza la pila en vez de apilar (semántica de bottom-nav). */
-private val TABS: Set<Pantalla> = setOf(
-    Pantalla.Dashboard,
-    Pantalla.Avisos,
-    Pantalla.Insumos,
-    Pantalla.Configuracion,
-    Pantalla.Vehiculos,
-)
+private val TABS: Set<Pantalla> get() = TodasLasPestanas
 
 /**
  * Dueño del estado de la app del Operario: pedidos, avisos, catálogo de insumos,
@@ -165,8 +159,18 @@ class CobreViewModel(
     val operario: Operario? get() = (sesion as? Sesion.DeOperario)?.operario
     val administrador: Administrador? get() = (sesion as? Sesion.DeAdministrador)?.administrador
 
+    /** Sección abierta dentro de la pestaña "Más" (recepción y administración); `null` muestra el menú. */
+    var seccionMas by mutableStateOf<SeccionMas?>(null)
+        private set
+
+    fun abrirSeccion(seccion: SeccionMas?) {
+        seccionMas = seccion
+    }
+
     /** Los destinos de [TABS] reemplazan la pila (como tabs de bottom-nav); el resto se apila. */
     internal fun navegar(destino: Pantalla) {
+        // Tocar "Más" estando en una de sus secciones vuelve al menú, como en iOS.
+        if (destino == Pantalla.Mas && pantalla == Pantalla.Mas) seccionMas = null
         if (destino in TABS) {
             _backStack.clear()
             _backStack.add(destino)
@@ -177,6 +181,7 @@ class CobreViewModel(
     }
 
     val puedeVolver: Boolean get() {
+        if (pantalla == Pantalla.Mas && seccionMas != null) return true
         if (sesion != null && _backStack.size == 2 && _backStack.first() == Pantalla.Login) {
             return false
         }
@@ -185,6 +190,10 @@ class CobreViewModel(
 
     /** Regresa al destino anterior real de la pila; no hace nada si ya está en la raíz ni al login con sesión activa. */
     internal fun volver() {
+        if (pantalla == Pantalla.Mas && seccionMas != null) {
+            seccionMas = null
+            return
+        }
         if (_backStack.size > 1) {
             if (sesion != null && _backStack.size == 2 && _backStack.first() == Pantalla.Login) {
                 return
@@ -223,6 +232,7 @@ class CobreViewModel(
         idsComandasConocidas = emptySet()
         comandasInicializadas = false
         sesion = s
+        seccionMas = null
         limpiarAvisos()
         inventario.cambiarSesion(s is Sesion.DeOperario)
 
@@ -231,7 +241,9 @@ class CobreViewModel(
                 refrescarComandas()
                 Pantalla.Dashboard
             }
-            is Sesion.DeAdministrador -> Pantalla.Vehiculos
+            is Sesion.DeAdministrador -> Pantalla.Inicio
+            is Sesion.DeRecepcionista -> Pantalla.Comandas
+            is Sesion.DeRepartidor -> Pantalla.Reparto
         }
 
         _backStack.clear()
@@ -287,6 +299,7 @@ class CobreViewModel(
         cargando = false
         qrPendiente = null
         sesion = null
+        seccionMas = null
         _backStack.clear()
         _backStack.add(Pantalla.Login)
     }

@@ -109,6 +109,7 @@ fun LargeTitleScreen(
     val window = CobreTheme.window
     val listState = rememberLazyListState()
     val colapsado by rememberTitleCollapsed(listState)
+    val atras = LocalNavegacionAtras.current
     GlassStack(
         modifier = modifier.fillMaxSize(),
         background = { fuente ->
@@ -123,13 +124,24 @@ fun LargeTitleScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 item(key = "titulo") {
-                    LargeTitle(title = title, subtitle = subtitle, trailing = trailing, modifier = Modifier.readableWidth())
+                    LargeTitle(
+                        title = title,
+                        subtitle = subtitle,
+                        trailing = trailing,
+                        // Con botón de volver flotante, el título baja para quedar bajo él, como en iOS.
+                        modifier = Modifier.readableWidth().then(if (atras != null) Modifier.padding(top = 40.dp) else Modifier),
+                    )
                 }
                 content()
             }
         },
         overlay = {
-            CompactTitleBar(title = title, visible = colapsado, modifier = Modifier.align(Alignment.TopCenter))
+            CompactTitleBar(
+                title = title,
+                visible = colapsado,
+                modifier = Modifier.align(Alignment.TopCenter),
+                navigation = atras?.let { nav -> { BotonAtras(nav) } },
+            )
         },
     )
 }
@@ -232,4 +244,21 @@ fun CompactTitleBar(
                 .background(colors.hairline),
         )
     }
+}
+
+/** Destino al que vuelve el botón flotante de [LargeTitleScreen] (p. ej. el menú "Más"). */
+data class NavegacionAtras(val etiqueta: String, val onVolver: () -> Unit)
+
+/** Si hay un valor, cada [LargeTitleScreen] muestra un botón de volver en su barra superior. */
+val LocalNavegacionAtras = androidx.compose.runtime.compositionLocalOf<NavegacionAtras?> { null }
+
+@Composable
+private fun BotonAtras(nav: NavegacionAtras) {
+    GlassIconButton(
+        icon = CobreIcons.ChevronLeft,
+        contentDescription = "Volver a ${nav.etiqueta}",
+        onClick = nav.onVolver,
+        size = 40.dp,
+        floating = true,
+    )
 }

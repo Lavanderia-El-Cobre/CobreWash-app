@@ -155,3 +155,29 @@ fun eventoColor(tipo: TipoEvento): Color {
         TipoEvento.ALERTA_RESUELTA -> if (isDark) StatusGreenDark else StatusGreen
     }
 }
+
+/** Tonos semánticos de los chips de estado de las vistas de gestión. */
+enum class Tono { NEUTRO, INFO, EXITO, ALERTA, PELIGRO, MARCA }
+
+@Composable
+fun tonoColors(tono: Tono): ChipColors = when (tono) {
+    Tono.NEUTRO -> statusColors(StatusSlate, StatusSlateDark)
+    Tono.INFO -> statusColors(Indigo, IndigoLight)
+    Tono.EXITO -> statusColors(StatusGreen, StatusGreenDark)
+    Tono.ALERTA -> statusColors(StatusAmber, StatusAmberDark)
+    Tono.PELIGRO -> statusColors(StatusRed, StatusRedDark)
+    Tono.MARCA -> ChipColors(
+        container = CobreTheme.colors.accentContainer,
+        content = CobreTheme.colors.accentText,
+        accent = CobreTheme.colors.accent,
+    )
+}
+
+/** Pendiente en ámbar, en proceso en índigo, lista en cobre (hay que entregarla), entregada en verde. */
+fun tonoEstadoComanda(estado: com.elcobre.lavanderiaelcobre.data.model.EstadoComanda): Tono = when (estado) {
+    com.elcobre.lavanderiaelcobre.data.model.EstadoComanda.PENDIENTE -> Tono.ALERTA
+    com.elcobre.lavanderiaelcobre.data.model.EstadoComanda.EN_PROCESO -> Tono.INFO
+    com.elcobre.lavanderiaelcobre.data.model.EstadoComanda.FINALIZADA -> Tono.MARCA
+    com.elcobre.lavanderiaelcobre.data.model.EstadoComanda.ENTREGADA -> Tono.EXITO
+    com.elcobre.lavanderiaelcobre.data.model.EstadoComanda.ANULADA -> Tono.NEUTRO
+}

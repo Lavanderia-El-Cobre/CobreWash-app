@@ -51,10 +51,13 @@ fun AvisosScreen(
     hayMas: Boolean = false,
     onActualizar: () -> Unit = {},
     onMas: () -> Unit = {},
+    titulo: String = "Avisos de planta",
+    subtitulo: String = "Comunicados de administración para el equipo de planta.",
+    onNuevo: (() -> Unit)? = null,
 ) {
     LargeTitleScreen(
-        title = "Avisos de planta",
-        subtitle = "Comunicados de administración para el equipo de planta.",
+        title = titulo,
+        subtitle = subtitulo,
         applySystemBarsInsets = applySystemBarsInsets,
         trailing = {
             GlassIconButton(
@@ -64,6 +67,10 @@ fun AvisosScreen(
                 size = 44.dp,
                 enabled = !cargando,
             )
+            if (onNuevo != null) {
+                androidx.compose.foundation.layout.Spacer(Modifier.size(8.dp))
+                CobreButton(text = "Publicar", onClick = onNuevo, icon = CobreIcons.Add)
+            }
         },
     ) {
         item(key = "estado") { EstadoAvisos(cargando = cargando, error = error, modifier = Modifier.readableWidth()) }

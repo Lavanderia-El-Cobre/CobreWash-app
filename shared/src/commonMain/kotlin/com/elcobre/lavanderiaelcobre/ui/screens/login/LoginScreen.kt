@@ -67,6 +67,8 @@ import com.elcobre.lavanderiaelcobre.data.auth.PerfilResultado
 import com.elcobre.lavanderiaelcobre.data.auth.SesionPersistente
 import com.elcobre.lavanderiaelcobre.data.model.Administrador
 import com.elcobre.lavanderiaelcobre.data.model.Operario
+import com.elcobre.lavanderiaelcobre.data.model.Recepcionista
+import com.elcobre.lavanderiaelcobre.data.model.Repartidor
 import com.elcobre.lavanderiaelcobre.data.model.Sesion
 import com.elcobre.lavanderiaelcobre.ui.components.AvisoPrivacidad
 import com.elcobre.lavanderiaelcobre.ui.components.CobreButton
@@ -88,10 +90,12 @@ import org.jetbrains.compose.resources.painterResource
 internal fun sesionParaRol(
     rolNombre: String,
     nombre: String,
-): Sesion? = when (rolNombre.lowercase().trim()) {
+): Sesion? = when (val rol = rolNombre.lowercase().trim()) {
     "operario", "operario de planta" -> Sesion.DeOperario(Operario(nombre = nombre, rol = "Operario de planta"))
     "admin", "administrador" -> Sesion.DeAdministrador(Administrador(nombre = nombre))
-    else -> null // "recepcionista" y "cliente" no tienen vista en esta app.
+    "recepcionista", "recepcion", "recepción" -> Sesion.DeRecepcionista(Recepcionista(nombre = nombre))
+    "repartidor", "conductor" -> Sesion.DeRepartidor(Repartidor(nombre = nombre, rol = rol.replaceFirstChar { it.uppercase() }))
+    else -> null // El rol "cliente" usa el portal web, no esta app.
 }
 
 @Composable

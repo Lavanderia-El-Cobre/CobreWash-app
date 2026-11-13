@@ -168,10 +168,12 @@ fun VehiculosScreen(
         fotos: List<FotoChequeo>,
         observaciones: String?,
     ) -> Unit = { id, km, _, fotos, obs -> onRegistrarEntrada(id, km, fotos, obs) },
+    onProgramarSalida: ((vehiculoId: String, repartidorId: String, observaciones: String?) -> Unit)? = null,
 ) {
     var vehiculoChequeoModal by remember { mutableStateOf<Vehiculo?>(null) }
     var vehiculoHistorialModal by remember { mutableStateOf<Vehiculo?>(null) }
     var mostrandoAltaModal by remember { mutableStateOf(false) }
+    var programando by remember { mutableStateOf(false) }
 
     val algunModalAbierto = vehiculoChequeoModal != null || vehiculoHistorialModal != null || mostrandoAltaModal
     CobreBackHandler(enabled = algunModalAbierto && !operacionEnCurso) {
@@ -204,6 +206,7 @@ fun VehiculosScreen(
                 historialVehiculo = historialVehiculo,
                 onRefrescar = onRefrescar,
                 onAbrirAlta = { mostrandoAltaModal = true },
+                onAbrirProgramar = { programando = true }.takeIf { onProgramarSalida != null },
                 onLimpiarMensajes = onLimpiarMensajes,
                 onCambiarBusqueda = onCambiarBusqueda,
                 onSeleccionarFiltro = onSeleccionarFiltro,
@@ -257,6 +260,16 @@ fun VehiculosScreen(
             onDismiss = { vehiculoHistorialModal = null },
         )
     }
+
+    HojaProgramarSalida(
+        abierta = programando,
+        vehiculos = vehiculos,
+        conductores = conductores,
+        chequeoEnRuta = chequeoEnRuta,
+        guardando = operacionEnCurso,
+        onProgramar = onProgramarSalida,
+        onCerrar = { programando = false },
+    )
 }
 
 @Composable
@@ -286,6 +299,7 @@ private fun ContenidoFlotaGrid(
     historialVehiculo: (String) -> List<ChequeoVehiculo>,
     onRefrescar: () -> Unit,
     onAbrirAlta: () -> Unit,
+    onAbrirProgramar: (() -> Unit)? = null,
     onLimpiarMensajes: () -> Unit,
     onCambiarBusqueda: (String) -> Unit,
     onSeleccionarFiltro: (FiltroFlota) -> Unit,
@@ -313,6 +327,7 @@ private fun ContenidoFlotaGrid(
                     cargando = cargando || operacionEnCurso,
                     onRefrescar = onRefrescar,
                     onAbrirAlta = onAbrirAlta,
+                    onAbrirProgramar = onAbrirProgramar,
                 )
             }
             item(span = { GridItemSpan(maxLineSpan) }) {
@@ -375,6 +390,7 @@ private fun CabeceraFlota(
     cargando: Boolean,
     onRefrescar: () -> Unit,
     onAbrirAlta: () -> Unit,
+    onAbrirProgramar: (() -> Unit)? = null,
 ) {
     LargeTitle(
         title = "Flota de reparto",
@@ -387,6 +403,15 @@ private fun CabeceraFlota(
                 size = 44.dp,
                 enabled = !cargando,
             )
+            if (onAbrirProgramar != null) {
+                GlassIconButton(
+                    icon = CobreIcons.Schedule,
+                    contentDescription = "Programar salida para un repartidor",
+                    onClick = onAbrirProgramar,
+                    size = 44.dp,
+                    enabled = !cargando,
+                )
+            }
             CobreButton(text = "Nuevo", onClick = onAbrirAlta, icon = CobreIcons.Add)
         },
     )
@@ -1268,7 +1293,7 @@ private fun SelectorConductorFlota(
 }
 
 @Composable
-private fun SelectorCondicionVehiculo(
+internal fun SelectorCondicionVehiculo(
     esEntrada: Boolean,
     seleccionado: EstadoCondicionVehiculo,
     onSeleccionar: (EstadoCondicionVehiculo) -> Unit,
@@ -1316,7 +1341,7 @@ private fun SelectorCondicionVehiculo(
 }
 
 @Composable
-private fun SelectorFotos(accent: Color, fotos: MutableState<List<FotoChequeo>>, haptic: HapticFeedback, enabled: Boolean) {
+internal fun SelectorFotos(accent: Color, fotos: MutableState<List<FotoChequeo>>, haptic: HapticFeedback, enabled: Boolean) {
     val abrirCamara = rememberCapturadorFoto { uriCapturada ->
         val orden = fotos.value.size + 1
         val etiqueta = ETIQUETAS_FOTOS.getOrElse(orden - 1) { "Evidencia $orden" }

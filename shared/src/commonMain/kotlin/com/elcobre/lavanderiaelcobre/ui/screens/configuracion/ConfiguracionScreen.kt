@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -52,8 +53,11 @@ fun ConfiguracionScreen(
     applySystemBarsInsets: Boolean = true,
     reducirTransparencia: Boolean = false,
     onCambiarReducirTransparencia: (Boolean) -> Unit = {},
+    onCambiarContrasena: ((actual: String, nueva: String, resultado: (String?) -> Unit) -> Unit)? = null,
+    extra: (LazyListScope.() -> Unit)? = null,
 ) {
     var confirmandoSalida by remember { mutableStateOf(false) }
+    var cambiandoContrasena by remember { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
 
     LargeTitleScreen(
@@ -62,6 +66,10 @@ fun ConfiguracionScreen(
         applySystemBarsInsets = applySystemBarsInsets,
     ) {
         item { Seccion("Cuenta") { CuentaCard(nombre, rol) } }
+        if (onCambiarContrasena != null) {
+            item { Seccion("Seguridad") { FilaCambiarContrasena(onClick = { cambiandoContrasena = true }) } }
+        }
+        extra?.invoke(this)
         item { Seccion("Privacidad") { AvisoPrivacidad(mostrarTarjeta = true) } }
         item {
             Seccion("Apariencia") {
@@ -112,6 +120,29 @@ fun ConfiguracionScreen(
             onDismiss = { confirmandoSalida = false },
             destructive = true,
         )
+    }
+    if (cambiandoContrasena && onCambiarContrasena != null) {
+        CambiarContrasenaSheet(onCambiar = onCambiarContrasena, onCerrar = { cambiandoContrasena = false })
+    }
+}
+
+@Composable
+private fun FilaCambiarContrasena(onClick: () -> Unit) {
+    val colors = CobreTheme.colors
+    ContentCard(onClick = onClick) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            androidx.compose.material3.Icon(CobreIcons.Lock, contentDescription = null, tint = colors.accent)
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Cambiar contraseña", style = MaterialTheme.typography.titleSmall, color = colors.textPrimary)
+                Text(
+                    "Confirma tu contraseña actual para elegir una nueva.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.textSecondary,
+                )
+            }
+            androidx.compose.material3.Icon(CobreIcons.ChevronRight, contentDescription = null, tint = colors.textSecondary)
+        }
     }
 }
 

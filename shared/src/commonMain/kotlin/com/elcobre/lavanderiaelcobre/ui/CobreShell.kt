@@ -55,19 +55,42 @@ import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 /** Ítem de navegación, compartido entre la barra flotante (vertical) y el rail (horizontal). */
 internal data class NavItem(val icon: ImageVector, val label: String, val pantalla: Pantalla)
 
-/** Pestañas del Operario. */
+/** Pestañas del Operario: sus comandas, la producción de la planta, avisos, inventario y ajustes. */
 internal val NavOperario = listOf(
     NavItem(CobreIcons.LocalLaundry, "Pedidos", Pantalla.Dashboard),
+    NavItem(CobreIcons.Timeline, "Planta", Pantalla.Produccion),
     NavItem(CobreIcons.Campaign, "Avisos", Pantalla.Avisos),
     NavItem(CobreIcons.Inventory, "Inventario", Pantalla.Insumos),
     NavItem(CobreIcons.Person, "Ajustes", Pantalla.Configuracion),
 )
 
-/** Pestañas de administración. */
+/** Pestañas de recepción; incidencias, cotizaciones y ajustes van en "Más". */
+internal val NavRecepcion = listOf(
+    NavItem(CobreIcons.Assignment, "Comandas", Pantalla.Comandas),
+    NavItem(CobreIcons.Timeline, "Producción", Pantalla.Produccion),
+    NavItem(CobreIcons.Contacts, "Clientes", Pantalla.Clientes),
+    NavItem(CobreIcons.Campaign, "Avisos", Pantalla.Avisos),
+    NavItem(CobreIcons.MoreHoriz, "Más", Pantalla.Mas),
+)
+
+/** Pestañas de administración; el resto de la intranet va agrupado en "Más". */
 internal val NavAdmin = listOf(
+    NavItem(CobreIcons.Dashboard, "Inicio", Pantalla.Inicio),
+    NavItem(CobreIcons.Assignment, "Comandas", Pantalla.Comandas),
+    NavItem(CobreIcons.Inventory, "Inventario", Pantalla.Stock),
     NavItem(CobreIcons.LocalShipping, "Flota", Pantalla.Vehiculos),
+    NavItem(CobreIcons.MoreHoriz, "Más", Pantalla.Mas),
+)
+
+/** Pestañas del repartidor: sus recorridos y ajustes. */
+internal val NavRepartidor = listOf(
+    NavItem(CobreIcons.LocalShipping, "Recorridos", Pantalla.Reparto),
     NavItem(CobreIcons.Person, "Ajustes", Pantalla.Configuracion),
 )
+
+/** Todos los destinos que son pestañas de algún rol (comparten un solo destino raíz animado). */
+internal val TodasLasPestanas: Set<Pantalla> =
+    (NavOperario + NavRecepcion + NavAdmin + NavRepartidor).map { it.pantalla }.toSet()
 
 // Medidas de la navegación flotante.
 private val AltoBarra = 64.dp

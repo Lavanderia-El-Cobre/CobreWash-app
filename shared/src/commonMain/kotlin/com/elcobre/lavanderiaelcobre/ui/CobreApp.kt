@@ -57,6 +57,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.elcobre.lavanderiaelcobre.data.FirebaseVehiculosRepository
 import com.elcobre.lavanderiaelcobre.data.model.Administrador
 import com.elcobre.lavanderiaelcobre.data.model.Operario
+import com.elcobre.lavanderiaelcobre.data.model.Sesion
+import com.elcobre.lavanderiaelcobre.ui.gestion.ProduccionViewModel
+import com.elcobre.lavanderiaelcobre.ui.screens.produccion.PermisosProduccion
+import com.elcobre.lavanderiaelcobre.ui.screens.produccion.ProduccionScreen
 import com.elcobre.lavanderiaelcobre.ui.components.BarrasDelSistema
 import com.elcobre.lavanderiaelcobre.ui.components.ButtonVariant
 import com.elcobre.lavanderiaelcobre.ui.components.CobreBackHandler
@@ -68,7 +72,6 @@ import com.elcobre.lavanderiaelcobre.ui.components.LocalShellPadding
 import com.elcobre.lavanderiaelcobre.ui.components.glassBackdropSource
 import com.elcobre.lavanderiaelcobre.ui.components.rememberGlassBackdrop
 import com.elcobre.lavanderiaelcobre.ui.screens.avisos.AvisosScreen
-import com.elcobre.lavanderiaelcobre.ui.screens.configuracion.ConfiguracionScreen
 import com.elcobre.lavanderiaelcobre.ui.screens.dashboard.DashboardScreen
 import com.elcobre.lavanderiaelcobre.ui.screens.detalle.DetalleScreen
 import com.elcobre.lavanderiaelcobre.ui.screens.escaner.EscanerScreen
@@ -86,7 +89,7 @@ import com.elcobre.lavanderiaelcobre.ui.theme.cobreIsDark
  */
 private const val CLAVE_PESTANAS = "pestanas"
 
-private fun esPestana(p: Pantalla): Boolean = NavOperario.any { it.pantalla == p } || NavAdmin.any { it.pantalla == p }
+private fun esPestana(p: Pantalla): Boolean = p in TodasLasPestanas
 
 private fun claveDestino(p: Pantalla): Any = if (esPestana(p)) CLAVE_PESTANAS else p
 
@@ -172,11 +175,12 @@ private fun NavegacionRaiz(vm: CobreViewModel) {
             if (esPestana(destino)) {
                 // El rol se fija al crear el destino: al cerrar sesión la sesión ya es nula
                 // mientras la barra todavía se está yendo.
-                val esAdministrador = remember { vm.administrador != null }
-                if (esAdministrador) {
-                    AdminPestanas(tab = destino, vm = vm)
-                } else {
-                    OperarioPestanas(tab = destino, vm = vm, sharedScope = sharedScope, animatedScope = this)
+                val sesion = remember { vm.sesion }
+                when (sesion) {
+                    is Sesion.DeAdministrador -> AdministracionConFlota(tab = destino, vm = vm)
+                    is Sesion.DeRecepcionista -> RecepcionPestanas(tab = destino, vm = vm)
+                    is Sesion.DeRepartidor -> RepartidorPestanas(tab = destino, vm = vm)
+                    else -> OperarioPestanas(tab = destino, vm = vm, sharedScope = sharedScope, animatedScope = this)
                 }
             } else {
                 DestinoContent(destino = destino, vm = vm, sharedScope = sharedScope, animatedScope = this)
@@ -204,7 +208,7 @@ private fun AnimatedContentTransitionScope<Pantalla>.transicionRaiz(): ContentTr
  * rail), con fundido y un leve zoom, para que la barra y el contenido se muevan juntos.
  */
 @Composable
-private fun PestanasAnimadas(
+internal fun PestanasAnimadas(
     tab: Pantalla,
     items: List<NavItem>,
     content: @Composable (Pantalla) -> Unit,
@@ -287,6 +291,7 @@ private fun PestanaOperario(
             onActualizar = { vm.refrescarAvisos() },
             onMas = { vm.refrescarAvisos(mas = true) },
         )
+        Pantalla.Produccion -> PlantaOperario(vm)
         Pantalla.Insumos -> {
             LaunchedEffect(vm.sesion) { vm.inventario.refrescar() }
             InsumosScreen(inventario = vm.inventario)
@@ -299,9 +304,27 @@ private fun PestanaOperario(
     }
 }
 
-/** Pestañas de administración: flota de reparto y ajustes, con la misma barra de vidrio que el operario. */
+/**
+ * Planta del operario: toda la producción activa, como `/intranet/seguimiento` en la web,
+ * donde puede completar etapas y reportar incidencias de cualquier comanda.
+ */
 @Composable
-private fun AdminPestanas(tab: Pantalla, vm: CobreViewModel) {
+private fun PlantaOperario(vm: CobreViewModel) {
+    val produccion: ProduccionViewModel = viewModel(key = "produccion-operario") { ProduccionViewModel() }
+    val sesion = vm.sesion
+    if (sesion != null) remember(sesion) { produccion.vincularSesion(sesion) }
+    RefrescoPeriodico(Unit) { produccion.refrescar() }
+    ProduccionScreen(
+        vm = produccion,
+        permisos = PermisosProduccion(completar = true, reportarIncidencia = true),
+        ahoraMs = rememberAhora(),
+        titulo = "Planta",
+    )
+}
+
+/** Administración con la flota de reparto (alta, salida, retorno y bitácora) como una de sus pestañas. */
+@Composable
+private fun AdministracionConFlota(tab: Pantalla, vm: CobreViewModel) {
     val vehiculosVm: VehiculosViewModel = viewModel { VehiculosViewModel(repository = FirebaseVehiculosRepository()) }
     val administrador = recordarAdministradorActivo(vm.administrador)
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -320,39 +343,12 @@ private fun AdminPestanas(tab: Pantalla, vm: CobreViewModel) {
             }
         }
     }
-
-    PestanasScaffold(
-        items = NavAdmin,
-        tabActual = tab,
-        onSeleccionarTab = { vm.navegar(it) },
-        onEscanearQR = null,
-        badges = mapOf(Pantalla.Vehiculos to vehiculosVm.kpis.enRuta),
-    ) {
-        PestanasAnimadas(tab = tab, items = NavAdmin) { pestana ->
-            when (pestana) {
-                Pantalla.Vehiculos -> FlotaPestana(administrador = administrador, vehiculosVm = vehiculosVm)
-                Pantalla.Configuracion -> Ajustes(
-                    vm = vm,
-                    nombre = administrador.nombre,
-                    rol = administrador.rol,
-                    onCerrarSesion = cerrarSesion,
-                )
-                else -> Unit
-            }
-        }
-    }
-}
-
-@Composable
-private fun Ajustes(vm: CobreViewModel, nombre: String, rol: String, onCerrarSesion: () -> Unit) {
-    ConfiguracionScreen(
-        nombre = nombre,
-        rol = rol,
-        modoTema = vm.modoTema,
-        onCambiarTema = { vm.cambiarModoTema(it) },
-        onCerrarSesion = onCerrarSesion,
-        reducirTransparencia = vm.reducirTransparencia,
-        onCambiarReducirTransparencia = { vm.cambiarReducirTransparencia(it) },
+    AdminPestanas(
+        tab = tab,
+        vm = vm,
+        flota = { FlotaPestana(administrador = administrador, vehiculosVm = vehiculosVm) },
+        badgeFlota = vehiculosVm.kpis.enRuta,
+        onCerrarSesion = cerrarSesion,
     )
 }
 
@@ -395,6 +391,7 @@ private fun FlotaPestana(administrador: Administrador, vehiculosVm: VehiculosVie
         onRegistrarSalidaDetallada = { id, repartidorId, responsable, km, estado, fotos, obs ->
             vehiculosVm.registrarSalidaVehiculo(id, km, fotos, obs, responsable, repartidorId, estado)
         },
+        onProgramarSalida = { vehiculoId, repartidorId, obs -> vehiculosVm.programarSalida(vehiculoId, repartidorId, obs) },
         onRegistrarEntradaDetallada = { id, km, estado, fotos, obs ->
             vehiculosVm.registrarEntradaVehiculo(id, km, fotos, obs, estado)
         },
@@ -409,7 +406,7 @@ private fun FlotaPestana(administrador: Administrador, vehiculosVm: VehiculosVie
  *   para no quitarle alto a las listas ni tapar contenido.
  */
 @Composable
-private fun PestanasScaffold(
+internal fun PestanasScaffold(
     items: List<NavItem>,
     tabActual: Pantalla,
     onSeleccionarTab: (Pantalla) -> Unit,

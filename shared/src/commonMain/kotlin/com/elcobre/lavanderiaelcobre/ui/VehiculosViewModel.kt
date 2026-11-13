@@ -403,6 +403,14 @@ class VehiculosViewModel(
         }
     }
 
+    /** Programa una salida para que el repartidor la inspeccione e inicie desde su app. */
+    fun programarSalida(vehiculoId: String, repartidorId: String, observaciones: String?) {
+        val repo = repository ?: return
+        ejecutarMutacion("Salida programada. El repartidor la verá en sus recorridos.") {
+            repo.programarSalida(vehiculoId, repartidorId, observaciones)
+        }
+    }
+
     private fun ejecutarMutacion(confirmacion: String, accion: suspend () -> Unit) {
         val repo = repository ?: return
         if (!habilitado || operacionEnCurso) return
