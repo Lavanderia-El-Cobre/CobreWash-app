@@ -18,3 +18,6 @@ internal actual suspend fun registrarSalidaFirebase(input: SalidaFlotaInput): St
 
 internal actual suspend fun registrarRetornoFirebase(input: RetornoFlotaInput): Unit =
     throw OperacionComandaException(MENSAJE_IOS)
+
+internal actual suspend fun programarSalidaFirebase(vehiculoId: String, repartidorId: String, observaciones: String?): Unit =
+    throw OperacionComandaException(MENSAJE_IOS)

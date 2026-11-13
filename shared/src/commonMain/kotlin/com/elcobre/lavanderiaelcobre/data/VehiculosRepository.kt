@@ -59,6 +59,9 @@ interface VehiculosRepository {
     suspend fun editarVehiculo(input: EditarVehiculoInput)
     suspend fun registrarSalida(input: SalidaFlotaInput): String
     suspend fun registrarRetorno(input: RetornoFlotaInput)
+
+    /** Deja una salida PROGRAMADA para que el repartidor la inspeccione e inicie (`CrearSalidaVehiculo`). */
+    suspend fun programarSalida(vehiculoId: String, repartidorId: String, observaciones: String?): Unit = noDisponible()
 }
 
 class FirebaseVehiculosRepository : VehiculosRepository {
@@ -68,7 +71,11 @@ class FirebaseVehiculosRepository : VehiculosRepository {
     override suspend fun editarVehiculo(input: EditarVehiculoInput) = editarVehiculoFirebase(input)
     override suspend fun registrarSalida(input: SalidaFlotaInput): String = registrarSalidaFirebase(input)
     override suspend fun registrarRetorno(input: RetornoFlotaInput) = registrarRetornoFirebase(input)
+    override suspend fun programarSalida(vehiculoId: String, repartidorId: String, observaciones: String?) =
+        programarSalidaFirebase(vehiculoId, repartidorId, observaciones)
 }
+
+internal expect suspend fun programarSalidaFirebase(vehiculoId: String, repartidorId: String, observaciones: String?)
 
 internal expect suspend fun consultarFlotaFirebase(): EstadoFlotaRemota
 internal expect fun descartarReintentosFlotaFirebase()

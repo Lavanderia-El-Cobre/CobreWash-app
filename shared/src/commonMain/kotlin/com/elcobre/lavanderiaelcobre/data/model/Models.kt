@@ -175,14 +175,45 @@ data class Administrador(
     val rol: String = "Administrador",
 )
 
+/** Recepcionista autenticada: crea y gestiona comandas, clientes y cotizaciones. */
+data class Recepcionista(
+    val nombre: String,
+    val rol: String = "Recepción",
+)
+
+/** Repartidor o conductor autenticado: opera las salidas de vehículos que tiene asignadas. */
+data class Repartidor(
+    val nombre: String,
+    val rol: String = "Repartidor",
+)
+
 /**
- * Sesión activa del prototipo: cada rol tiene su propia vista raíz (ver
- * [com.elcobre.lavanderiaelcobre.ui.CobreApp]). El SRS solo define la app Android
- * para el Operario; el acceso del Administrador es una ampliación de alcance consciente.
+ * Sesión activa: cada rol interno de la intranet tiene su propia barra de pestañas
+ * (ver [com.elcobre.lavanderiaelcobre.ui.CobreApp]). El rol "cliente" no usa esta app.
  */
 sealed interface Sesion {
-    data class DeOperario(val operario: Operario) : Sesion
-    data class DeAdministrador(val administrador: Administrador) : Sesion
+    val nombre: String
+    val rolVisible: String
+
+    data class DeOperario(val operario: Operario) : Sesion {
+        override val nombre get() = operario.nombre
+        override val rolVisible get() = operario.rol
+    }
+
+    data class DeAdministrador(val administrador: Administrador) : Sesion {
+        override val nombre get() = administrador.nombre
+        override val rolVisible get() = administrador.rol
+    }
+
+    data class DeRecepcionista(val recepcionista: Recepcionista) : Sesion {
+        override val nombre get() = recepcionista.nombre
+        override val rolVisible get() = recepcionista.rol
+    }
+
+    data class DeRepartidor(val repartidor: Repartidor) : Sesion {
+        override val nombre get() = repartidor.nombre
+        override val rolVisible get() = repartidor.rol
+    }
 }
 
 /** Comunicado de administración visible para su equipo destinatario. */
