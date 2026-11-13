@@ -51,10 +51,10 @@ class CobreViewModelTest {
     }
 
     @Test
-    fun iniciarSesion_administrador_navegaAVehiculos() {
+    fun iniciarSesion_administrador_navegaAInicio() {
         val vm = crearViewModel()
         vm.iniciarSesion(administrador)
-        assertEquals(Pantalla.Vehiculos, vm.pantalla)
+        assertEquals(Pantalla.Inicio, vm.pantalla)
     }
 
     @Test
