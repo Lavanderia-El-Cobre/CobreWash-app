@@ -49,9 +49,9 @@ kotlin {
             implementation(libs.androidx.work.runtime)
 
             // CameraX y ML Kit para el escáner QR
-            implementation("androidx.camera:camera-camera2:1.3.1")
-            implementation("androidx.camera:camera-lifecycle:1.3.1")
-            implementation("androidx.camera:camera-view:1.3.1")
+            implementation(libs.camerax.camera2)
+            implementation(libs.camerax.lifecycle)
+            implementation(libs.camerax.view)
             implementation("com.google.mlkit:barcode-scanning:17.3.0")
         }
         getByName("androidMain") {
