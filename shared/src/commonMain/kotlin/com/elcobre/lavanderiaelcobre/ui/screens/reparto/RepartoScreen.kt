@@ -55,6 +55,8 @@ import com.elcobre.lavanderiaelcobre.ui.screens.produccion.ErrorHoja
 import com.elcobre.lavanderiaelcobre.ui.screens.vehiculos.SelectorCondicionVehiculo
 import com.elcobre.lavanderiaelcobre.ui.screens.vehiculos.SelectorFotos
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
+import com.elcobre.lavanderiaelcobre.ui.components.rememberAccionesPendientes
+import com.elcobre.lavanderiaelcobre.data.offline.TipoAccion
 
 private fun tonoSalida(estado: EstadoSalida): Tono = when (estado) {
     EstadoSalida.PROGRAMADA -> Tono.MARCA
@@ -82,9 +84,13 @@ private sealed interface Movimiento {
  * historial. Las salidas que administración programa desde la app también aparecen aquí.
  */
 @OptIn(ExperimentalLayoutApi::class)
+@Suppress("LongMethod") // Una lista con sus secciones; cada tarjeta ya vive en su propia función.
 @Composable
 fun RepartoScreen(vm: RepartoViewModel, nombre: String, applySystemBarsInsets: Boolean = true) {
     var movimiento by remember { mutableStateOf<Movimiento?>(null) }
+    val pendientes = rememberAccionesPendientes()
+    val salidaSinEnviar = pendientes.any { it.tipo == TipoAccion.SALIDA_FLOTA }
+    val regresosSinEnviar = pendientes.filter { it.tipo == TipoAccion.RETORNO_FLOTA }.map { it.entidad }.toSet()
     LargeTitleScreen(
         title = "Mi vehículo",
         subtitle = "Salidas y regresos de ${nombre.substringBefore(' ')}",
@@ -112,15 +118,25 @@ fun RepartoScreen(vm: RepartoViewModel, nombre: String, applySystemBarsInsets: B
                 EstadoCarga(vm.cargando, vm.error)
             }
         }
+        if (salidaSinEnviar) {
+            item(key = "salida-sin-enviar") {
+                EstadoVacio(
+                    CobreIcons.Schedule,
+                    "Tu salida quedó guardada en el teléfono y se enviará al recuperar la conexión.",
+                    modifier = Modifier.readableWidth(),
+                )
+            }
+        }
         vm.salidaEnCurso?.let { salida ->
             item(key = "t-en-curso") { TituloGrupo("En ruta", Modifier.readableWidth()) }
             item(key = salida.id) {
                 SalidaCard(salida, Modifier.readableWidth()) {
                     CobreButton(
-                        text = "Registrar regreso",
+                        text = if (salida.id in regresosSinEnviar) "Regreso sin enviar" else "Registrar regreso",
                         onClick = { movimiento = Movimiento.Regreso(salida) },
                         icon = CobreIcons.CheckCircle,
                         fillWidth = true,
+                        enabled = salida.id !in regresosSinEnviar,
                     )
                 }
             }
@@ -140,7 +156,7 @@ fun RepartoScreen(vm: RepartoViewModel, nombre: String, applySystemBarsInsets: B
                 }
             }
         }
-        listaVehiculos(vm) { movimiento = Movimiento.Salida(it) }
+        listaVehiculos(vm, salidaSinEnviar) { movimiento = Movimiento.Salida(it) }
         if (vm.historial.isNotEmpty()) {
             item(key = "t-historial") { TituloGrupo("Historial", Modifier.readableWidth()) }
             items(vm.historial, key = { it.id }) { SalidaCard(it, Modifier.readableWidth()) }
@@ -171,7 +187,7 @@ fun RepartoScreen(vm: RepartoViewModel, nombre: String, applySystemBarsInsets: B
     }
 }
 
-private fun LazyListScope.listaVehiculos(vm: RepartoViewModel, onSalida: (VehiculoReparto) -> Unit) {
+private fun LazyListScope.listaVehiculos(vm: RepartoViewModel, salidaSinEnviar: Boolean, onSalida: (VehiculoReparto) -> Unit) {
     item(key = "t-vehiculos") { TituloGrupo("Vehículos", Modifier.readableWidth()) }
     if (vm.panel.vehiculos.isEmpty() && !vm.cargando) {
         item(key = "sin-vehiculos") {
@@ -199,7 +215,7 @@ private fun LazyListScope.listaVehiculos(vm: RepartoViewModel, onSalida: (Vehicu
                     icon = CobreIcons.LocalShipping,
                     variant = ButtonVariant.Tonal,
                     fillWidth = true,
-                    enabled = vm.salidaEnCurso == null && !vm.guardando,
+                    enabled = vm.salidaEnCurso == null && !salidaSinEnviar && !vm.guardando,
                 )
             }
         }

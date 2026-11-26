@@ -45,6 +45,8 @@ kotlin {
             implementation("io.grpc:grpc-api:1.62.2")
             implementation(libs.kotlinx.coroutines.play.services)
             implementation(libs.kotlinx.serialization.core)
+            // Envío en segundo plano de las acciones hechas sin conexión.
+            implementation(libs.androidx.work.runtime)
 
             // CameraX y ML Kit para el escáner QR
             implementation("androidx.camera:camera-camera2:1.3.1")
@@ -71,6 +73,8 @@ kotlin {
             implementation(libs.haze)
             // QR de comprobantes e insumos, dibujado en Compose (sin depender de la red).
             implementation(libs.qrose)
+            // Cola de acciones sin conexión y caché de lectura guardadas en el dispositivo.
+            implementation(libs.kotlinx.serialization.json)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

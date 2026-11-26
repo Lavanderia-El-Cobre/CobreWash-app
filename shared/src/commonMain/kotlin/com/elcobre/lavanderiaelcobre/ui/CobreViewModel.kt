@@ -22,6 +22,7 @@ import com.elcobre.lavanderiaelcobre.data.model.Pedido
 import com.elcobre.lavanderiaelcobre.data.model.Sesion
 import com.elcobre.lavanderiaelcobre.data.InventarioRepository
 import com.elcobre.lavanderiaelcobre.data.FirebaseInventarioRepository
+import com.elcobre.lavanderiaelcobre.data.auth.DatosSesionGuardada
 import com.elcobre.lavanderiaelcobre.data.auth.SesionPersistente
 import com.elcobre.lavanderiaelcobre.data.auth.VigilanciaCuenta
 import com.elcobre.lavanderiaelcobre.data.auth.PerfilResultado
@@ -30,6 +31,7 @@ import com.elcobre.lavanderiaelcobre.data.model.TipoAlerta
 import com.elcobre.lavanderiaelcobre.ui.gestion.ahoraMs
 import com.elcobre.lavanderiaelcobre.ui.screens.login.sesionParaRol
 import com.elcobre.lavanderiaelcobre.ui.theme.ModoTema
+import com.elcobre.lavanderiaelcobre.data.offline.AccionEnColaException
 
 /** Destinos de nivel superior: navegar a uno de estos reemplaza la pila en vez de apilar (semántica de bottom-nav). */
 private val TABS: Set<Pantalla> get() = TodasLasPestanas
@@ -59,6 +61,9 @@ class CobreViewModel(
     val inventario = InventarioState(scope, inventarioRepository)
     var errorOperacion by mutableStateOf<String?>(null)
         private set
+
+    /** Aviso informativo (por ejemplo, una acción guardada sin conexión). */
+    var avisoOperacion by mutableStateOf<String?>(null)
     var cargando by mutableStateOf(false)
         private set
     private var generacion = 0
@@ -209,7 +214,8 @@ class CobreViewModel(
     }
 
     fun restaurarSesionSiExiste() {
-        if (SesionPersistente.obtener(ahoraMs()) == null) {
+        val guardada = SesionPersistente.obtener(ahoraMs())
+        if (guardada == null) {
             // Sin "Recordarme" (o vencida a los 30 días) no debe quedar un token de Firebase
             // guardado en el dispositivo: la próxima apertura pide la contraseña, como la web.
             if (sesion == null) repository.cerrarSesion()
@@ -226,6 +232,7 @@ class CobreViewModel(
                 iniciarSesion(valida)
                 return@launch
             }
+            if (entrarSinConexion(perfil, guardada)) return@launch
             errorOperacion = when (perfil) {
                 is PerfilResultado.Error -> perfil.mensaje
                 is PerfilResultado.Exito -> "Tu cuenta no tiene acceso a la app móvil."
@@ -240,6 +247,20 @@ class CobreViewModel(
                 SesionPersistente.limpiar()
             }
         }
+    }
+
+    /**
+     * Sin conexión al abrir la app: se entra con la sesión guardada para seguir trabajando;
+     * el servidor sigue validando cada envío y la cuenta se revisa en cuanto vuelve la
+     * conexión ([verificarCuenta]). Devuelve `true` si entró.
+     */
+    private fun entrarSinConexion(perfil: PerfilResultado?, guardada: DatosSesionGuardada): Boolean {
+        val sinConexion = perfil is PerfilResultado.Error && !perfil.definitivo
+        val sesionGuardada = sesionParaRol(guardada.rol, guardada.nombre)
+        if (!sinConexion || sesionGuardada == null) return false
+        iniciarSesion(sesionGuardada)
+        avisoOperacion = "Sin conexión: trabajas con tu sesión guardada. Lo que hagas se enviará al recuperar la red."
+        return true
     }
 
     init {
@@ -414,6 +435,9 @@ class CobreViewModel(
         scope.launch {
             try {
                 accion()
+            } catch (enCola: AccionEnColaException) {
+                // Sin conexión: quedó en la cola; el aviso de pendientes lo muestra.
+                if (inicio == generacion) avisoOperacion = enCola.message
             } catch (error: OperacionComandaException) {
                 if (inicio == generacion) {
                     errorOperacion = error.message

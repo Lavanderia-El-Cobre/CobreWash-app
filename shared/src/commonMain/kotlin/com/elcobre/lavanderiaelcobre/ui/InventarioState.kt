@@ -10,6 +10,7 @@ import com.elcobre.lavanderiaelcobre.data.OperacionComandaException
 import com.elcobre.lavanderiaelcobre.ui.screens.escaner.extraerQrInsumo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import com.elcobre.lavanderiaelcobre.data.offline.AccionEnColaException
 
 class InventarioState(private val scope: CoroutineScope, private val repository: InventarioRepository) {
     var insumos by mutableStateOf<List<InsumoInventario>>(emptyList())
@@ -78,6 +79,12 @@ class InventarioState(private val scope: CoroutineScope, private val repository:
                     conteos = conteos + (insumoId to ConteoFisico(insumoId, cantidadContada, insumo.stockActual))
                     onResultado(null)
                     cargarConteos(inicio)
+                }
+            } catch (_: AccionEnColaException) {
+                // Sin conexión: el conteo quedó en la cola y se envía al recuperar la red.
+                if (inicio == generacion) {
+                    conteos = conteos + (insumoId to ConteoFisico(insumoId, cantidadContada, insumo.stockActual))
+                    onResultado(null)
                 }
             } catch (causa: OperacionComandaException) {
                 if (inicio == generacion) {

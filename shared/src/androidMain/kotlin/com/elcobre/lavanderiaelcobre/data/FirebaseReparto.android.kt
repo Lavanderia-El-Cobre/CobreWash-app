@@ -14,6 +14,8 @@ import com.elcobre.lavanderiaelcobre.data.model.ProblemaEntrega
 import com.elcobre.lavanderiaelcobre.data.model.SalidaReparto
 import com.elcobre.lavanderiaelcobre.data.model.TipoClienteFicha
 import com.elcobre.lavanderiaelcobre.data.model.VehiculoReparto
+import com.elcobre.lavanderiaelcobre.data.offline.AccionesSinConexion
+import com.elcobre.lavanderiaelcobre.data.offline.TipoAccion
 import com.elcobre.lavanderiaelcobre.dataconnect.EstadoVehiculo
 import com.elcobre.lavanderiaelcobre.dataconnect.ExampleConnector
 import com.elcobre.lavanderiaelcobre.dataconnect.GetComandasParaEntregaQuery
@@ -27,6 +29,7 @@ import com.google.firebase.dataconnect.QueryRef
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.roundToInt
+import com.elcobre.lavanderiaelcobre.data.offline.CacheLectura
 
 actual fun crearRepartoRepository(): RepartoRepository = FirebaseRepartoRepository()
 
@@ -134,8 +137,10 @@ private class FirebaseRepartoRepository : RepartoRepository {
         descartarReintentosFlotaFirebase()
     }
 
-    override suspend fun panel(): PanelReparto = solicitud {
-        dc.getPanelRepartidor.ref { limit = 30 }.execute(SERVIDOR).data.aPanel(FirebaseAuth.getInstance().currentUser?.uid)
+    override suspend fun panel(): PanelReparto = CacheLectura.leer("panel-reparto", PanelReparto.serializer()) {
+        solicitud {
+            dc.getPanelRepartidor.ref { limit = 30 }.execute(SERVIDOR).data.aPanel(FirebaseAuth.getInstance().currentUser?.uid)
+        }
     }
 
     override suspend fun registrarSalida(input: SalidaFlotaInput): String {
@@ -166,8 +171,14 @@ private class FirebaseRepartoRepository : RepartoRepository {
         inspeccionesPendientes.remove(clave)
     }
 
-    override suspend fun entregas(): EntregasReparto = solicitud {
+    /** Número visible de cada comanda listada, para describir las acciones en la cola. */
+    private val numeros = ConcurrentHashMap<String, String>()
+
+    override suspend fun entregas(): EntregasReparto = CacheLectura.leer("entregas", EntregasReparto.serializer()) { entregasRemotas() }
+
+    private suspend fun entregasRemotas(): EntregasReparto = solicitud {
         val data = dc.getComandasParaEntrega.ref { limit = 50 }.execute(SERVIDOR).data
+        data.comandas.forEach { numeros[it.id.toString()] = it.numeroComanda }
         EntregasReparto(
             comandas = data.comandas.map { it.aEntrega() },
             misEntregas = data.misEntregas.map {
@@ -176,11 +187,17 @@ private class FirebaseRepartoRepository : RepartoRepository {
         )
     }
 
-    override suspend fun entregar(comandaId: String, detalle: String?): Unit = solicitud {
-        dc.entregarComanda.execute(UUID.fromString(comandaId)) { this.detalle = detalle }
-    }
+    override suspend fun entregar(comandaId: String, detalle: String?) = AccionesSinConexion.ejecutar(
+        TipoAccion.ENTREGAR,
+        entidad = comandaId,
+        datos = mapOf("comandaId" to comandaId, "detalle" to detalle),
+        descripcion = "Entrega · ${numeros[comandaId] ?: "comanda"}",
+    )
 
-    override suspend fun reportarProblema(comandaId: String, motivo: String, detalle: String?): Unit = solicitud {
-        dc.reportarProblemaEntrega.execute(UUID.fromString(comandaId), motivo) { this.detalle = detalle }
-    }
+    override suspend fun reportarProblema(comandaId: String, motivo: String, detalle: String?) = AccionesSinConexion.ejecutar(
+        TipoAccion.REPORTAR_PROBLEMA,
+        entidad = comandaId,
+        datos = mapOf("comandaId" to comandaId, "motivo" to motivo, "detalle" to detalle),
+        descripcion = "Problema de entrega ($motivo) · ${numeros[comandaId] ?: "comanda"}",
+    )
 }

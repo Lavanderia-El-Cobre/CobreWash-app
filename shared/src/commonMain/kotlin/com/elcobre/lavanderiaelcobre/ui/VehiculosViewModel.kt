@@ -28,6 +28,7 @@ import com.elcobre.lavanderiaelcobre.data.model.normalizarPatenteChilena
 import com.elcobre.lavanderiaelcobre.data.model.obtenerHoraFormateadaActual
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import com.elcobre.lavanderiaelcobre.data.offline.AccionEnColaException
 
 /**
  * Estado de la flota de reparto (`RF-VE01` a `RF-VE04`), separado de [CobreViewModel]
@@ -426,6 +427,8 @@ class VehiculosViewModel(
                     aplicarFlotaRemota(remota.vehiculos, remota.conductores, remota.chequeos)
                     mensajeExito = confirmacion
                 }
+            } catch (enCola: AccionEnColaException) {
+                if (inicio == generacion) mensajeExito = enCola.message
             } catch (causa: OperacionComandaException) {
                 if (inicio == generacion) {
                     error = causa.message ?: "No se pudo completar la operación en la flota."

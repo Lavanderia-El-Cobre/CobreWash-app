@@ -47,6 +47,7 @@ import com.elcobre.lavanderiaelcobre.ui.components.readableWidth
 import com.elcobre.lavanderiaelcobre.ui.gestion.EntregasViewModel
 import com.elcobre.lavanderiaelcobre.ui.screens.produccion.ErrorHoja
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
+import com.elcobre.lavanderiaelcobre.ui.components.rememberAccionesPendientes
 
 private sealed interface AccionEntrega {
     data class Entregar(val comanda: ComandaEntrega) : AccionEntrega
@@ -63,6 +64,7 @@ private sealed interface AccionEntrega {
 fun EntregasScreen(vm: EntregasViewModel, applySystemBarsInsets: Boolean = true) {
     ProtegerCapturas()
     var accion by remember { mutableStateOf<AccionEntrega?>(null) }
+    val sinEnviar = rememberAccionesPendientes().map { it.entidad }.toSet()
     LargeTitleScreen(
         title = "Entregas",
         subtitle = "Comandas listas para entregar al cliente",
@@ -106,6 +108,7 @@ fun EntregasScreen(vm: EntregasViewModel, applySystemBarsInsets: Boolean = true)
                 onEntregar = { accion = AccionEntrega.Entregar(comanda) },
                 onProblema = { accion = AccionEntrega.Problema(comanda) },
                 enabled = !vm.guardando,
+                sinEnviar = comanda.id in sinEnviar,
                 modifier = Modifier.readableWidth(),
             )
         }
@@ -133,6 +136,7 @@ private fun ComandaEntregaCard(
     onEntregar: () -> Unit,
     onProblema: () -> Unit,
     enabled: Boolean,
+    sinEnviar: Boolean,
     modifier: Modifier,
 ) {
     val colors = CobreTheme.colors
@@ -152,6 +156,7 @@ private fun ComandaEntregaCard(
                     color = colors.textSecondary,
                 )
             }
+            if (sinEnviar) ChipTono("Sin enviar", Tono.INFO, icono = CobreIcons.Schedule)
             if (abiertos.isNotEmpty()) ChipTono("${abiertos.size} problema(s)", Tono.PELIGRO, icono = CobreIcons.Warning)
         }
         Spacer(Modifier.height(8.dp))

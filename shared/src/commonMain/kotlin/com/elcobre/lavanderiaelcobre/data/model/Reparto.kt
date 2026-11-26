@@ -1,5 +1,7 @@
 package com.elcobre.lavanderiaelcobre.data.model
 
+import kotlinx.serialization.Serializable
+
 /** Estados de una salida de vehículo (`SalidaVehiculoEstado`). */
 enum class EstadoSalida(val etiqueta: String) {
     PROGRAMADA("Programada"),
@@ -14,6 +16,7 @@ enum class EstadoSalida(val etiqueta: String) {
 }
 
 /** Inspección técnica de una salida (ANTES o DESPUES). */
+@Serializable
 data class InspeccionReparto(
     val id: String,
     val estado: EstadoCondicionVehiculo,
@@ -27,6 +30,7 @@ data class InspeccionReparto(
  * Salida asignada al repartidor (`GetMisSalidasVehiculo`). Administración la programa o
  * la registra en ruta; el repartidor inspecciona y la inicia, y registra el retorno.
  */
+@Serializable
 data class SalidaReparto(
     val id: String,
     val estado: EstadoSalida,
@@ -76,6 +80,7 @@ enum class DisponibilidadVehiculo(val etiqueta: String) {
 }
 
 /** Vehículo activo visto por el repartidor (`GetPanelRepartidor`). */
+@Serializable
 data class VehiculoReparto(
     val id: String,
     val patente: String,
@@ -92,6 +97,7 @@ data class VehiculoReparto(
  * Sección "Mi vehículo" del repartidor (`/intranet/reparto`): vehículos activos con su
  * disponibilidad, la salida propia en curso (a lo más una) y el historial de salidas.
  */
+@Serializable
 data class PanelReparto(
     val vehiculos: List<VehiculoReparto> = emptyList(),
     val salidas: List<SalidaReparto> = emptyList(),
@@ -134,6 +140,7 @@ const val DETALLE_ENTREGA_MAXIMO = 280
 const val DETALLE_PROBLEMA_MAXIMO = 250
 
 /** Problema de entrega abierto o resuelto (incidencia con prefijo "Entrega: "). */
+@Serializable
 data class ProblemaEntrega(
     val id: String,
     val motivo: String,
@@ -144,6 +151,7 @@ data class ProblemaEntrega(
 )
 
 /** Comanda lista para entregar (`GetComandasParaEntrega`). */
+@Serializable
 data class ComandaEntrega(
     val id: String,
     val numero: String,
@@ -163,8 +171,10 @@ data class ComandaEntrega(
 }
 
 /** Entrega que registró la persona (historial `ENTREGADA` propio). */
+@Serializable
 data class EntregaRegistrada(val id: String, val fecha: String, val detalle: String?, val numero: String, val cliente: String)
 
+@Serializable
 data class EntregasReparto(
     val comandas: List<ComandaEntrega> = emptyList(),
     val misEntregas: List<EntregaRegistrada> = emptyList(),

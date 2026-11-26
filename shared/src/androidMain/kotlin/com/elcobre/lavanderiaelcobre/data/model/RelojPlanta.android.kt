@@ -8,3 +8,6 @@ internal actual fun obtenerHoraFormateadaActual(): String {
     val minuto = calendar.get(Calendar.MINUTE).toString().padStart(2, '0')
     return "$hora:$minuto"
 }
+
+actual fun fechaHoraLocal(ms: Long): String =
+    java.text.SimpleDateFormat("dd/MM HH:mm", java.util.Locale.forLanguageTag("es-CL")).format(java.util.Date(ms))

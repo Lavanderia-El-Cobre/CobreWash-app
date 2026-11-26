@@ -93,6 +93,8 @@ actual class AuthRepository actual constructor() {
     actual fun cerrarSesion() {
         auth.signOut()
         com.elcobre.lavanderiaelcobre.data.eliminarCapturasAlSalir()
+        // La copia de lectura tiene datos de clientes: no queda en el teléfono tras cerrar sesión.
+        com.elcobre.lavanderiaelcobre.data.offline.CacheLectura.limpiar()
     }
 
     actual suspend fun correoPorVerificar(): Boolean {

@@ -1,5 +1,8 @@
 package com.elcobre.lavanderiaelcobre.data
 
+import com.elcobre.lavanderiaelcobre.data.offline.AccionesSinConexion
+import com.elcobre.lavanderiaelcobre.data.offline.TipoAccion
+
 import com.elcobre.lavanderiaelcobre.data.model.ClienteFicha
 import com.elcobre.lavanderiaelcobre.data.model.ComandaGestion
 import com.elcobre.lavanderiaelcobre.data.model.EstadoComanda
@@ -57,13 +60,16 @@ private class FirebaseProduccionRepository : ProduccionRepository {
         )
     }
 
-    override suspend fun completarEtapa(comanda: ComandaGestion): Unit = solicitud {
+    override suspend fun completarEtapa(comanda: ComandaGestion) {
         val etapa = comanda.etapaActual ?: throw OperacionComandaException("La comanda no tiene etapas pendientes.")
-        dc.completarEtapaComanda.execute(
-            UUID.fromString(comanda.id),
-            UUID.fromString(etapa.id),
-            etapa.orden,
-            ComandaEstado.valueOf(estadoTrasCompletar(etapa.orden)),
+        AccionesSinConexion.ejecutar(
+            TipoAccion.COMPLETAR_ETAPA,
+            entidad = comanda.id,
+            datos = mapOf(
+                "comandaId" to comanda.id, "etapaId" to etapa.id, "orden" to "${etapa.orden}",
+                "estadoComanda" to estadoTrasCompletar(etapa.orden),
+            ),
+            descripcion = "Completar ${etapa.nombre} · ${comanda.numero}",
         )
     }
 
@@ -73,9 +79,10 @@ private class FirebaseProduccionRepository : ProduccionRepository {
         }
     }
 
-    override suspend fun reportarIncidencia(comandaId: String, motivo: String, descripcion: String): Unit = solicitud {
-        dc.registrarIncidenciaComanda.execute(UUID.fromString(comandaId), motivo) {
-            this.descripcion = descripcion.trim().ifEmpty { null }?.take(300)
-        }
-    }
+    override suspend fun reportarIncidencia(comandaId: String, motivo: String, descripcion: String) = AccionesSinConexion.ejecutar(
+        TipoAccion.REGISTRAR_INCIDENCIA,
+        entidad = comandaId,
+        datos = mapOf("comandaId" to comandaId, "motivo" to motivo, "descripcion" to descripcion.trim().ifEmpty { null }?.take(300)),
+        descripcion = "Incidencia: $motivo",
+    )
 }

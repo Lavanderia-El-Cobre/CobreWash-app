@@ -57,6 +57,8 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
   
     public val completarEtapaComanda: CompletarEtapaComandaMutation
   
+    public val completarEtapaComandaMovil: CompletarEtapaComandaMovilMutation
+  
     public val configurarEtapaProduccion: ConfigurarEtapaProduccionMutation
   
     public val configurarLimitesEtapas: ConfigurarLimitesEtapasMutation
@@ -98,6 +100,8 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
     public val eliminarTasaConsumo: EliminarTasaConsumoMutation
   
     public val entregarComanda: EntregarComandaMutation
+  
+    public val entregarComandaMovil: EntregarComandaMovilMutation
   
     public val gestionarSolicitudDerecho: GestionarSolicitudDerechoMutation
   
@@ -235,11 +239,15 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
   
     public val registrarConteoInventario: RegistrarConteoInventarioMutation
   
+    public val registrarConteoInventarioMovil: RegistrarConteoInventarioMovilMutation
+  
     public val registrarEntradaInventario: RegistrarEntradaInventarioMutation
   
     public val registrarEvidenciaGuardada: RegistrarEvidenciaGuardadaMutation
   
     public val registrarIncidenciaComanda: RegistrarIncidenciaComandaMutation
+  
+    public val registrarIncidenciaComandaMovil: RegistrarIncidenciaComandaMovilMutation
   
     public val registrarInspeccionAntes: RegistrarInspeccionAntesMutation
   
@@ -247,7 +255,11 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
   
     public val registrarRetornoFlota: RegistrarRetornoFlotaMutation
   
+    public val registrarRetornoFlotaMovil: RegistrarRetornoFlotaMovilMutation
+  
     public val registrarSalidaFlota: RegistrarSalidaFlotaMutation
+  
+    public val registrarSalidaFlotaMovil: RegistrarSalidaFlotaMovilMutation
   
     public val registrarSalidaInventario: RegistrarSalidaInventarioMutation
   
@@ -260,6 +272,8 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
     public val registrarseComoCliente: RegistrarseComoClienteMutation
   
     public val reportarProblemaEntrega: ReportarProblemaEntregaMutation
+  
+    public val reportarProblemaEntregaMovil: ReportarProblemaEntregaMovilMutation
   
     public val resolverMiIncidencia: ResolverMiIncidenciaMutation
   
@@ -386,6 +400,10 @@ private class ExampleConnectorImpl(
       CompletarEtapaComandaMutationImpl(this)
     }
   
+    override val completarEtapaComandaMovil by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      CompletarEtapaComandaMovilMutationImpl(this)
+    }
+  
     override val configurarEtapaProduccion by lazy(LazyThreadSafetyMode.PUBLICATION) {
       ConfigurarEtapaProduccionMutationImpl(this)
     }
@@ -468,6 +486,10 @@ private class ExampleConnectorImpl(
   
     override val entregarComanda by lazy(LazyThreadSafetyMode.PUBLICATION) {
       EntregarComandaMutationImpl(this)
+    }
+  
+    override val entregarComandaMovil by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      EntregarComandaMovilMutationImpl(this)
     }
   
     override val gestionarSolicitudDerecho by lazy(LazyThreadSafetyMode.PUBLICATION) {
@@ -742,6 +764,10 @@ private class ExampleConnectorImpl(
       RegistrarConteoInventarioMutationImpl(this)
     }
   
+    override val registrarConteoInventarioMovil by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      RegistrarConteoInventarioMovilMutationImpl(this)
+    }
+  
     override val registrarEntradaInventario by lazy(LazyThreadSafetyMode.PUBLICATION) {
       RegistrarEntradaInventarioMutationImpl(this)
     }
@@ -752,6 +778,10 @@ private class ExampleConnectorImpl(
   
     override val registrarIncidenciaComanda by lazy(LazyThreadSafetyMode.PUBLICATION) {
       RegistrarIncidenciaComandaMutationImpl(this)
+    }
+  
+    override val registrarIncidenciaComandaMovil by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      RegistrarIncidenciaComandaMovilMutationImpl(this)
     }
   
     override val registrarInspeccionAntes by lazy(LazyThreadSafetyMode.PUBLICATION) {
@@ -766,8 +796,16 @@ private class ExampleConnectorImpl(
       RegistrarRetornoFlotaMutationImpl(this)
     }
   
+    override val registrarRetornoFlotaMovil by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      RegistrarRetornoFlotaMovilMutationImpl(this)
+    }
+  
     override val registrarSalidaFlota by lazy(LazyThreadSafetyMode.PUBLICATION) {
       RegistrarSalidaFlotaMutationImpl(this)
+    }
+  
+    override val registrarSalidaFlotaMovil by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      RegistrarSalidaFlotaMovilMutationImpl(this)
     }
   
     override val registrarSalidaInventario by lazy(LazyThreadSafetyMode.PUBLICATION) {
@@ -792,6 +830,10 @@ private class ExampleConnectorImpl(
   
     override val reportarProblemaEntrega by lazy(LazyThreadSafetyMode.PUBLICATION) {
       ReportarProblemaEntregaMutationImpl(this)
+    }
+  
+    override val reportarProblemaEntregaMovil by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      ReportarProblemaEntregaMovilMutationImpl(this)
     }
   
     override val resolverMiIncidencia by lazy(LazyThreadSafetyMode.PUBLICATION) {
@@ -831,6 +873,7 @@ private class ExampleConnectorImpl(
         borrarSimulacionIa,
         borrarSimulacionesIa,
         completarEtapaComanda,
+        completarEtapaComandaMovil,
         configurarEtapaProduccion,
         configurarLimitesEtapas,
         crearAviso,
@@ -850,6 +893,7 @@ private class ExampleConnectorImpl(
         eliminarDetallesComanda,
         eliminarTasaConsumo,
         entregarComanda,
+        entregarComandaMovil,
         gestionarSolicitudDerecho,
         guardarConfiguracionIa,
         guardarTasaConsumo,
@@ -861,19 +905,24 @@ private class ExampleConnectorImpl(
         recibirSolicitudDerecho,
         registrarConteoFisicoIa,
         registrarConteoInventario,
+        registrarConteoInventarioMovil,
         registrarEntradaInventario,
         registrarEvidenciaGuardada,
         registrarIncidenciaComanda,
+        registrarIncidenciaComandaMovil,
         registrarInspeccionAntes,
         registrarInspeccionDespues,
         registrarRetornoFlota,
+        registrarRetornoFlotaMovil,
         registrarSalidaFlota,
+        registrarSalidaFlotaMovil,
         registrarSalidaInventario,
         registrarSolicitudContacto,
         registrarVehiculoFlota,
         registrarse,
         registrarseComoCliente,
         reportarProblemaEntrega,
+        reportarProblemaEntregaMovil,
         resolverMiIncidencia,
         vincularMiComanda,
         vincularMiFichaVerificada,
@@ -1364,6 +1413,21 @@ private class CompletarEtapaComandaMutationImpl(
   )
 
 
+private class CompletarEtapaComandaMovilMutationImpl(
+  connector: ExampleConnector
+):
+  CompletarEtapaComandaMovilMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      CompletarEtapaComandaMovilMutation.Data,
+      CompletarEtapaComandaMovilMutation.Variables
+  >(
+    connector,
+    CompletarEtapaComandaMovilMutation.Companion.operationName,
+    CompletarEtapaComandaMovilMutation.Companion.dataDeserializer,
+    CompletarEtapaComandaMovilMutation.Companion.variablesSerializer,
+  )
+
+
 private class ConfigurarEtapaProduccionMutationImpl(
   connector: ExampleConnector
 ):
@@ -1676,6 +1740,21 @@ private class EntregarComandaMutationImpl(
     EntregarComandaMutation.Companion.operationName,
     EntregarComandaMutation.Companion.dataDeserializer,
     EntregarComandaMutation.Companion.variablesSerializer,
+  )
+
+
+private class EntregarComandaMovilMutationImpl(
+  connector: ExampleConnector
+):
+  EntregarComandaMovilMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      EntregarComandaMovilMutation.Data,
+      EntregarComandaMovilMutation.Variables
+  >(
+    connector,
+    EntregarComandaMovilMutation.Companion.operationName,
+    EntregarComandaMovilMutation.Companion.dataDeserializer,
+    EntregarComandaMovilMutation.Companion.variablesSerializer,
   )
 
 
@@ -2699,6 +2778,21 @@ private class RegistrarConteoInventarioMutationImpl(
   )
 
 
+private class RegistrarConteoInventarioMovilMutationImpl(
+  connector: ExampleConnector
+):
+  RegistrarConteoInventarioMovilMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      RegistrarConteoInventarioMovilMutation.Data,
+      RegistrarConteoInventarioMovilMutation.Variables
+  >(
+    connector,
+    RegistrarConteoInventarioMovilMutation.Companion.operationName,
+    RegistrarConteoInventarioMovilMutation.Companion.dataDeserializer,
+    RegistrarConteoInventarioMovilMutation.Companion.variablesSerializer,
+  )
+
+
 private class RegistrarEntradaInventarioMutationImpl(
   connector: ExampleConnector
 ):
@@ -2741,6 +2835,21 @@ private class RegistrarIncidenciaComandaMutationImpl(
     RegistrarIncidenciaComandaMutation.Companion.operationName,
     RegistrarIncidenciaComandaMutation.Companion.dataDeserializer,
     RegistrarIncidenciaComandaMutation.Companion.variablesSerializer,
+  )
+
+
+private class RegistrarIncidenciaComandaMovilMutationImpl(
+  connector: ExampleConnector
+):
+  RegistrarIncidenciaComandaMovilMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      RegistrarIncidenciaComandaMovilMutation.Data,
+      RegistrarIncidenciaComandaMovilMutation.Variables
+  >(
+    connector,
+    RegistrarIncidenciaComandaMovilMutation.Companion.operationName,
+    RegistrarIncidenciaComandaMovilMutation.Companion.dataDeserializer,
+    RegistrarIncidenciaComandaMovilMutation.Companion.variablesSerializer,
   )
 
 
@@ -2789,6 +2898,21 @@ private class RegistrarRetornoFlotaMutationImpl(
   )
 
 
+private class RegistrarRetornoFlotaMovilMutationImpl(
+  connector: ExampleConnector
+):
+  RegistrarRetornoFlotaMovilMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      RegistrarRetornoFlotaMovilMutation.Data,
+      RegistrarRetornoFlotaMovilMutation.Variables
+  >(
+    connector,
+    RegistrarRetornoFlotaMovilMutation.Companion.operationName,
+    RegistrarRetornoFlotaMovilMutation.Companion.dataDeserializer,
+    RegistrarRetornoFlotaMovilMutation.Companion.variablesSerializer,
+  )
+
+
 private class RegistrarSalidaFlotaMutationImpl(
   connector: ExampleConnector
 ):
@@ -2801,6 +2925,21 @@ private class RegistrarSalidaFlotaMutationImpl(
     RegistrarSalidaFlotaMutation.Companion.operationName,
     RegistrarSalidaFlotaMutation.Companion.dataDeserializer,
     RegistrarSalidaFlotaMutation.Companion.variablesSerializer,
+  )
+
+
+private class RegistrarSalidaFlotaMovilMutationImpl(
+  connector: ExampleConnector
+):
+  RegistrarSalidaFlotaMovilMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      RegistrarSalidaFlotaMovilMutation.Data,
+      RegistrarSalidaFlotaMovilMutation.Variables
+  >(
+    connector,
+    RegistrarSalidaFlotaMovilMutation.Companion.operationName,
+    RegistrarSalidaFlotaMovilMutation.Companion.dataDeserializer,
+    RegistrarSalidaFlotaMovilMutation.Companion.variablesSerializer,
   )
 
 
@@ -2891,6 +3030,21 @@ private class ReportarProblemaEntregaMutationImpl(
     ReportarProblemaEntregaMutation.Companion.operationName,
     ReportarProblemaEntregaMutation.Companion.dataDeserializer,
     ReportarProblemaEntregaMutation.Companion.variablesSerializer,
+  )
+
+
+private class ReportarProblemaEntregaMovilMutationImpl(
+  connector: ExampleConnector
+):
+  ReportarProblemaEntregaMovilMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      ReportarProblemaEntregaMovilMutation.Data,
+      ReportarProblemaEntregaMovilMutation.Variables
+  >(
+    connector,
+    ReportarProblemaEntregaMovilMutation.Companion.operationName,
+    ReportarProblemaEntregaMovilMutation.Companion.dataDeserializer,
+    ReportarProblemaEntregaMovilMutation.Companion.variablesSerializer,
   )
 
 

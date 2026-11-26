@@ -16,6 +16,9 @@ private const val MAX_FOTO = 3 * 1024 * 1024
 // Dominio oficial confirmado y autorizado por el propietario del proyecto.
 private const val API_ORIGEN = ORIGEN_WEB
 
+/** Falla al subir una fotografía; [codigo] es la respuesta HTTP o `null` si no hubo conexión. */
+internal class FalloSubidaFoto(message: String, val codigo: Int?, cause: Throwable? = null) : OperacionComandaException(message, cause)
+
 internal fun validarArchivosEvidencia(fotos: List<FotoChequeo>) {
     if (fotos.size > 20) throw OperacionComandaException("Máximo 20 fotografías por inspección.")
     for (foto in fotos) {
@@ -52,11 +55,12 @@ internal suspend fun subirFotoInspeccion(inspeccionId: String, foto: FotoChequeo
             val file = File(foto.uri.removePrefix("file://"))
             conexion.setFixedLengthStreamingMode(file.length())
             file.inputStream().use { input -> conexion.outputStream.use { output -> input.copyTo(output) } }
-            if (conexion.responseCode !in 200..299) {
-                throw OperacionComandaException("No se pudo confirmar la fotografía en el servidor (${conexion.responseCode}).")
+            val codigo = conexion.responseCode
+            if (codigo !in 200..299) {
+                throw FalloSubidaFoto("No se pudo confirmar la fotografía en el servidor ($codigo).", codigo)
             }
         } catch (error: IOException) {
-            throw OperacionComandaException("No se pudo subir la fotografía. Revisa tu conexión y reintenta.", error)
+            throw FalloSubidaFoto("No se pudo subir la fotografía. Revisa tu conexión y reintenta.", null, error)
         } finally { conexion.disconnect() }
     }
 }

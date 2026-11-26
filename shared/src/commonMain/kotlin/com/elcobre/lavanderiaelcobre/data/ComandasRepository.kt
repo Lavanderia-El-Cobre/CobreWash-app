@@ -1,8 +1,12 @@
 package com.elcobre.lavanderiaelcobre.data
 
 import com.elcobre.lavanderiaelcobre.data.model.Pedido
+import com.elcobre.lavanderiaelcobre.data.offline.AccionesSinConexion
+import com.elcobre.lavanderiaelcobre.data.offline.TipoAccion
+import com.elcobre.lavanderiaelcobre.data.offline.CacheLectura
+import kotlinx.serialization.builtins.ListSerializer
 
-class OperacionComandaException(message: String, cause: Throwable? = null) : Exception(message, cause)
+open class OperacionComandaException(message: String, cause: Throwable? = null) : Exception(message, cause)
 
 interface ComandasRepository {
     suspend fun asignadas(): List<Pedido>
@@ -17,7 +21,9 @@ interface ComandasRepository {
 }
 
 class FirebaseComandasRepository : ComandasRepository {
-    override suspend fun asignadas() = getMisComandasAsignadasFirebase()
+    // Sin conexión, el operario sigue viendo sus últimas comandas asignadas.
+    override suspend fun asignadas() =
+        CacheLectura.leer("comandas-operario", ListSerializer(Pedido.serializer())) { getMisComandasAsignadasFirebase() }
     override suspend fun detalle(id: String) = getComandaDetalleFirebase(id)
     override suspend fun buscarNumero(numero: String) = buscarNumeroComandaFirebase(numero)
     override suspend fun escanear(codigo: String): Pedido? {
@@ -29,11 +35,22 @@ class FirebaseComandasRepository : ComandasRepository {
     override suspend fun avanzar(pedido: Pedido) {
         val etapa = pedido.etapaIdDb ?: throw OperacionComandaException("La comanda no tiene una etapa activa.")
         val orden = pedido.ordenEtapaDb ?: throw OperacionComandaException("La comanda no tiene un flujo válido.")
-        check(completarEtapaFirebase(pedido.id, etapa, orden, estadoTrasCompletar(orden)))
+        // Pasa por la cola: sin conexión queda guardada con su hora y se envía después.
+        AccionesSinConexion.ejecutar(
+            TipoAccion.COMPLETAR_ETAPA,
+            entidad = pedido.id,
+            datos = mapOf("comandaId" to pedido.id, "etapaId" to etapa, "orden" to "$orden", "estadoComanda" to estadoTrasCompletar(orden)),
+            descripcion = "Completar etapa $orden · ${pedido.comanda}",
+        )
     }
     override fun cerrarSesion() = com.elcobre.lavanderiaelcobre.data.auth.AuthRepository().cerrarSesion()
     override suspend fun comentar(id: String, texto: String) = comentarComandaFirebase(id, texto)
-    override suspend fun alertar(id: String, motivo: String, texto: String) = alertarComandaFirebase(id, motivo, texto)
+    override suspend fun alertar(id: String, motivo: String, texto: String) = AccionesSinConexion.ejecutar(
+        TipoAccion.REGISTRAR_INCIDENCIA,
+        entidad = id,
+        datos = mapOf("comandaId" to id, "motivo" to motivo, "descripcion" to texto.trim().ifEmpty { null }),
+        descripcion = "Incidencia: $motivo",
+    )
     override suspend fun resolver(pedido: Pedido) = resolverComandaFirebase(pedido.id)
 }
 

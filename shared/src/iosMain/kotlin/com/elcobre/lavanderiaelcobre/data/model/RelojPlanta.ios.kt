@@ -12,3 +12,9 @@ internal actual fun obtenerHoraFormateadaActual(): String {
     val minuto = calendar.component(NSCalendarUnitMinute, fromDate = date).toInt().toString().padStart(2, '0')
     return "$hora:$minuto"
 }
+
+actual fun fechaHoraLocal(ms: Long): String {
+    val formato = platform.Foundation.NSDateFormatter()
+    formato.dateFormat = "dd/MM HH:mm"
+    return formato.stringFromDate(NSDate(timeIntervalSinceReferenceDate = ms / 1000.0 - 978_307_200.0))
+}

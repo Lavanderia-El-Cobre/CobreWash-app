@@ -101,7 +101,7 @@ class CobreViewModelTest {
         val vm = CobreViewModel(
             FakeComandasRepository(),
             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.test.UnconfinedTestDispatcher()),
-            restaurarPerfil = { PerfilResultado.Error("La cuenta está inactiva") },
+            restaurarPerfil = { PerfilResultado.Error("La cuenta está inactiva", definitivo = true) },
         )
         assertEquals(Pantalla.Login, vm.pantalla)
         assertNull(vm.sesion)

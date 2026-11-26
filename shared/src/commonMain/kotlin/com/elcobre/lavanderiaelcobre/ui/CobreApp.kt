@@ -82,6 +82,8 @@ import com.elcobre.lavanderiaelcobre.ui.theme.Brand400
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 import com.elcobre.lavanderiaelcobre.ui.theme.ModoTema
 import com.elcobre.lavanderiaelcobre.ui.theme.cobreIsDark
+import com.elcobre.lavanderiaelcobre.ui.components.EstadoSincronizacion
+import com.elcobre.lavanderiaelcobre.data.offline.AccionesSinConexion
 
 /**
  * Las pestañas de cada rol comparten un mismo destino de la navegación raíz: así la barra
@@ -113,6 +115,8 @@ fun CobreApp() {
         if (vm.sesion != null) lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 vm.verificarCuenta()
+                // También se envían las acciones que quedaron guardadas sin conexión.
+                AccionesSinConexion.sincronizar(forzar = true)
                 kotlinx.coroutines.delay(REVISION_CUENTA_MS)
             }
         }
@@ -435,7 +439,10 @@ internal fun PestanasScaffold(
                 compacto = window.isPhoneLandscape,
                 badges = badges,
             )
-            Box(modifier = Modifier.weight(1f).fillMaxHeight()) { content() }
+            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                content()
+                EstadoSincronizacion(modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp))
+            }
         }
     } else {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -444,6 +451,9 @@ internal fun PestanasScaffold(
             CompositionLocalProvider(LocalShellPadding provides PaddingValues(bottom = EspacioBarraInferior)) {
                 content()
             }
+            EstadoSincronizacion(
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = EspacioBarraInferior + 4.dp),
+            )
             FloatingTabBar(
                 items = items,
                 tabActual = tabActual,

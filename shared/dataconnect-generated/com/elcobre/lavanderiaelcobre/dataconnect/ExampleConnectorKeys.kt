@@ -198,6 +198,16 @@ package com.elcobre.lavanderiaelcobre.dataconnect
   }
 
   @kotlinx.serialization.Serializable
+  public data class OperacionMovilKey(
+  
+    val id: @kotlinx.serialization.Serializable(with = com.google.firebase.dataconnect.serializers.UUIDSerializer::class) java.util.UUID,
+  
+  ) {
+    
+    
+  }
+
+  @kotlinx.serialization.Serializable
   public data class ReasignacionOperarioKey(
   
     val id: @kotlinx.serialization.Serializable(with = com.google.firebase.dataconnect.serializers.UUIDSerializer::class) java.util.UUID,

@@ -9,6 +9,7 @@ import com.elcobre.lavanderiaelcobre.data.OperacionComandaException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.launch
+import com.elcobre.lavanderiaelcobre.data.offline.AccionEnColaException
 
 /**
  * Base de los ViewModels de recepción, administración y reparto: lectura con
@@ -76,6 +77,12 @@ abstract class GestionViewModel(private val scopeOverride: CoroutineScope? = nul
                 accion()
                 if (inicio == generacion) {
                     if (confirmacion != null) mensaje = confirmacion
+                    alTerminar(null)
+                }
+            } catch (enCola: AccionEnColaException) {
+                // Sin conexión: la acción quedó guardada en el teléfono; se informa como aviso.
+                if (inicio == generacion) {
+                    mensaje = enCola.message
                     alTerminar(null)
                 }
             } catch (fallo: OperacionComandaException) {

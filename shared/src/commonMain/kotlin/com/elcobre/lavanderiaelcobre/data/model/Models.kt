@@ -1,5 +1,7 @@
 package com.elcobre.lavanderiaelcobre.data.model
 
+import kotlinx.serialization.Serializable
+
 /**
  * Etapas del proceso productivo; el orden real lo define [TipoComanda.flujo], no la
  * declaración del enum. Recepción/Lavado/Secado/Planchado/Entrega son las mismas 5
@@ -61,6 +63,7 @@ enum class TipoEvento {
     ALERTA_RESUELTA,
 }
 
+@Serializable
 data class EventoHistorial(
     val tipo: TipoEvento,
     val titulo: String,
@@ -74,6 +77,7 @@ data class EventoHistorial(
  * transición devuelve una copia; [com.elcobre.lavanderiaelcobre.ui.CobreViewModel]
  * observa los cambios y guarda el estado. Historial con el evento más reciente primero.
  */
+@Serializable
 data class Pedido(
     val id: String,
     val comanda: String,

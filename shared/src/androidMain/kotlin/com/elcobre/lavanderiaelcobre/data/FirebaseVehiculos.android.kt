@@ -8,6 +8,9 @@ import com.elcobre.lavanderiaelcobre.data.model.Vehiculo
 import com.elcobre.lavanderiaelcobre.data.model.esRolConductorORepartidor
 import com.elcobre.lavanderiaelcobre.data.model.extraerMarcaYModelo
 import com.elcobre.lavanderiaelcobre.data.model.normalizarPatenteChilena
+import com.elcobre.lavanderiaelcobre.data.offline.AccionesSinConexion
+import com.elcobre.lavanderiaelcobre.data.offline.FotoPendiente
+import com.elcobre.lavanderiaelcobre.data.offline.TipoAccion
 import com.elcobre.lavanderiaelcobre.dataconnect.EstadoVehiculo
 import com.elcobre.lavanderiaelcobre.dataconnect.ExampleConnector
 import com.elcobre.lavanderiaelcobre.dataconnect.GetFlotaVehiculosQuery
@@ -24,13 +27,8 @@ import java.util.UUID
 import kotlin.math.roundToInt
 
 private const val MAX_FOTOS_INSPECCION = 20
-private val salidasPendientes = java.util.concurrent.ConcurrentHashMap<String, Pair<UUID, UUID>>()
-private val retornosPendientes = java.util.concurrent.ConcurrentHashMap<String, UUID>()
-
-internal actual fun descartarReintentosFlotaFirebase() {
-    salidasPendientes.clear()
-    retornosPendientes.clear()
-}
+// Los reintentos de salidas y regresos viven en la cola sin conexión (persistente), no en memoria.
+internal actual fun descartarReintentosFlotaFirebase() = Unit
 
 private fun mapearCondicionADataConnect(estado: EstadoCondicionVehiculo): EstadoVehiculo = when (estado) {
     EstadoCondicionVehiculo.APTO -> EstadoVehiculo.APTO
@@ -173,63 +171,47 @@ internal actual suspend fun editarVehiculoFirebase(input: EditarVehiculoInput): 
     }
 }
 
-private suspend fun adjuntarFotosInspeccion(inspeccionId: UUID, fotos: List<FotoChequeo>) {
-    require(fotos.size <= MAX_FOTOS_INSPECCION) { "Máximo 20 fotografías por inspección." }
-    for ((indice, foto) in fotos.withIndex()) subirFotoInspeccion(inspeccionId.toString(), foto, indice + 1)
-    // Conservar todo el lote si falla una foto permite reintentar sin duplicar el movimiento.
-    eliminarCapturasConfirmadas(fotos.map { it.uri })
-}
 
-internal actual suspend fun registrarSalidaFirebase(input: SalidaFlotaInput): String = solicitud {
+private fun fotosPendientes(fotos: List<FotoChequeo>) = fotos.map { FotoPendiente(it.id, it.uri, it.descripcion) }
+
+/**
+ * Salida con inspección y fotos. Pasa por la cola sin conexión: la salida y la inspección
+ * llevan ids generados aquí y la operación su propio id, así un reintento no la duplica.
+ * Primero se guarda el movimiento y después se suben las fotos (guardadas en el teléfono).
+ */
+internal actual suspend fun registrarSalidaFirebase(input: SalidaFlotaInput): String {
     validarArchivosEvidencia(input.fotos)
-    val clave = "${com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid}|${input.copy(fotos = emptyList())}"
-    val ids = salidasPendientes.getOrPut(clave) { UUID.randomUUID() to UUID.randomUUID() }
-    val previa = ExampleConnector.instance.getMovimientoFlotaPorInspeccion.ref(ids.second)
-        .execute(QueryRef.FetchPolicy.SERVER_ONLY).data.inspeccionVehiculo
+    if (input.fotos.size > MAX_FOTOS_INSPECCION) throw OperacionComandaException("Máximo 20 fotografías por inspección.")
+    val salidaId = UUID.randomUUID().toString()
     val obs = input.observaciones?.trim()?.takeIf { it.isNotEmpty() }
-    val salidaId = if (previa != null) previa.salidaId else {
-        ExampleConnector.instance.registrarSalidaFlota.execute(
-            vehiculoId = UUID.fromString(input.vehiculoId), repartidorId = input.repartidorId,
-            kilometraje = input.kilometraje.toDouble(), estadoVehiculo = mapearCondicionADataConnect(input.estadoVehiculo),
-        ) {
-            salidaId = ids.first
-            inspeccionId = ids.second
-            observaciones = obs?.take(300)
-            observacionesInspeccion = obs?.take(500)
-        }.data.salida.id
-    }
-    try { adjuntarFotosInspeccion(ids.second, input.fotos) }
-    catch (error: OperacionComandaException) {
-        throw OperacionComandaException(
-            "La salida ya se guardó. Hay fotografías pendientes: reintenta con los mismos datos. " + error.message, error,
-        )
-    }
-    salidasPendientes.remove(clave)
-    salidaId.toString()
+    AccionesSinConexion.ejecutar(
+        TipoAccion.SALIDA_FLOTA,
+        entidad = salidaId,
+        datos = mapOf(
+            "vehiculoId" to input.vehiculoId, "repartidorId" to input.repartidorId, "kilometraje" to "${input.kilometraje}",
+            "estadoVehiculo" to mapearCondicionADataConnect(input.estadoVehiculo).name, "salidaId" to salidaId,
+            "inspeccionId" to UUID.randomUUID().toString(), "observaciones" to obs?.take(300), "observacionesInspeccion" to obs?.take(500),
+        ),
+        descripcion = "Salida de vehículo · ${input.kilometraje} km",
+        fotos = fotosPendientes(input.fotos),
+    )
+    return salidaId
 }
 
-internal actual suspend fun registrarRetornoFirebase(input: RetornoFlotaInput): Unit = solicitud {
+/** Regreso con inspección y fotos, por la cola sin conexión; va después de su salida. */
+internal actual suspend fun registrarRetornoFirebase(input: RetornoFlotaInput) {
     validarArchivosEvidencia(input.fotos)
-    val clave = "${com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid}|${input.copy(fotos = emptyList())}"
-    val id = retornosPendientes.getOrPut(clave) { UUID.randomUUID() }
-    val previa = ExampleConnector.instance.getMovimientoFlotaPorInspeccion.ref(id)
-        .execute(QueryRef.FetchPolicy.SERVER_ONLY).data.inspeccionVehiculo
-    if (previa == null) {
-        val obs = input.observaciones?.trim()?.takeIf { it.isNotEmpty() }
-        ExampleConnector.instance.registrarRetornoFlota.execute(
-            salidaId = UUID.fromString(input.salidaId), kilometraje = input.kilometraje.toDouble(),
-            estadoVehiculo = mapearCondicionADataConnect(input.estadoVehiculo),
-        ) {
-            inspeccionId = id
-            observacionesRetorno = obs?.take(300)
-            observacionesInspeccion = obs?.take(500)
-        }
-    }
-    try { adjuntarFotosInspeccion(id, input.fotos) }
-    catch (error: OperacionComandaException) {
-        throw OperacionComandaException(
-            "El retorno ya se guardó. Hay fotografías pendientes: reintenta con los mismos datos. " + error.message, error,
-        )
-    }
-    retornosPendientes.remove(clave)
+    if (input.fotos.size > MAX_FOTOS_INSPECCION) throw OperacionComandaException("Máximo 20 fotografías por inspección.")
+    val obs = input.observaciones?.trim()?.takeIf { it.isNotEmpty() }
+    AccionesSinConexion.ejecutar(
+        TipoAccion.RETORNO_FLOTA,
+        entidad = input.salidaId,
+        datos = mapOf(
+            "salidaId" to input.salidaId, "kilometraje" to "${input.kilometraje}",
+            "estadoVehiculo" to mapearCondicionADataConnect(input.estadoVehiculo).name, "inspeccionId" to UUID.randomUUID().toString(),
+            "observacionesRetorno" to obs?.take(300), "observacionesInspeccion" to obs?.take(500),
+        ),
+        descripcion = "Regreso de vehículo · ${input.kilometraje} km",
+        fotos = fotosPendientes(input.fotos),
+    )
 }

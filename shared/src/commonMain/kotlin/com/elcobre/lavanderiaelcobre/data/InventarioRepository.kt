@@ -1,5 +1,15 @@
 package com.elcobre.lavanderiaelcobre.data
 
+import kotlinx.serialization.Serializable
+
+import com.elcobre.lavanderiaelcobre.data.offline.AccionesSinConexion
+import com.elcobre.lavanderiaelcobre.data.offline.TipoAccion
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
+import com.elcobre.lavanderiaelcobre.data.offline.CacheLectura
+import kotlinx.serialization.builtins.ListSerializer
+
+@Serializable
 data class InsumoInventario(
     val id: String,
     val codigoQr: String,
@@ -63,11 +73,27 @@ interface InventarioRepository {
 }
 
 class FirebaseInventarioRepository : InventarioRepository {
-    override suspend fun catalogo(): List<InsumoInventario> = catalogoInsumosFirebase()
-    override suspend fun porQr(codigo: String): InsumoInventario? = insumoPorQrFirebase(codigo)
+    override suspend fun catalogo(): List<InsumoInventario> =
+        CacheLectura.leer("insumos", ListSerializer(InsumoInventario.serializer())) { catalogoInsumosFirebase() }
+
+    /** Sin conexión, el QR del insumo se resuelve con el último catálogo guardado. */
+    override suspend fun porQr(codigo: String): InsumoInventario? = try {
+        insumoPorQrFirebase(codigo)
+    } catch (error: OperacionComandaException) {
+        CacheLectura.guardado("insumos", ListSerializer(InsumoInventario.serializer()))
+            ?.firstOrNull { it.codigoQr.equals(codigo.trim(), ignoreCase = true) } ?: throw error
+    }
     override suspend fun misConteos(): List<ConteoFisico> = misConteosInventarioFirebase()
-    override suspend fun registrarConteo(insumo: InsumoInventario, cantidad: Double) =
-        registrarConteoInventarioFirebase(insumo.id, cantidad, insumo.revisionStock)
+    @OptIn(ExperimentalUuidApi::class)
+    override suspend fun registrarConteo(insumo: InsumoInventario, cantidad: Double) = AccionesSinConexion.ejecutar(
+        TipoAccion.CONTEO,
+        entidad = insumo.id,
+        datos = mapOf(
+            "conteoId" to Uuid.random().toString(), "insumoId" to insumo.id, "cantidad" to "$cantidad",
+            "revisionStock" to "${insumo.revisionStock}",
+        ),
+        descripcion = "Conteo · ${insumo.nombre}",
+    )
 }
 
 internal expect suspend fun catalogoInsumosFirebase(): List<InsumoInventario>

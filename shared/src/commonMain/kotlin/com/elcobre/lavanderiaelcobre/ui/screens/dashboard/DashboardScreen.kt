@@ -93,6 +93,9 @@ import com.elcobre.lavanderiaelcobre.ui.components.sharedTag
 import com.elcobre.lavanderiaelcobre.ui.components.tipoIcon
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreShapes
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
+import com.elcobre.lavanderiaelcobre.ui.components.rememberAccionesPendientes
+import com.elcobre.lavanderiaelcobre.ui.components.ChipTono
+import com.elcobre.lavanderiaelcobre.ui.components.Tono
 
 private val ANCHO_TABLET_SPLIT = 720.dp
 
@@ -780,6 +783,8 @@ private fun PedidoCardChips(pedido: Pedido, etapa: ChipColors, prioridad: ChipCo
             content = etapa.content,
             icon = etapaIcon(pedido.etapaActual),
         )
+        // Avance o incidencia guardados sin conexión, aún no enviados.
+        if (rememberAccionesPendientes().any { it.entidad == pedido.id }) ChipTono("Sin enviar", Tono.INFO, icono = CobreIcons.Schedule)
         StatusChip(
             label = if (pedido.estadoComandaDb == null) "Prioridad ${pedido.prioridad.displayName}" else "Prioridad no definida",
             container = prioridad.container,

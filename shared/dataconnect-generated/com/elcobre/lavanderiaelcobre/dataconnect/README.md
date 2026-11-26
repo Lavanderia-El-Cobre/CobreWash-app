@@ -81,8 +81,8 @@ val connector: ExampleConnector = ExampleConnector.getInstance(
 
 The `example` Data Connect connector defines
 61 queries and
-63 mutations,
-a total of 124 operations.
+70 mutations,
+a total of 131 operations.
 Each of these operations is exposed
 as a property of [ExampleConnector].
 
@@ -281,18 +281,19 @@ however, if they _are_ specified,
 then they are specified in a Kotlin DSL block as the last argument
 of the `execute()` method.
 
-For example, the "CrearClienteComanda" mutation has 4 optional variables ("rut", "telefono", "email", and "direccion")
-and can be executed via the [ExampleConnector.crearClienteComanda]
+For example, the "RegistrarSalidaFlotaMovil" mutation has 5 optional variables ("salidaId", "inspeccionId", "observaciones", "observacionesInspeccion", and "relojDudoso")
+and can be executed via the [ExampleConnector.registrarSalidaFlotaMovil]
 property as follows:
 
 ```kotlin
 val connector = ExampleConnector.instance
-val mutationResult = connector.crearClienteComanda.execute(nombre="corge", tipoCliente=tipoClienteSample) {
-  rut = "qux"
-  telefono = "bar"
-  email = "qux"
-  direccion = "fred"
+val mutationResult = connector.registrarSalidaFlotaMovil.execute(vehiculoId=java.util.UUID.randomUUID(), repartidorId="waldo", kilometraje=59.39, estadoVehiculo=estadoVehiculoSample, idOperacion=java.util.UUID.randomUUID(), ocurridoEn=Timestamp(1456474359, 994107131)) {
+  salidaId = java.util.UUID.randomUUID()
+  inspeccionId = java.util.UUID.randomUUID()
+  observaciones = "corge"
+  observacionesInspeccion = "waldo"
+  relojDudoso = true
 }
-println("CrearClienteComanda mutation returned: ${mutationResult.data}")
+println("RegistrarSalidaFlotaMovil mutation returned: ${mutationResult.data}")
 ```
 
