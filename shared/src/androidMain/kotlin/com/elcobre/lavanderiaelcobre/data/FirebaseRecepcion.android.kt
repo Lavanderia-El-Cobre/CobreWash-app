@@ -2,18 +2,23 @@ package com.elcobre.lavanderiaelcobre.data
 
 import com.elcobre.lavanderiaelcobre.data.model.CatalogosComanda
 import com.elcobre.lavanderiaelcobre.data.model.ClienteFicha
+import com.elcobre.lavanderiaelcobre.data.model.Cobro
+import com.elcobre.lavanderiaelcobre.data.model.CobroResuelto
 import com.elcobre.lavanderiaelcobre.data.model.ComandaGestion
 import com.elcobre.lavanderiaelcobre.data.model.EstadoComanda
 import com.elcobre.lavanderiaelcobre.data.model.EstadoIncidencia
+import com.elcobre.lavanderiaelcobre.data.model.EstimacionConsumo
 import com.elcobre.lavanderiaelcobre.data.model.EventoComanda
 import com.elcobre.lavanderiaelcobre.data.model.FiltroComandas
 import com.elcobre.lavanderiaelcobre.data.model.FormularioComanda
 import com.elcobre.lavanderiaelcobre.data.model.IncidenciaGestion
 import com.elcobre.lavanderiaelcobre.data.model.LineaComanda
+import com.elcobre.lavanderiaelcobre.data.model.ModalidadCobro
 import com.elcobre.lavanderiaelcobre.data.model.NuevoClienteInput
 import com.elcobre.lavanderiaelcobre.data.model.PaginaComandas
 import com.elcobre.lavanderiaelcobre.data.model.TipoClienteFicha
 import com.elcobre.lavanderiaelcobre.data.model.TipoPrendaCatalogo
+import com.elcobre.lavanderiaelcobre.data.model.Telefonos
 import com.elcobre.lavanderiaelcobre.data.model.TipoServicioCatalogo
 import com.elcobre.lavanderiaelcobre.data.model.Validaciones
 import com.elcobre.lavanderiaelcobre.data.model.detalleParaGuardar
@@ -23,6 +28,7 @@ import com.elcobre.lavanderiaelcobre.dataconnect.GetComandaDetalleQuery
 import com.elcobre.lavanderiaelcobre.dataconnect.GetComandasPaginadasQuery
 import com.elcobre.lavanderiaelcobre.dataconnect.IncidenciaEstado
 import com.elcobre.lavanderiaelcobre.dataconnect.TipoCliente
+import com.elcobre.lavanderiaelcobre.dataconnect.UnidadCobro
 import com.elcobre.lavanderiaelcobre.dataconnect.execute
 import com.elcobre.lavanderiaelcobre.dataconnect.instance
 import com.elcobre.lavanderiaelcobre.dataconnect.ref
@@ -37,6 +43,14 @@ private fun tipoClienteDc(tipo: TipoClienteFicha): TipoCliente =
     if (tipo == TipoClienteFicha.HOTEL) TipoCliente.HOTEL else TipoCliente.PARTICULAR
 
 private fun opcional(valor: String): String? = valor.trim().ifEmpty { null }
+
+/** Separa el nombre de la ficha en nombre y apellido para el perfil, como `nombreDeCuenta` de la web. */
+private fun nombreDeCuenta(nombre: String, tipo: TipoClienteFicha): Pair<String, String?> {
+    val limpio = nombre.trim().replace(Regex("\\s+"), " ")
+    if (tipo != TipoClienteFicha.PARTICULAR) return limpio.take(80) to null
+    val partes = limpio.split(" ")
+    return partes.first().take(80) to partes.drop(1).joinToString(" ").take(80).ifEmpty { null }
+}
 
 private fun GetComandasPaginadasQuery.Data.ComandasItem.ComandaEtapasOnComandaItem.cruda() = EtapaCruda(
     etapaId.toString(), nombreEtapa, ordenEtapa, tiempoEstimadoMin, estado.stringValue, fechaInicio, fechaCompletado,
@@ -66,9 +80,14 @@ private fun GetComandasPaginadasQuery.Data.ComandasItem.aGestion() = ComandaGest
     empresa = empresa, proyecto = proyecto, observaciones = observaciones, motivoAnulacion = motivoAnulacion,
     fechaEntregaEstimada = fechaEntregaEstimada?.let(::fechaCorta),
     lineas = comandaDetalles_on_comanda.map {
-        LineaComanda(it.tipoPrenda.nombre, it.tipoServicio.nombre, it.cantidad, it.precioUnitario, it.detalle.orEmpty())
+        LineaComanda(
+            it.tipoPrenda.nombre, it.tipoServicio.nombre, it.cantidad, it.precioUnitario, it.detalle.orEmpty(),
+            pesoKg = it.pesoKg, subtotalGuardado = it.subtotal,
+        )
     },
     etapas = normalizarEtapas(comandaEtapas_on_comanda.map { it.cruda() }),
+    modalidad = ModalidadCobro.desdeCodigo(modalidadCobro.stringValue),
+    precioKg = precioKg,
 )
 
 private fun GetComandaDetalleQuery.Data.Comanda.aGestion() = ComandaGestion(
@@ -88,9 +107,14 @@ private fun GetComandaDetalleQuery.Data.Comanda.aGestion() = ComandaGestion(
     fechaEntregaEstimada = fechaEntregaEstimada?.let(::fechaCorta),
     fechaEntregaReal = fechaEntregaReal?.let(::fechaHora),
     lineas = comandaDetalles_on_comanda.map {
-        LineaComanda(it.tipoPrenda.nombre, it.tipoServicio.nombre, it.cantidad, it.precioUnitario, it.detalle.orEmpty())
+        LineaComanda(
+            it.tipoPrenda.nombre, it.tipoServicio.nombre, it.cantidad, it.precioUnitario, it.detalle.orEmpty(),
+            pesoKg = it.pesoKg, subtotalGuardado = it.subtotal,
+        )
     },
     etapas = normalizarEtapas(comandaEtapas_on_comanda.map { it.cruda() }),
+    modalidad = ModalidadCobro.desdeCodigo(modalidadCobro.stringValue),
+    precioKg = precioKg,
     historial = comandaHistorialEstados_on_comanda.map {
         val titulo = it.estadoAnterior?.let { a -> "${EstadoComanda.desdeCodigo(a.stringValue).etiqueta} → " }.orEmpty() +
             EstadoComanda.desdeCodigo(it.estadoNuevo.stringValue).etiqueta
@@ -139,7 +163,7 @@ private class FirebaseRecepcionRepository : RecepcionRepository {
         val data = dc.getCatalogosComanda.ref().execute(SERVER).data
         CatalogosComanda(
             servicios = data.tipoServicios.map {
-                TipoServicioCatalogo(it.id.toString(), it.nombre, it.precioBase, it.unidadCobro.stringValue)
+                TipoServicioCatalogo(it.id.toString(), it.nombre, it.precioBase, it.unidadCobro.stringValue, it.precioKg)
             },
             prendas = data.tipoPrendas.map { TipoPrendaCatalogo(it.id.toString(), it.nombre) },
             clientes = data.clientes.map {
@@ -154,36 +178,49 @@ private class FirebaseRecepcionRepository : RecepcionRepository {
     /**
      * Resuelve (o crea) los tipos de prenda y servicio por nombre normalizado antes de
      * insertar la comanda, como la web: así una cabecera nunca queda sin sus prendas.
+     * Todas las líneas llevan el servicio de la comanda, su parte del peso y el cobro
+     * calculado por [FormularioComanda.resolverCobro].
      */
-    private suspend fun resolverDetalles(formulario: FormularioComanda): List<DetalleResuelto> {
+    private suspend fun resolverDetalles(formulario: FormularioComanda, cobro: CobroResuelto): List<DetalleResuelto> {
         val catalogo = catalogos()
         val prendas = catalogo.prendas.associate { Validaciones.normalizarCatalogo(it.nombre) to it.id }.toMutableMap()
         val servicios = catalogo.servicios.associate { Validaciones.normalizarCatalogo(it.nombre) to it.id }.toMutableMap()
-        return formulario.lineasValidas.map { linea ->
-            val nombrePrenda = linea.prenda.trim()
+        val nombreServicio = formulario.servicio.trim().ifEmpty { "Lavado" }
+        val servicioId = servicios.getOrPut(Validaciones.normalizarCatalogo(nombreServicio)) {
+            dc.crearTipoServicio.execute(nombreServicio, 0.0).data.tipoServicio_insert.id.toString()
+        }
+        return cobro.lineas.map { cobrada ->
+            val linea = cobrada.linea
+            // Las prendas nuevas se guardan en mayúsculas y con 2 a 60 caracteres, como el catálogo.
+            val nombrePrenda = Cobro.normalizarPrendaNueva(linea.prenda)
             val prendaId = prendas.getOrPut(Validaciones.normalizarCatalogo(nombrePrenda)) {
                 dc.crearTipoPrenda.execute(nombrePrenda).data.tipoPrenda_insert.id.toString()
-            }
-            val nombreServicio = linea.servicio.trim().ifEmpty { "Lavado" }
-            val servicioId = servicios.getOrPut(Validaciones.normalizarCatalogo(nombreServicio)) {
-                dc.crearTipoServicio.execute(nombreServicio, 0.0).data.tipoServicio_insert.id.toString()
             }
             DetalleResuelto(
                 tipoPrendaId = UUID.fromString(prendaId),
                 tipoServicioId = UUID.fromString(servicioId),
                 cantidad = linea.cantidad,
                 detalle = detalleParaGuardar(linea, formulario.tipoCliente),
-                precioUnitario = linea.precioUnitario,
-                subtotal = linea.subtotal,
+                pesoKg = cobrada.pesoKg,
+                precioUnitario = cobrada.precioUnitario,
+                subtotal = cobrada.subtotal,
             )
         }
     }
+
+    private fun cobroDe(formulario: FormularioComanda): CobroResuelto =
+        formulario.resolverCobro()
+            ?: throw OperacionComandaException(formulario.validar() ?: "Revisa el peso y el cobro de la comanda.")
+
+    private fun unidadCobro(cobro: CobroResuelto): UnidadCobro =
+        if (cobro.modalidad == ModalidadCobro.KILO) UnidadCobro.KILO else UnidadCobro.PRENDA
 
     override suspend fun crearComanda(identidad: IdentidadComanda, formulario: FormularioComanda): String = solicitud {
         val id = UUID.fromString(identidad.id)
         // Un reintento tras una respuesta perdida no debe insertar dos veces.
         comandaGuardada(id)?.let { return@solicitud it }
-        val detalles = resolverDetalles(formulario)
+        val cobro = cobroDe(formulario)
+        val detalles = resolverDetalles(formulario, cobro)
         try {
             crearComandaConFlujo(
                 CrearComandaConFlujoVars(
@@ -193,6 +230,8 @@ private class FirebaseRecepcionRepository : RecepcionRepository {
                     empresa = opcional(formulario.empresa),
                     proyecto = opcional(formulario.proyecto),
                     observaciones = opcional(formulario.observaciones),
+                    modalidadCobro = unidadCobro(cobro),
+                    precioKg = cobro.precioKg,
                     detalles = detalles,
                 ),
             )
@@ -208,7 +247,8 @@ private class FirebaseRecepcionRepository : RecepcionRepository {
 
     override suspend fun editarComanda(id: String, version: String, formulario: FormularioComanda): Unit = solicitud {
         val comandaId = UUID.fromString(id)
-        val detalles = resolverDetalles(formulario)
+        val cobro = cobroDe(formulario)
+        val detalles = resolverDetalles(formulario, cobro)
         editarComandaConDetalles(
             EditarComandaConDetallesVars(
                 id = comandaId,
@@ -216,6 +256,8 @@ private class FirebaseRecepcionRepository : RecepcionRepository {
                 empresa = opcional(formulario.empresa),
                 proyecto = opcional(formulario.proyecto),
                 observaciones = opcional(formulario.observaciones),
+                modalidadCobro = unidadCobro(cobro),
+                precioKg = cobro.precioKg,
                 detalles = detalles.map { it.conComanda(comandaId) },
             ),
         )
@@ -253,20 +295,51 @@ private class FirebaseRecepcionRepository : RecepcionRepository {
     override suspend fun crearCliente(input: NuevoClienteInput): String = solicitud {
         dc.crearClienteComanda.execute(input.nombre.trim(), tipoClienteDc(input.tipo)) {
             rut = opcional(input.rut)?.let(Validaciones::formatearRut)
-            telefono = opcional(input.telefono)?.let(Validaciones::formatearTelefono)
+            telefono = opcional(input.telefono)?.let(Telefonos::normalizar)
             email = opcional(input.email)
             direccion = opcional(input.direccion)
         }.data.cliente_insert.id.toString()
     }
 
+    /**
+     * Igual que `registrarClienteConCuenta` de la web: crea la cuenta en una instancia
+     * secundaria, guarda usuario y ficha en una transacción y envía la invitación. Si el
+     * correo ya tenía cuenta, solo crea la ficha (se asocia cuando esa cuenta inicie sesión).
+     */
+    override suspend fun crearClienteConCuenta(input: NuevoClienteInput): ResultadoClienteConCuenta {
+        val email = input.email.trim().lowercase()
+        if (!Validaciones.correoValido(email)) {
+            throw OperacionComandaException("Ingresa el correo del cliente: se usa para crear su cuenta.")
+        }
+        return conCuentaNueva(email) { alta ->
+            // El correo ya tenía cuenta: solo la ficha; se asocia cuando esa cuenta inicie sesión.
+            val usuario = alta.usuario ?: return@conCuentaNueva ResultadoClienteConCuenta(
+                crearCliente(input.copy(email = email)), cuentaCreada = false, invitacionEnviada = false,
+            )
+            val (nombreUsuario, apellidoUsuario) = nombreDeCuenta(input.nombre, input.tipo)
+            val id = solicitud {
+                dc.crearClienteConCuenta.execute(usuario.uid, nombreUsuario, input.nombre.trim(), tipoClienteDc(input.tipo), email) {
+                    this.apellidoUsuario = apellidoUsuario
+                    rut = opcional(input.rut)?.let(Validaciones::formatearRut)
+                    telefono = opcional(input.telefono)?.let(Telefonos::normalizar)
+                    direccion = opcional(input.direccion)
+                }.data.cliente_insert.id.toString()
+            }
+            ResultadoClienteConCuenta(id, cuentaCreada = true, invitacionEnviada = enviarInvitacion(alta.auth, email))
+        }
+    }
+
     override suspend fun editarCliente(id: String, input: NuevoClienteInput): Unit = solicitud {
         dc.editarFichaCliente.execute(UUID.fromString(id), input.nombre.trim(), tipoClienteDc(input.tipo)) {
             rut = opcional(input.rut)?.let(Validaciones::formatearRut)
-            telefono = opcional(input.telefono)?.let(Validaciones::formatearTelefono)
+            telefono = opcional(input.telefono)?.let(Telefonos::normalizar)
             email = opcional(input.email)
             direccion = opcional(input.direccion)
         }
     }
+
+    override suspend fun estimarConsumo(tipoServicioId: String, pesoKg: Double): EstimacionConsumo =
+        estimarConsumoWeb(tipoServicioId, pesoKg)
 
     override suspend fun incidencias(): List<IncidenciaGestion> = solicitud {
         dc.getIncidencias.ref().execute(SERVER).data.incidenciaComandas.map {

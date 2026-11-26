@@ -27,8 +27,52 @@ public interface EntregarComandaMutation :
   
     val id: @kotlinx.serialization.Serializable(with = com.google.firebase.dataconnect.serializers.UUIDSerializer::class) java.util.UUID,
   
+    val detalle: com.google.firebase.dataconnect.OptionalVariable<String?>,
+  
   ) {
     
+    
+      
+      @kotlin.DslMarker public annotation class BuilderDsl
+
+      
+      @BuilderDsl
+      public interface Builder {
+        public var id: java.util.UUID
+        public var detalle: String?
+        
+      }
+
+      public companion object {
+        
+        @Suppress("NAME_SHADOWING")
+        public fun build(
+          id: java.util.UUID,
+          block_: Builder.() -> Unit
+        ): Variables {
+          var id= id
+            var detalle: com.google.firebase.dataconnect.OptionalVariable<String?> =
+                com.google.firebase.dataconnect.OptionalVariable.Undefined
+            
+
+          return object : Builder {
+            override var id: java.util.UUID
+              get() = throw UnsupportedOperationException("getting builder values is not supported")
+              set(value_) { id = value_ }
+              
+            override var detalle: String?
+              get() = throw UnsupportedOperationException("getting builder values is not supported")
+              set(value_) { detalle = com.google.firebase.dataconnect.OptionalVariable.Value(value_) }
+              
+            
+          }.apply(block_)
+          .let {
+            Variables(
+              id=id,detalle=detalle,
+            )
+          }
+        }
+      }
     
   }
   
@@ -42,6 +86,8 @@ public interface EntregarComandaMutation :
     val entrega: Int,
   
     val comandaHistorialEstado_insert: ComandaHistorialEstadoKey,
+  
+    val problemasResueltos: Int,
   
     val comandaNotificacion_insert: ComandaNotificacionKey,
   
@@ -67,6 +113,7 @@ public fun EntregarComandaMutation.ref(
     id: java.util.UUID,
 
   
+    block_: EntregarComandaMutation.Variables.Builder.() -> Unit = {}
   
 ): com.google.firebase.dataconnect.MutationRef<
     EntregarComandaMutation.Data,
@@ -74,9 +121,10 @@ public fun EntregarComandaMutation.ref(
   > =
   ref(
     
-      EntregarComandaMutation.Variables(
+      EntregarComandaMutation.Variables.build(
         id=id,
   
+    block_
       )
     
   )
@@ -88,6 +136,7 @@ public suspend fun EntregarComandaMutation.execute(
       id: java.util.UUID,
 
   
+    block_: EntregarComandaMutation.Variables.Builder.() -> Unit = {}
 
   ): com.google.firebase.dataconnect.MutationResult<
     EntregarComandaMutation.Data,
@@ -97,6 +146,7 @@ public suspend fun EntregarComandaMutation.execute(
     
       id=id,
   
+    block_
     
   ).execute()
 

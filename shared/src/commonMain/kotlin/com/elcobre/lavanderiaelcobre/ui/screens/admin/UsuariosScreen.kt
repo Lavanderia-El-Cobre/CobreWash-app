@@ -17,7 +17,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.elcobre.lavanderiaelcobre.data.EdicionUsuarioInput
@@ -28,9 +27,11 @@ import com.elcobre.lavanderiaelcobre.data.model.UsuarioGestion
 import com.elcobre.lavanderiaelcobre.data.model.Validaciones
 import com.elcobre.lavanderiaelcobre.ui.components.AvisoExito
 import com.elcobre.lavanderiaelcobre.ui.components.ButtonVariant
+import com.elcobre.lavanderiaelcobre.ui.components.CampoTelefono
 import com.elcobre.lavanderiaelcobre.ui.components.ChipTono
 import com.elcobre.lavanderiaelcobre.ui.components.ChipsFiltro
 import com.elcobre.lavanderiaelcobre.ui.components.CobreButton
+import com.elcobre.lavanderiaelcobre.ui.components.CobreCheckbox
 import com.elcobre.lavanderiaelcobre.ui.components.CobreIcons
 import com.elcobre.lavanderiaelcobre.ui.components.CobreTextField
 import com.elcobre.lavanderiaelcobre.ui.components.ContentCard
@@ -42,6 +43,7 @@ import com.elcobre.lavanderiaelcobre.ui.components.GlassSegmentedControl
 import com.elcobre.lavanderiaelcobre.ui.components.GlassSheet
 import com.elcobre.lavanderiaelcobre.ui.components.Iniciales
 import com.elcobre.lavanderiaelcobre.ui.components.LargeTitleScreen
+import com.elcobre.lavanderiaelcobre.ui.components.ProtegerCapturas
 import com.elcobre.lavanderiaelcobre.ui.components.SelectorConBusqueda
 import com.elcobre.lavanderiaelcobre.ui.components.Tono
 import com.elcobre.lavanderiaelcobre.ui.components.readableWidth
@@ -80,6 +82,7 @@ private sealed interface HojaUsuario {
 /** Gestión de cuentas (`/intranet/usuarios`). */
 @Composable
 fun UsuariosScreen(vm: UsuariosViewModel, applySystemBarsInsets: Boolean = true) {
+    ProtegerCapturas()
     var hoja by remember { mutableStateOf<HojaUsuario?>(null) }
     LargeTitleScreen(
         title = "Usuarios",
@@ -146,7 +149,7 @@ private fun UsuarioCard(usuario: UsuarioGestion, onClick: () -> Unit, modifier: 
 
 @Composable
 private fun NuevoUsuarioSheet(vm: UsuariosViewModel, onCerrar: () -> Unit) {
-    var datos by remember { mutableStateOf(NuevoUsuarioInput("", "", "", "", "", "", "", "")) }
+    var datos by remember { mutableStateOf(NuevoUsuarioInput("", "", "", "", "", "", "")) }
     var error by remember { mutableStateOf<String?>(null) }
     val cambiar = { nuevo: NuevoUsuarioInput ->
         datos = nuevo
@@ -155,7 +158,7 @@ private fun NuevoUsuarioSheet(vm: UsuariosViewModel, onCerrar: () -> Unit) {
     GlassSheet(
         onDismiss = { if (!vm.guardando) onCerrar() },
         title = "Nueva cuenta",
-        subtitle = "La persona entra con su correo y esta contraseña.",
+        subtitle = "La persona recibe un correo con un enlace para crear su contraseña.",
     ) {
         SelectorRol(vm.roles, datos.rolId) { cambiar(datos.copy(rolId = it.id, rolNombre = it.nombre)) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -163,12 +166,7 @@ private fun NuevoUsuarioSheet(vm: UsuariosViewModel, onCerrar: () -> Unit) {
             CobreTextField(datos.apellido, { cambiar(datos.copy(apellido = it.take(80))) }, Modifier.weight(1f), label = "Apellido")
         }
         CobreTextField(datos.rut, { cambiar(datos.copy(rut = Validaciones.formatearRut(it))) }, label = "RUT", placeholder = "12.345.678-5")
-        CobreTextField(
-            datos.telefono,
-            { cambiar(datos.copy(telefono = Validaciones.formatearTelefono(it))) },
-            label = "Teléfono (opcional)",
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-        )
+        CampoTelefono(datos.telefono, { cambiar(datos.copy(telefono = it)) })
         if (datos.rolNombre == "cliente") {
             GlassSegmentedControl(
                 TipoClienteFicha.entries,
@@ -185,15 +183,10 @@ private fun NuevoUsuarioSheet(vm: UsuariosViewModel, onCerrar: () -> Unit) {
             leadingIcon = CobreIcons.Mail,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
         )
-        CobreTextField(
-            datos.contrasena,
-            { cambiar(datos.copy(contrasena = it)) },
-            label = "Contraseña inicial",
-            leadingIcon = CobreIcons.Lock,
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            supportingText = datos.contrasena.takeIf { it.isNotEmpty() }
-                ?.let { Validaciones.problemaContrasena(it) ?: "Contraseña válida" },
+        CobreCheckbox(
+            checked = datos.informado,
+            onCheckedChange = { cambiar(datos.copy(informado = it)) },
+            label = "Informé a la persona de los Términos y Condiciones y del Aviso de Privacidad",
         )
         ErrorHoja(error)
         CobreButton(
@@ -238,12 +231,7 @@ private fun EditarUsuarioSheet(vm: UsuariosViewModel, usuario: UsuarioGestion, o
             CobreTextField(nombre, { nombre = it.take(80) }, Modifier.weight(1f), label = "Nombre")
             CobreTextField(apellido, { apellido = it.take(80) }, Modifier.weight(1f), label = "Apellido")
         }
-        CobreTextField(
-            telefono,
-            { telefono = Validaciones.formatearTelefono(it) },
-            label = "Teléfono",
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-        )
+        CampoTelefono(telefono, { telefono = it }, etiqueta = "Teléfono")
         ErrorHoja(error)
         CobreButton(
             text = "Guardar cambios",

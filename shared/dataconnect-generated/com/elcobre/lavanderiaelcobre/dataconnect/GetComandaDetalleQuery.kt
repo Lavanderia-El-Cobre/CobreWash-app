@@ -60,6 +60,10 @@ public interface GetComandaDetalleQuery :
   
     val valorTotal: Double,
   
+    val modalidadCobro: @kotlinx.serialization.Serializable(with = UnidadCobro.EnumValueSerializer::class) EnumValue<UnidadCobro>,
+  
+    val precioKg: Double?,
+  
     val empresa: String?,
   
     val proyecto: String?,

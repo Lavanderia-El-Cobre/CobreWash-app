@@ -16,6 +16,7 @@ import com.elcobre.lavanderiaelcobre.data.model.MovimientoInventario
 import com.elcobre.lavanderiaelcobre.data.model.NuevoAvisoInput
 import com.elcobre.lavanderiaelcobre.data.model.NuevoInsumoInput
 import com.elcobre.lavanderiaelcobre.data.model.NuevoUsuarioInput
+import com.elcobre.lavanderiaelcobre.data.model.Telefonos
 import com.elcobre.lavanderiaelcobre.data.model.PeriodoReporte
 import com.elcobre.lavanderiaelcobre.data.model.ReporteGestion
 import com.elcobre.lavanderiaelcobre.data.model.ResumenPanel
@@ -146,14 +147,22 @@ class UsuariosViewModel(
             alTerminar(it)
             return
         }
-        operar("Cuenta de ${input.nombre.trim()} creada.", alTerminar = {
+        operar(null, alTerminar = {
             alTerminar(it)
             if (it == null) refrescar()
-        }) { repository.crearUsuario(input) }
+        }) {
+            val email = input.email.trim()
+            mensaje = if (repository.crearUsuario(input)) {
+                "Cuenta de ${input.nombre.trim()} creada. Enviamos a $email un enlace para activarla y crear su contraseña."
+            } else {
+                "Cuenta de ${input.nombre.trim()} creada, pero no se pudo enviar la invitación a $email. " +
+                    "Pídele usar \"¿Olvidaste tu contraseña?\" para activarla."
+            }
+        }
     }
 
     fun editar(input: EdicionUsuarioInput, alTerminar: (String?) -> Unit) {
-        validarEdicionUsuario(input.rolId, input.nombre)?.let {
+        (validarEdicionUsuario(input.rolId, input.nombre) ?: Telefonos.validar(input.telefono.orEmpty()))?.let {
             alTerminar(it)
             return
         }

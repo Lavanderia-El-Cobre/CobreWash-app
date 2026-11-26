@@ -43,6 +43,8 @@ public interface RegistrarseComoClienteMutation :
   
     val versionPrivacidad: String,
   
+    val versionTerminos: com.google.firebase.dataconnect.OptionalVariable<String?>,
+  
   ) {
     
     
@@ -61,6 +63,7 @@ public interface RegistrarseComoClienteMutation :
         public var direccion: String?
         public var tipoCliente: TipoCliente
         public var versionPrivacidad: String
+        public var versionTerminos: String?
         
       }
 
@@ -83,6 +86,8 @@ public interface RegistrarseComoClienteMutation :
                 com.google.firebase.dataconnect.OptionalVariable.Undefined
             var tipoCliente= tipoCliente
             var versionPrivacidad= versionPrivacidad
+            var versionTerminos: com.google.firebase.dataconnect.OptionalVariable<String?> =
+                com.google.firebase.dataconnect.OptionalVariable.Undefined
             
 
           return object : Builder {
@@ -122,11 +127,15 @@ public interface RegistrarseComoClienteMutation :
               get() = throw UnsupportedOperationException("getting builder values is not supported")
               set(value_) { versionPrivacidad = value_ }
               
+            override var versionTerminos: String?
+              get() = throw UnsupportedOperationException("getting builder values is not supported")
+              set(value_) { versionTerminos = com.google.firebase.dataconnect.OptionalVariable.Value(value_) }
+              
             
           }.apply(block_)
           .let {
             Variables(
-              crearFicha=crearFicha,rut=rut,nombre=nombre,apellido=apellido,telefono=telefono,email=email,direccion=direccion,tipoCliente=tipoCliente,versionPrivacidad=versionPrivacidad,
+              crearFicha=crearFicha,rut=rut,nombre=nombre,apellido=apellido,telefono=telefono,email=email,direccion=direccion,tipoCliente=tipoCliente,versionPrivacidad=versionPrivacidad,versionTerminos=versionTerminos,
             )
           }
         }

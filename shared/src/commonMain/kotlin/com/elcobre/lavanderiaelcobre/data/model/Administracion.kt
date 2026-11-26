@@ -64,7 +64,11 @@ data class UsuarioGestion(
     val nombreCompleto: String get() = listOfNotNull(nombre, apellido).joinToString(" ").trim()
 }
 
-/** Alta administrada de una cuenta (`createManagedUser` de la web). */
+/**
+ * Alta administrada de una cuenta (`createManagedUser` de la web). No lleva contraseña:
+ * la cuenta se crea con una aleatoria y la persona define la suya con el enlace que
+ * recibe por correo.
+ */
 data class NuevoUsuarioInput(
     val rolId: String,
     val rolNombre: String,
@@ -73,22 +77,22 @@ data class NuevoUsuarioInput(
     val rut: String,
     val telefono: String,
     val email: String,
-    val contrasena: String,
     val tipoCliente: TipoClienteFicha? = null,
     val direccion: String = "",
+    /** El administrador confirma que informó a la persona de los términos y del aviso de privacidad. */
+    val informado: Boolean = false,
 )
 
 /** Igual que `validateManagedUserRegistration` de la web. */
 fun validarNuevoUsuario(input: NuevoUsuarioInput): String? {
-    val incompleto = listOf(input.rolId, input.nombre, input.apellido, input.rut, input.email, input.contrasena).any { it.isBlank() }
+    val incompleto = listOf(input.rolId, input.nombre, input.apellido, input.rut, input.email).any { it.isBlank() }
     return when {
         incompleto -> "Todos los campos son obligatorios."
         !Validaciones.rutValido(input.rut) -> "El RUT ingresado no es válido."
         !Validaciones.correoValido(input.email) -> "Ingresa un correo válido."
-        input.telefono.isNotBlank() && !Validaciones.telefonoValido(input.telefono) ->
-            "Ingresa un celular o teléfono fijo chileno válido."
-        Validaciones.problemaContrasena(input.contrasena) != null -> Validaciones.problemaContrasena(input.contrasena)
+        Telefonos.validar(input.telefono) != null -> Telefonos.validar(input.telefono)
         input.rolNombre == "cliente" && input.tipoCliente == null -> "Selecciona el tipo de cliente."
+        !input.informado -> "Confirma que informaste a la persona de los Términos y Condiciones y del Aviso de Privacidad."
         else -> null
     }
 }

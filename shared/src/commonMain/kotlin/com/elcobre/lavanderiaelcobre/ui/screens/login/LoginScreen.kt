@@ -80,6 +80,10 @@ import com.elcobre.lavanderiaelcobre.ui.components.GlassIconButton
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreShapes
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 import com.elcobre.lavanderiaelcobre.ui.theme.cobreIsDark
+import com.elcobre.lavanderiaelcobre.data.auth.EstadoIntentos
+import com.elcobre.lavanderiaelcobre.data.auth.FalloIngreso
+import com.elcobre.lavanderiaelcobre.data.auth.IntentosIngreso
+import com.elcobre.lavanderiaelcobre.data.model.Validaciones
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import lavanderiaelcobre.shared.generated.resources.Res
@@ -91,11 +95,81 @@ internal fun sesionParaRol(
     rolNombre: String,
     nombre: String,
 ): Sesion? = when (val rol = rolNombre.lowercase().trim()) {
-    "operario", "operario de planta" -> Sesion.DeOperario(Operario(nombre = nombre, rol = "Operario de planta"))
-    "admin", "administrador" -> Sesion.DeAdministrador(Administrador(nombre = nombre))
-    "recepcionista", "recepcion", "recepción" -> Sesion.DeRecepcionista(Recepcionista(nombre = nombre))
+    // Solo los roles que existen en la tabla `rol` del backend (lib/roles.ts).
+    "operario" -> Sesion.DeOperario(Operario(nombre = nombre, rol = "Operario de planta"))
+    "admin" -> Sesion.DeAdministrador(Administrador(nombre = nombre))
+    "recepcionista" -> Sesion.DeRecepcionista(Recepcionista(nombre = nombre))
     "repartidor", "conductor" -> Sesion.DeRepartidor(Repartidor(nombre = nombre, rol = rol.replaceFirstChar { it.uppercase() }))
     else -> null // El rol "cliente" usa el portal web, no esta app.
+}
+
+/** Aviso de intentos restantes o bloqueo vigente, como el modal de ingreso de la web. */
+internal fun mensajeIntentos(estado: EstadoIntentos, ahoraMs: Long): String? {
+    val hasta = estado.bloqueadoHasta
+    return when {
+        hasta != null ->
+            "Demasiados intentos fallidos. Espera ${IntentosIngreso.formatoEspera(hasta - ahoraMs)} " +
+                "o restablece tu contraseña con «¿Olvidaste tu contraseña?»."
+        estado.restantes in 1..2 ->
+            "Correo o contraseña incorrectos. Te quedan ${estado.restantes} " +
+                (if (estado.restantes == 1) "intento" else "intentos") + " antes de un bloqueo temporal."
+        else -> null
+    }
+}
+
+/** Resultado de un intento de ingreso completo (credenciales, verificación y perfil). */
+private sealed interface ResultadoIngreso {
+    data class Entrar(val sesion: Sesion) : ResultadoIngreso
+    data class Rechazado(val mensaje: String) : ResultadoIngreso
+}
+
+/**
+ * Ingreso como `resolverIngreso` de la web: credenciales (con bloqueo progresivo),
+ * verificación de correo para cuentas nuevas, perfil activo con rol de personal y, si se
+ * pidió, la sesión recordada por 30 días. Ante cualquier rechazo se cierra la sesión.
+ */
+@Suppress("ReturnCount") // Una salida por cada motivo de rechazo, como la web.
+private suspend fun resolverIngreso(
+    auth: AuthRepository,
+    perfiles: PerfilRepository,
+    correo: String,
+    password: String,
+    recordarme: Boolean,
+): ResultadoIngreso {
+    val credenciales = auth.iniciarSesion(correo, password)
+    if (credenciales is AuthResultado.Error) {
+        val ahora = IntentosIngreso.ahoraMs()
+        val estado = IntentosIngreso.registrarFallo(credenciales.fallo, ahora)
+        val aviso = if (credenciales.fallo == FalloIngreso.OTRO) null else mensajeIntentos(estado, ahora)
+        return ResultadoIngreso.Rechazado(aviso ?: credenciales.mensaje)
+    }
+    IntentosIngreso.limpiar()
+    // Cuentas creadas desde el 2026-11-24: deben verificar su correo antes de entrar.
+    val rechazo = if (auth.correoPorVerificar()) {
+        val envio = auth.enviarVerificacion()
+        envio?.let { "Verifica tu correo para entrar. $it" }
+            ?: "Verifica tu correo para entrar: te enviamos un enlace a $correo. Ábrelo y vuelve a ingresar."
+    } else {
+        null
+    }
+    val perfil = if (rechazo == null) perfiles.obtenerMiPerfil() else null
+    val sesion = (perfil as? PerfilResultado.Exito)?.let { sesionParaRol(it.rolNombre, it.nombre) }
+    if (perfil !is PerfilResultado.Exito || sesion == null) {
+        auth.cerrarSesion()
+        return ResultadoIngreso.Rechazado(
+            rechazo ?: (perfil as? PerfilResultado.Error)?.mensaje ?: "Tu cuenta no tiene acceso a la app móvil.",
+        )
+    }
+    SesionPersistente.setRecordarme(recordarme)
+    if (recordarme) {
+        SesionPersistente.guardar(
+            DatosSesionGuardada(email = correo, nombre = perfil.nombre, rol = perfil.rolNombre),
+            IntentosIngreso.ahoraMs(),
+        )
+    } else {
+        SesionPersistente.limpiar()
+    }
+    return ResultadoIngreso.Entrar(sesion)
 }
 
 @Composable
@@ -103,11 +177,12 @@ fun LoginScreen(
     onLogin: (Sesion) -> Unit,
     onToggleTema: () -> Unit = {},
 ) {
-    val sesionGuardada = remember { SesionPersistente.obtener() }
+    val sesionGuardada = remember { SesionPersistente.obtener(IntentosIngreso.ahoraMs()) }
     var correo by remember { mutableStateOf(sesionGuardada?.email ?: "") }
     var password by remember { mutableStateOf("") }
     var recordarme by remember { mutableStateOf(SesionPersistente.getRecordarme()) }
     var error by remember { mutableStateOf<String?>(null) }
+    var aviso by remember { mutableStateOf<String?>(null) }
     var visible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var success by remember { mutableStateOf(false) }
@@ -129,53 +204,51 @@ fun LoginScreen(
         }
     }
 
+    fun recuperar() {
+        val email = correo.trim()
+        if (!Validaciones.correoValido(email)) {
+            error = "Escribe tu correo arriba para enviarte el enlace de restablecimiento."
+            return
+        }
+        error = null
+        isLoading = true
+        scope.launch {
+            val problema = authRepository.recuperarContrasena(email)
+            isLoading = false
+            if (problema != null) {
+                error = problema
+            } else {
+                aviso = "Si $email tiene una cuenta, te enviamos un enlace para restablecer la contraseña. Revisa también spam."
+            }
+        }
+    }
+
     fun intentarEntrar() {
         if (correo.isBlank() || password.isBlank()) {
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             error = "Por favor ingresa tu correo y contraseña."
             return
         }
+        val ahora = IntentosIngreso.ahoraMs()
+        val bloqueo = IntentosIngreso.estado(ahora)
+        if (bloqueo.bloqueadoHasta != null) {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            error = mensajeIntentos(bloqueo, ahora)
+            return
+        }
         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
         error = null
+        aviso = null
         isLoading = true
         scope.launch {
-            when (val resultado = authRepository.iniciarSesion(correo.trim(), password)) {
-                is AuthResultado.Exito -> {
-                    when (val perfil = perfilRepository.obtenerMiPerfil()) {
-                        is PerfilResultado.Exito -> {
-                            val sesion = sesionParaRol(perfil.rolNombre, perfil.nombre)
-                            isLoading = false
-                            if (sesion == null) {
-                                authRepository.cerrarSesion()
-                                error = "Tu cuenta no tiene acceso a la app móvil."
-                            } else {
-                                SesionPersistente.setRecordarme(recordarme)
-                                if (recordarme) {
-                                    SesionPersistente.guardar(
-                                        DatosSesionGuardada(
-                                            email = correo.trim(),
-                                            nombre = perfil.nombre,
-                                            rol = perfil.rolNombre,
-                                        ),
-                                    )
-                                } else {
-                                    SesionPersistente.limpiar()
-                                }
-                                sesionLista = sesion
-                                success = true
-                            }
-                        }
-                        is PerfilResultado.Error -> {
-                            authRepository.cerrarSesion()
-                            isLoading = false
-                            error = perfil.mensaje
-                        }
-                    }
+            val resultado = resolverIngreso(authRepository, perfilRepository, correo.trim(), password, recordarme)
+            isLoading = false
+            when (resultado) {
+                is ResultadoIngreso.Entrar -> {
+                    sesionLista = resultado.sesion
+                    success = true
                 }
-                is AuthResultado.Error -> {
-                    isLoading = false
-                    error = resultado.mensaje
-                }
+                is ResultadoIngreso.Rechazado -> error = resultado.mensaje
             }
         }
     }
@@ -187,14 +260,16 @@ fun LoginScreen(
                 visible = visible,
                 success = success,
                 correo = correo,
-                onCorreoChange = { correo = it; error = null },
+                onCorreoChange = { correo = it; error = null; aviso = null },
                 password = password,
                 onPasswordChange = { password = it; error = null },
                 recordarme = recordarme,
                 onRecordarmeChange = { recordarme = it },
                 error = error,
+                aviso = aviso,
                 isLoading = isLoading,
                 onSubmit = { intentarEntrar() },
+                onOlvide = { recuperar() },
             )
         },
     )
@@ -296,8 +371,10 @@ private fun LoginCard(
     recordarme: Boolean,
     onRecordarmeChange: (Boolean) -> Unit,
     error: String?,
+    aviso: String?,
     isLoading: Boolean,
     onSubmit: () -> Unit,
+    onOlvide: () -> Unit,
 ) {
     val colors = CobreTheme.colors
     AnimatedVisibility(
@@ -331,8 +408,10 @@ private fun LoginCard(
                     recordarme = recordarme,
                     onRecordarmeChange = onRecordarmeChange,
                     error = error,
+                    aviso = aviso,
                     isLoading = isLoading,
                     onSubmit = onSubmit,
+                    onOlvide = onOlvide,
                 )
             }
         }
@@ -367,8 +446,10 @@ private fun LoginForm(
     recordarme: Boolean,
     onRecordarmeChange: (Boolean) -> Unit,
     error: String?,
+    aviso: String?,
     isLoading: Boolean,
     onSubmit: () -> Unit,
+    onOlvide: () -> Unit,
 ) {
     val colors = CobreTheme.colors
     var passwordVisible by remember { mutableStateOf(false) }
@@ -429,22 +510,20 @@ private fun LoginForm(
         )
         Spacer(Modifier.height(12.dp))
         val haptic = LocalHapticFeedback.current
-        var aviso by remember { mutableStateOf(false) }
-        LaunchedEffect(aviso) { if (aviso) { delay(2000); aviso = false } }
         RecordarmeYOlvideFila(
             recordarme = recordarme,
             onRecordarmeChange = onRecordarmeChange,
             onOlvideContrasena = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                aviso = true
+                onOlvide()
             },
         )
-        AnimatedVisibility(visible = aviso) {
+        AnimatedVisibility(visible = aviso != null) {
             Text(
-                "Disponible próximamente",
-                style = MaterialTheme.typography.labelSmall,
+                aviso.orEmpty(),
+                style = MaterialTheme.typography.bodySmall,
                 color = colors.textSecondary,
-                modifier = Modifier.align(Alignment.End).semantics { liveRegion = LiveRegionMode.Polite },
+                modifier = Modifier.padding(top = 8.dp).semantics { liveRegion = LiveRegionMode.Polite },
             )
         }
         Spacer(Modifier.height(12.dp))

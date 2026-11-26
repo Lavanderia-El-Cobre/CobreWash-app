@@ -27,11 +27,13 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.elcobre.lavanderiaelcobre.data.model.Cobro
 import com.elcobre.lavanderiaelcobre.data.model.ComandaGestion
 import com.elcobre.lavanderiaelcobre.data.model.EstadoComanda
 import com.elcobre.lavanderiaelcobre.data.model.EstadoEtapaProduccion
 import com.elcobre.lavanderiaelcobre.data.model.EtapaComanda
 import com.elcobre.lavanderiaelcobre.data.model.EventoComanda
+import com.elcobre.lavanderiaelcobre.data.model.ModalidadCobro
 import com.elcobre.lavanderiaelcobre.data.model.clp
 import com.elcobre.lavanderiaelcobre.ui.components.ButtonVariant
 import com.elcobre.lavanderiaelcobre.ui.components.ChipTono
@@ -181,6 +183,9 @@ private fun LineasDetalle(comanda: ComandaGestion) {
             Text(clp(linea.subtotal), style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
         }
     }
+    FilaDato("Cobro", comanda.modalidad.etiqueta)
+    FilaDato("Peso total", comanda.pesoTotalKg?.let { "${Cobro.formatearPeso(it)} kg" })
+    if (comanda.modalidad == ModalidadCobro.KILO) FilaDato("Precio por kg", comanda.precioKg?.let(::clp))
     Row(modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
         Text("Total", style = MaterialTheme.typography.titleSmall, color = colors.textPrimary, modifier = Modifier.weight(1f))
         Text(clp(comanda.valorTotal), style = MaterialTheme.typography.titleSmall, color = colors.accentText, fontWeight = FontWeight.Bold)

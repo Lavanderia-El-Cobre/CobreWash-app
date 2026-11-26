@@ -1,23 +1,33 @@
 package com.elcobre.lavanderiaelcobre.data
 
+import com.elcobre.lavanderiaelcobre.data.model.EntregasReparto
 import com.elcobre.lavanderiaelcobre.data.model.InspeccionInput
+import com.elcobre.lavanderiaelcobre.data.model.PanelReparto
 import com.elcobre.lavanderiaelcobre.data.model.SalidaReparto
-import com.elcobre.lavanderiaelcobre.data.model.Vehiculo
 
 /**
- * Flota vista por el repartidor: sus salidas asignadas y el catálogo de vehículos.
- * Las reglas de Data Connect solo le permiten operar salidas propias:
- * `RegistrarInspeccionAntes` + `IniciarSalidaVehiculo` y `RegistrarInspeccionDespues`.
+ * Sección del repartidor, igual que `/intranet/reparto` y `/intranet/entregas` de la web:
+ * - Mi vehículo: `GetPanelRepartidor`, `RegistrarSalidaFlota` y `RegistrarRetornoFlota`
+ *   (roles repartidor y conductor; el servidor exige que la salida sea propia).
+ * - Entregas: `GetComandasParaEntrega`, `EntregarComanda` y `ReportarProblemaEntrega`.
+ * Las salidas que administración programa desde la app se inician con el flujo anterior
+ * (`RegistrarInspeccionAntes` + `IniciarSalidaVehiculo`).
  */
 interface RepartoRepository {
-    suspend fun misSalidas(): List<SalidaReparto> = noDisponible()
-    suspend fun vehiculos(): List<Vehiculo> = noDisponible()
+    suspend fun panel(): PanelReparto = noDisponible()
 
-    /** Inspección previa (si aún no existe), fotos y paso a EN_SERVICIO. */
-    suspend fun iniciarSalida(salida: SalidaReparto, input: InspeccionInput): Unit = noDisponible()
+    /** Salida propia con inspección y fotos. Devuelve el id de la salida. */
+    suspend fun registrarSalida(input: SalidaFlotaInput): String = noDisponible()
 
-    /** Inspección posterior y fotos: la salida queda FINALIZADA. */
-    suspend fun registrarRetorno(input: InspeccionInput): Unit = noDisponible()
+    /** Regreso de la salida en curso con inspección y fotos: la salida queda FINALIZADA. */
+    suspend fun registrarRetorno(input: RetornoFlotaInput): Unit = noDisponible()
+
+    /** Salida programada por administración: inspección previa (si falta), fotos y paso a EN_SERVICIO. */
+    suspend fun iniciarProgramada(salida: SalidaReparto, input: InspeccionInput): Unit = noDisponible()
+
+    suspend fun entregas(): EntregasReparto = noDisponible()
+    suspend fun entregar(comandaId: String, detalle: String?): Unit = noDisponible()
+    suspend fun reportarProblema(comandaId: String, motivo: String, detalle: String?): Unit = noDisponible()
 
     fun descartarReintentos() = Unit
 }

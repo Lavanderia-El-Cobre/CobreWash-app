@@ -224,7 +224,8 @@ fun RecordatorioPrivacidadFotos() {
             modifier = Modifier.size(16.dp),
         )
         Text(
-            "Fotografía solo el vehículo. Evita rostros, documentos y objetos personales ajenos a la inspección.",
+            "Fotografía solo el estado del vehículo: carrocería, neumáticos y odómetro. No fotografíes rostros, " +
+                "cédulas de identidad, patentes ajenas ni documentos privados.",
             style = MaterialTheme.typography.bodySmall,
             color = brandMutedColor(),
         )

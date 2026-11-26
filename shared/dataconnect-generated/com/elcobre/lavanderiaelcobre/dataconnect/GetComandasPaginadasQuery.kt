@@ -162,6 +162,10 @@ public interface GetComandasPaginadasQuery :
   
     val valorTotal: Double,
   
+    val modalidadCobro: @kotlinx.serialization.Serializable(with = UnidadCobro.EnumValueSerializer::class) EnumValue<UnidadCobro>,
+  
+    val precioKg: Double?,
+  
     val empresa: String?,
   
     val proyecto: String?,
@@ -286,7 +290,11 @@ public interface GetComandasPaginadasQuery :
   
     val detalle: String?,
   
+    val pesoKg: Double?,
+  
     val precioUnitario: Double,
+  
+    val subtotal: Double,
   
     val tipoPrenda: TipoPrenda,
   

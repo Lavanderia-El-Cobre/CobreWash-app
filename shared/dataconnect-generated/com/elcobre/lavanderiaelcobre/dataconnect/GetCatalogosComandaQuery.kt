@@ -48,6 +48,8 @@ public interface GetCatalogosComandaQuery :
   
     val precioBase: Double,
   
+    val precioKg: Double,
+  
     val unidadCobro: @kotlinx.serialization.Serializable(with = UnidadCobro.EnumValueSerializer::class) EnumValue<UnidadCobro>,
   
   ) {

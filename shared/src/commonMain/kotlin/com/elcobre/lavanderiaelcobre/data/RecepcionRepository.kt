@@ -4,6 +4,7 @@ import com.elcobre.lavanderiaelcobre.data.model.CatalogosComanda
 import com.elcobre.lavanderiaelcobre.data.model.ClienteFicha
 import com.elcobre.lavanderiaelcobre.data.model.ComandaGestion
 import com.elcobre.lavanderiaelcobre.data.model.EstadoIncidencia
+import com.elcobre.lavanderiaelcobre.data.model.EstimacionConsumo
 import com.elcobre.lavanderiaelcobre.data.model.FiltroComandas
 import com.elcobre.lavanderiaelcobre.data.model.FormularioComanda
 import com.elcobre.lavanderiaelcobre.data.model.IncidenciaGestion
@@ -17,6 +18,26 @@ internal fun noDisponible(): Nothing = throw OperacionComandaException(NO_DISPON
 
 /** Identidad de una comanda nueva: se conserva entre reintentos para no duplicarla. */
 data class IdentidadComanda(val id: String, val numero: String)
+
+/** Resultado de registrar un cliente con cuenta en la plataforma (`lib/clientes/cuenta.ts`). */
+data class ResultadoClienteConCuenta(
+    /** Id de la ficha del cliente. */
+    val id: String,
+    /** `false` si el correo ya tenía cuenta: solo se creó la ficha. */
+    val cuentaCreada: Boolean,
+    val invitacionEnviada: Boolean,
+) {
+    /** Mensaje para el personal, igual a `avisoClienteConCuenta` de la web. */
+    fun aviso(email: String): String = when {
+        !cuentaCreada ->
+            "Cliente registrado. $email ya tenía una cuenta: la ficha se asociará cuando inicie sesión con su correo verificado."
+        invitacionEnviada ->
+            "Cliente registrado con cuenta. Enviamos a $email un enlace para activar su cuenta y crear su contraseña."
+        else ->
+            "Cliente registrado con cuenta, pero no se pudo enviar la invitación a $email. " +
+                "Pídele usar \"¿Olvidaste tu contraseña?\" para activarla."
+    }
+}
 
 /**
  * Comandas, clientes e incidencias de recepción y administración (`/intranet/comandas`,
@@ -40,7 +61,16 @@ interface RecepcionRepository {
 
     suspend fun fichasClientes(): List<ClienteFicha> = noDisponible()
     suspend fun crearCliente(input: NuevoClienteInput): String = noDisponible()
+
+    /**
+     * Ficha y cuenta del cliente (`CrearClienteConCuenta`): la cuenta se crea con una
+     * contraseña aleatoria y el cliente recibe un enlace para definir la suya.
+     */
+    suspend fun crearClienteConCuenta(input: NuevoClienteInput): ResultadoClienteConCuenta = noDisponible()
     suspend fun editarCliente(id: String, input: NuevoClienteInput): Unit = noDisponible()
+
+    /** Estimación de consumo de insumos que calcula la web (`POST /api/ia/estimar-comanda`). */
+    suspend fun estimarConsumo(tipoServicioId: String, pesoKg: Double): EstimacionConsumo = noDisponible()
 
     suspend fun incidencias(): List<IncidenciaGestion> = noDisponible()
     suspend fun actualizarIncidencia(id: String, estado: EstadoIncidencia): Unit = noDisponible()

@@ -108,6 +108,16 @@ package com.elcobre.lavanderiaelcobre.dataconnect
   }
 
   @kotlinx.serialization.Serializable
+  public data class ConfiguracionIaKey(
+  
+    val id: String,
+  
+  ) {
+    
+    
+  }
+
+  @kotlinx.serialization.Serializable
   public data class ConteoInventarioKey(
   
     val id: @kotlinx.serialization.Serializable(with = com.google.firebase.dataconnect.serializers.UUIDSerializer::class) java.util.UUID,
@@ -208,6 +218,16 @@ package com.elcobre.lavanderiaelcobre.dataconnect
   }
 
   @kotlinx.serialization.Serializable
+  public data class SimulacionIaKey(
+  
+    val id: @kotlinx.serialization.Serializable(with = com.google.firebase.dataconnect.serializers.UUIDSerializer::class) java.util.UUID,
+  
+  ) {
+    
+    
+  }
+
+  @kotlinx.serialization.Serializable
   public data class SolicitudContactoKey(
   
     val id: @kotlinx.serialization.Serializable(with = com.google.firebase.dataconnect.serializers.UUIDSerializer::class) java.util.UUID,
@@ -221,6 +241,18 @@ package com.elcobre.lavanderiaelcobre.dataconnect
   public data class SolicitudDerechoKey(
   
     val id: @kotlinx.serialization.Serializable(with = com.google.firebase.dataconnect.serializers.UUIDSerializer::class) java.util.UUID,
+  
+  ) {
+    
+    
+  }
+
+  @kotlinx.serialization.Serializable
+  public data class TasaConsumoKey(
+  
+    val tipoServicioId: @kotlinx.serialization.Serializable(with = com.google.firebase.dataconnect.serializers.UUIDSerializer::class) java.util.UUID,
+  
+    val insumoId: @kotlinx.serialization.Serializable(with = com.google.firebase.dataconnect.serializers.UUIDSerializer::class) java.util.UUID,
   
   ) {
     

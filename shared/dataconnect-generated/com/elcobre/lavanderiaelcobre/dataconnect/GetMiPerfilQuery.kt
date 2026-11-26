@@ -54,6 +54,10 @@ public interface GetMiPerfilQuery :
   
     val creadoEn: @kotlinx.serialization.Serializable(with = com.google.firebase.dataconnect.serializers.TimestampSerializer::class) com.google.firebase.Timestamp,
   
+    val versionPrivacidad: String?,
+  
+    val versionTerminos: String?,
+  
     val rol: Rol,
   
     val clientes_on_usuario: List<ClientesOnUsuarioItem>,

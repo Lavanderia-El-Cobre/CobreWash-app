@@ -13,6 +13,7 @@ import com.elcobre.lavanderiaelcobre.data.model.PaginaMovimientos
 import com.elcobre.lavanderiaelcobre.data.model.ReporteGestion
 import com.elcobre.lavanderiaelcobre.data.model.ResumenPanel
 import com.elcobre.lavanderiaelcobre.data.model.RolRef
+import com.elcobre.lavanderiaelcobre.data.model.Telefonos
 import com.elcobre.lavanderiaelcobre.data.model.TipoClienteFicha
 import com.elcobre.lavanderiaelcobre.data.model.TipoMovimientoInventario
 import com.elcobre.lavanderiaelcobre.data.model.UsuarioGestion
@@ -27,12 +28,10 @@ import com.elcobre.lavanderiaelcobre.dataconnect.TipoMovimiento
 import com.elcobre.lavanderiaelcobre.dataconnect.execute
 import com.elcobre.lavanderiaelcobre.dataconnect.instance
 import com.elcobre.lavanderiaelcobre.dataconnect.ref
-import com.google.firebase.FirebaseApp
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthException
-import com.google.firebase.auth.FirebaseAuthUserCollisionException
-import com.google.firebase.auth.FirebaseAuthWeakPasswordException
+import com.google.firebase.dataconnect.DataConnectException
 import com.google.firebase.dataconnect.QueryRef
 import java.util.Date
 import java.util.UUID
@@ -65,15 +64,6 @@ private fun GetPanelProduccionQuery.Data.ComandasItem.aGestion(): ComandaGestion
     ),
     incidenciasAbiertas = incidenciaComandas_on_comanda.count { it.estado.value != IncidenciaEstado.RESUELTA },
 )
-
-private fun mensajeAuth(error: FirebaseAuthException): String = when (error) {
-    is FirebaseAuthUserCollisionException -> "Ese correo ya tiene una cuenta registrada."
-    is FirebaseAuthWeakPasswordException -> "La contraseña es demasiado débil."
-    else -> when (error.errorCode) {
-        "ERROR_INVALID_EMAIL" -> "El correo no es válido."
-        else -> "No se pudo crear la cuenta en Firebase Authentication."
-    }
-}
 
 /** Funciones de administración de la web adaptadas a la app (panel, usuarios, inventario, reportes). */
 @Suppress("TooManyFunctions")
@@ -110,42 +100,40 @@ private class FirebaseAdministracionRepository : AdministracionRepository {
 
     /**
      * Igual que `createManagedUser` de la web: crea la cuenta en una instancia secundaria
-     * de Firebase para no cerrar la sesión del administrador, registra el perfil y, si el
-     * perfil falla, elimina la cuenta recién creada.
+     * de Firebase (no cierra la sesión del administrador) con una contraseña aleatoria,
+     * registra el perfil y envía la invitación para que la persona defina su contraseña.
+     * Si el perfil falla, la cuenta recién creada se elimina.
      */
-    override suspend fun crearUsuario(input: NuevoUsuarioInput) {
-        val principal = FirebaseApp.getInstance()
-        val secundaria = FirebaseApp.initializeApp(principal.applicationContext, principal.options, "alta-${UUID.randomUUID()}")
-        try {
-            val auth = FirebaseAuth.getInstance(secundaria)
-            val cuenta = try {
-                auth.createUserWithEmailAndPassword(input.email.trim(), input.contrasena).await().user
-                    ?: throw OperacionComandaException("No se pudo crear la cuenta.")
-            } catch (error: FirebaseAuthException) {
-                throw OperacionComandaException(mensajeAuth(error), error)
-            } catch (error: com.google.firebase.FirebaseException) {
-                throw OperacionComandaException("No se pudo conectar con Firebase. Verifica tu conexión.", error)
-            }
-            try {
-                registrarPerfil(cuenta.uid, input)
-            } catch (error: OperacionComandaException) {
-                runCatching { cuenta.delete().await() }
-                throw error
-            }
-            auth.signOut()
-        } finally {
-            secundaria.delete()
+    override suspend fun crearUsuario(input: NuevoUsuarioInput): Boolean {
+        if (!input.informado) {
+            throw OperacionComandaException("Confirma que informaste a la persona de los Términos y Condiciones y del Aviso de Privacidad.")
+        }
+        val email = input.email.trim()
+        return conCuentaNueva(email) { alta ->
+            val cuenta = alta.usuario ?: throw OperacionComandaException("Ese correo ya tiene una cuenta registrada.")
+            registrarPerfil(cuenta.uid, input)
+            enviarInvitacion(alta.auth, email)
         }
     }
 
     private suspend fun registrarPerfil(uid: String, input: NuevoUsuarioInput): Unit = solicitud {
         val rut = Validaciones.formatearRut(input.rut)
-        val telefono = input.telefono.trim().ifEmpty { null }?.let(Validaciones::formatearTelefono)
+        val telefono = input.telefono.trim().ifEmpty { null }?.let(Telefonos::normalizar)
         if (input.rolNombre == "cliente") {
             val tipo = if (input.tipoCliente == TipoClienteFicha.HOTEL) TipoCliente.HOTEL else TipoCliente.PARTICULAR
-            dc.crearClienteAdministrado.execute(uid, rut, input.nombre.trim(), input.apellido.trim(), input.email.trim(), tipo) {
-                this.telefono = telefono
-                direccion = input.direccion.trim().ifEmpty { null }
+            val crear = { crearFicha: Boolean? ->
+                dc.crearClienteAdministrado.ref(uid, rut, input.nombre.trim(), input.apellido.trim(), input.email.trim(), tipo) {
+                    this.telefono = telefono
+                    direccion = input.direccion.trim().ifEmpty { null }
+                    if (crearFicha != null) this.crearFicha = crearFicha
+                }
+            }
+            try {
+                crear(null).execute()
+            } catch (error: DataConnectException) {
+                // El RUT ya tiene ficha (creada en recepción): la cuenta se asocia a esa ficha.
+                if (error.message?.contains("FICHA_RUT_EXISTENTE") != true) throw error
+                crear(false).execute()
             }
         } else {
             dc.crearUsuarioAdministrado.execute(
@@ -157,7 +145,7 @@ private class FirebaseAdministracionRepository : AdministracionRepository {
     override suspend fun actualizarUsuario(input: EdicionUsuarioInput): Unit = solicitud {
         dc.actualizarUsuario.execute(input.id, UUID.fromString(input.rolId), input.nombre.trim(), input.activo) {
             apellido = input.apellido?.trim()?.ifEmpty { null }
-            telefono = input.telefono?.trim()?.ifEmpty { null }
+            telefono = input.telefono?.trim()?.ifEmpty { null }?.let(Telefonos::normalizar)
         }
     }
 

@@ -43,7 +43,14 @@ data class ClienteFicha(
     val ultimaComanda: String? = null,
 )
 
-data class TipoServicioCatalogo(val id: String, val nombre: String, val precioBase: Double, val unidad: String = "PRENDA")
+data class TipoServicioCatalogo(
+    val id: String,
+    val nombre: String,
+    val precioBase: Double,
+    val unidad: String = "PRENDA",
+    /** Precio por kg sugerido para el cobro por peso (0 si no tiene). */
+    val precioKg: Double = 0.0,
+)
 
 data class TipoPrendaCatalogo(val id: String, val nombre: String)
 
@@ -54,15 +61,18 @@ data class CatalogosComanda(
     val clientes: List<ClienteFicha> = emptyList(),
 )
 
-/** Línea de detalle de una comanda: prenda, servicio, cantidad y precio. */
+/** Línea de detalle de una comanda: prenda, servicio, cantidad, precio y su parte del peso. */
 data class LineaComanda(
     val prenda: String,
     val servicio: String,
     val cantidad: Int,
     val precioUnitario: Double,
     val detalle: String = "",
+    val pesoKg: Double? = null,
+    /** Subtotal guardado; en las comandas por kg no es cantidad × precio. */
+    val subtotalGuardado: Double? = null,
 ) {
-    val subtotal: Double get() = cantidad * precioUnitario
+    val subtotal: Double get() = subtotalGuardado ?: (cantidad * precioUnitario)
 }
 
 enum class EstadoEtapaProduccion(val etiqueta: String) {
@@ -114,8 +124,13 @@ data class ComandaGestion(
     val historial: List<EventoComanda> = emptyList(),
     val incidenciasAbiertas: Int = 0,
     val fechaRecepcionMs: Long = 0,
+    val modalidad: ModalidadCobro = ModalidadCobro.PRENDA,
+    val precioKg: Double? = null,
 ) {
     val prendas: Int get() = lineas.sumOf { it.cantidad }
+
+    /** Peso total registrado (suma de las líneas), o `null` si la comanda no tiene pesos. */
+    val pesoTotalKg: Double? get() = lineas.mapNotNull { it.pesoKg }.takeIf { it.isNotEmpty() }?.sum()
     val progreso: Int get() = progresoEtapas(etapas)
     val etapaActual: EtapaComanda? get() = etapas.sortedBy { it.orden }.firstOrNull { it.estado != EstadoEtapaProduccion.COMPLETADA }
 

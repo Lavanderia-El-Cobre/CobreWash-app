@@ -1,14 +1,22 @@
+@file:Suppress("MaxLineLength") // Casos de prueba en una línea, como las pruebas de la web.
+
 package com.elcobre.lavanderiaelcobre
 
 import com.elcobre.lavanderiaelcobre.data.IdentidadComanda
 import com.elcobre.lavanderiaelcobre.data.OperacionComandaException
 import com.elcobre.lavanderiaelcobre.data.RecepcionRepository
 import com.elcobre.lavanderiaelcobre.data.RepartoRepository
+import com.elcobre.lavanderiaelcobre.data.RetornoFlotaInput
+import com.elcobre.lavanderiaelcobre.data.SalidaFlotaInput
 import com.elcobre.lavanderiaelcobre.data.model.CatalogosComanda
 import com.elcobre.lavanderiaelcobre.data.model.ClienteFicha
+import com.elcobre.lavanderiaelcobre.data.model.ComandaEntrega
 import com.elcobre.lavanderiaelcobre.data.model.ComandaGestion
+import com.elcobre.lavanderiaelcobre.data.model.DisponibilidadVehiculo
+import com.elcobre.lavanderiaelcobre.data.model.EntregasReparto
 import com.elcobre.lavanderiaelcobre.data.model.EstadoComanda
 import com.elcobre.lavanderiaelcobre.data.model.EstadoCondicionVehiculo
+import com.elcobre.lavanderiaelcobre.data.model.EstadoIncidencia
 import com.elcobre.lavanderiaelcobre.data.model.EstadoSalida
 import com.elcobre.lavanderiaelcobre.data.model.FiltroComandas
 import com.elcobre.lavanderiaelcobre.data.model.FormularioComanda
@@ -17,18 +25,23 @@ import com.elcobre.lavanderiaelcobre.data.model.InspeccionReparto
 import com.elcobre.lavanderiaelcobre.data.model.LineaFormulario
 import com.elcobre.lavanderiaelcobre.data.model.NuevoClienteInput
 import com.elcobre.lavanderiaelcobre.data.model.PaginaComandas
+import com.elcobre.lavanderiaelcobre.data.model.PanelReparto
+import com.elcobre.lavanderiaelcobre.data.model.ProblemaEntrega
 import com.elcobre.lavanderiaelcobre.data.model.SalidaReparto
 import com.elcobre.lavanderiaelcobre.data.model.TipoClienteFicha
 import com.elcobre.lavanderiaelcobre.data.model.TipoServicioCatalogo
+import com.elcobre.lavanderiaelcobre.data.model.VehiculoReparto
 import com.elcobre.lavanderiaelcobre.ui.gestion.ComandasViewModel
+import com.elcobre.lavanderiaelcobre.ui.gestion.EntregasViewModel
+import com.elcobre.lavanderiaelcobre.ui.gestion.MovimientoInput
 import com.elcobre.lavanderiaelcobre.ui.gestion.RepartoViewModel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 
 /** Recepción de comandas y recorridos del repartidor, con repositorios falsos (sin Firebase). */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -84,6 +97,7 @@ class GestionViewModelsTest {
         nuevoCliente = true,
         cliente = NuevoClienteInput("Hotel Cobre", TipoClienteFicha.HOTEL, "12.345.678-5"),
         lineas = listOf(LineaFormulario(prenda = "TOALLA BAÑO", cantidad = 2, precioUnitario = 800.0)),
+        pesoKg = "4,5",
     )
 
     @Test
@@ -128,7 +142,9 @@ class GestionViewModelsTest {
         assertNull(vm.formulario, "Una comanda lista no se edita")
 
         vm.abrirEdicion(repo.comandasGuardadas[0])
-        vm.actualizarFormulario(vm.formulario!!.copy(lineas = listOf(LineaFormulario(prenda = "CAMISA", precioUnitario = 1000.0))))
+        vm.actualizarFormulario(
+            vm.formulario!!.copy(lineas = listOf(LineaFormulario(prenda = "CAMISA", precioUnitario = 1000.0)), pesoKg = "1,2"),
+        )
         vm.guardar()
         assertEquals(listOf("k1@10.0"), repo.ediciones)
         assertNull(vm.formulario)
@@ -173,15 +189,22 @@ class GestionViewModelsTest {
         assertNull(vm.detalle)
     }
 
-    private class RepartoFalso(val salidas: List<SalidaReparto>) : RepartoRepository {
+    private class RepartoFalso(
+        val salidas: List<SalidaReparto>,
+        val vehiculos: List<VehiculoReparto> = emptyList(),
+    ) : RepartoRepository {
         val iniciadas = mutableListOf<InspeccionInput>()
-        val retornos = mutableListOf<InspeccionInput>()
-        override suspend fun misSalidas() = salidas
-        override suspend fun vehiculos() = emptyList<com.elcobre.lavanderiaelcobre.data.model.Vehiculo>()
-        override suspend fun iniciarSalida(salida: SalidaReparto, input: InspeccionInput) {
+        val salidasRegistradas = mutableListOf<SalidaFlotaInput>()
+        val retornos = mutableListOf<RetornoFlotaInput>()
+        override suspend fun panel() = PanelReparto(vehiculos, salidas)
+        override suspend fun iniciarProgramada(salida: SalidaReparto, input: InspeccionInput) {
             iniciadas += input
         }
-        override suspend fun registrarRetorno(input: InspeccionInput) {
+        override suspend fun registrarSalida(input: SalidaFlotaInput): String {
+            salidasRegistradas += input
+            return "nueva"
+        }
+        override suspend fun registrarRetorno(input: RetornoFlotaInput) {
             retornos += input
         }
     }
@@ -198,9 +221,9 @@ class GestionViewModelsTest {
     fun reparto_agrupaYCalculaKilometrajes() {
         val vm = RepartoViewModel(RepartoFalso(salidas), scope())
         vm.refrescar()
-        assertEquals(listOf("s3"), vm.enRuta.map { it.id })
+        assertEquals("s3", vm.salidaEnCurso?.id)
         assertEquals(listOf("s2"), vm.programadas.map { it.id })
-        assertEquals(listOf("s1"), vm.bitacora.map { it.id })
+        assertEquals(listOf("s1"), vm.historial.map { it.id })
         assertEquals(250, vm.kilometrosRecorridos)
         assertEquals(1250, vm.kilometrajeMinimo(salidas[1]))
         assertEquals(500, vm.kilometrajeMinimo(salidas[2]))
@@ -212,21 +235,90 @@ class GestionViewModelsTest {
         val vm = RepartoViewModel(repo, scope())
         vm.refrescar()
         var error: String? = null
-        vm.iniciar(salidas[1], InspeccionInput("s2", 1100, EstadoCondicionVehiculo.APTO, null, emptyList())) { error = it }
+        vm.iniciarProgramada(salidas[1], InspeccionInput("s2", 1100, EstadoCondicionVehiculo.APTO, null, emptyList())) { error = it }
         assertNotNull(error)
-        vm.iniciar(salidas[1], InspeccionInput("s2", 1300, EstadoCondicionVehiculo.NO_APTO, null, emptyList())) { error = it }
+        vm.iniciarProgramada(salidas[1], InspeccionInput("s2", 1300, EstadoCondicionVehiculo.NO_APTO, null, emptyList())) { error = it }
         assertNotNull(error)
         assertTrue(repo.iniciadas.isEmpty())
 
-        vm.iniciar(salidas[1], InspeccionInput("s2", 1300, EstadoCondicionVehiculo.APTO, null, emptyList())) { error = it }
+        vm.iniciarProgramada(salidas[1], InspeccionInput("s2", 1300, EstadoCondicionVehiculo.APTO, null, emptyList())) { error = it }
         assertNull(error)
         assertEquals(1, repo.iniciadas.size)
 
-        vm.registrarRetorno(
-            salidas[2],
-            InspeccionInput("s3", 650, EstadoCondicionVehiculo.CON_OBSERVACIONES, "Rayón", emptyList()),
-        ) { error = it }
+        // Con observaciones hay que describir lo que se vio, como la web.
+        vm.registrarRetorno(salidas[2], MovimientoInput(650, EstadoCondicionVehiculo.CON_OBSERVACIONES, "", emptyList())) { error = it }
+        assertEquals("Describe lo que observaste en el vehículo.", error)
+        vm.registrarRetorno(salidas[2], MovimientoInput(400, EstadoCondicionVehiculo.APTO, "", emptyList())) { error = it }
+        assertNotNull(error, "El regreso no puede tener menos kilómetros que la salida")
+        vm.registrarRetorno(salidas[2], MovimientoInput(650, EstadoCondicionVehiculo.CON_OBSERVACIONES, "Rayón", emptyList())) { error = it }
         assertNull(error)
         assertEquals(650, repo.retornos.single().kilometraje)
+        assertEquals("s3", repo.retornos.single().salidaId)
+    }
+
+    @Test
+    fun reparto_salidaPropiaSoloConVehiculoDisponibleYSinOtraEnCurso() {
+        val disponible = VehiculoReparto("v9", "KJTR55", "Kia", null, DisponibilidadVehiculo.DISPONIBLE, 800, null)
+        val conEnCurso = RepartoFalso(salidas, listOf(disponible))
+        val vm = RepartoViewModel(conEnCurso, scope())
+        vm.refrescar()
+        var error: String? = null
+        vm.registrarSalida(disponible, MovimientoInput(900, EstadoCondicionVehiculo.APTO, "", emptyList())) { error = it }
+        assertNotNull(error, "Con una salida en curso no se saca otro vehículo")
+
+        val libre = RepartoFalso(salidas.filter { it.estado != EstadoSalida.EN_SERVICIO }, listOf(disponible))
+        val vm2 = RepartoViewModel(libre, scope())
+        vm2.refrescar()
+        vm2.registrarSalida(disponible, MovimientoInput(700, EstadoCondicionVehiculo.APTO, "", emptyList())) { error = it }
+        assertNotNull(error, "El odómetro no puede retroceder")
+        vm2.registrarSalida(disponible, MovimientoInput(900, EstadoCondicionVehiculo.NO_APTO, "Freno", emptyList())) { error = it }
+        assertNotNull(error, "Un vehículo no apto no sale")
+        vm2.registrarSalida(disponible, MovimientoInput(900, EstadoCondicionVehiculo.APTO, "", emptyList())) { error = it }
+        assertNull(error)
+        assertEquals("v9", libre.salidasRegistradas.single().vehiculoId)
+        assertEquals(900, libre.salidasRegistradas.single().kilometraje)
+    }
+
+    private class EntregasFalsas(val datos: EntregasReparto) : RepartoRepository {
+        val entregadas = mutableListOf<Pair<String, String?>>()
+        val problemas = mutableListOf<Triple<String, String, String?>>()
+        override suspend fun entregas() = datos
+        override suspend fun entregar(comandaId: String, detalle: String?) {
+            entregadas += comandaId to detalle
+        }
+        override suspend fun reportarProblema(comandaId: String, motivo: String, detalle: String?) {
+            problemas += Triple(comandaId, motivo, detalle)
+        }
+    }
+
+    private val comandaLista = ComandaEntrega(
+        "c1", "ELCOBRE-A1B2", "Hotel Pacífico", TipoClienteFicha.HOTEL, null, "Av. Grecia 123", null, null, null, null,
+        "2 prendas · TOALLA ×2",
+        listOf(ProblemaEntrega("p1", "Entrega: Cliente ausente", null, EstadoIncidencia.ABIERTA, "", "Juan")),
+    )
+
+    @Test
+    fun entregas_buscanEntregaYReportanProblemas() {
+        val repo = EntregasFalsas(EntregasReparto(listOf(comandaLista)))
+        val vm = EntregasViewModel(repo, scope())
+        vm.refrescar()
+        assertEquals(1, vm.conProblemas)
+        vm.buscar("grecia")
+        assertEquals(1, vm.comandas.size)
+        vm.buscar("ELCOBRE-ZZZZ")
+        assertTrue(vm.comandas.isEmpty())
+
+        var error: String? = null
+        vm.entregar(comandaLista, "  Recibió   conserjería ") { error = it }
+        assertNull(error)
+        assertEquals("c1" to "Recibió conserjería", repo.entregadas.single())
+
+        vm.reportarProblema(comandaLista, "Otro", "  ") { error = it }
+        assertEquals("Describe el problema de la entrega.", error)
+        vm.reportarProblema(comandaLista, "Inventado", "") { error = it }
+        assertEquals("Selecciona el motivo del problema.", error)
+        vm.reportarProblema(comandaLista, "Cliente ausente", "") { error = it }
+        assertNull(error)
+        assertEquals(Triple("c1", "Cliente ausente", null), repo.problemas.single())
     }
 }

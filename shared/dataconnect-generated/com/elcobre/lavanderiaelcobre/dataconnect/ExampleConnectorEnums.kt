@@ -15,6 +15,21 @@ package com.elcobre.lavanderiaelcobre.dataconnect
 
   
   
+  public enum class ClaseMovimiento {
+  COMPRA,
+  AJUSTE_CONTEO,
+  STOCK_INICIAL,
+  CONSUMO,
+  OTRO;
+  
+  
+    public object EnumValueSerializer :
+      com.elcobre.lavanderiaelcobre.dataconnect.EnumValueSerializer<ClaseMovimiento>(ClaseMovimiento.entries)
+  
+  }
+
+  
+  
   public enum class ComandaEstado {
   PENDIENTE,
   EN_PROCESO,
@@ -120,6 +135,18 @@ package com.elcobre.lavanderiaelcobre.dataconnect
   
     public object EnumValueSerializer :
       com.elcobre.lavanderiaelcobre.dataconnect.EnumValueSerializer<MomentoInspeccion>(MomentoInspeccion.entries)
+  
+  }
+
+  
+  
+  public enum class OrigenDato {
+  REAL,
+  SIMULADO;
+  
+  
+    public object EnumValueSerializer :
+      com.elcobre.lavanderiaelcobre.dataconnect.EnumValueSerializer<OrigenDato>(OrigenDato.entries)
   
   }
 

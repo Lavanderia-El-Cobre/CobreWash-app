@@ -21,6 +21,7 @@ sealed interface Pantalla {
 
     // Reparto.
     data object Reparto : Pantalla
+    data object Entregas : Pantalla
 }
 
 /** Orden relativo de cada destino, usado para decidir la dirección del slide de [CobreApp]. */

@@ -32,8 +32,8 @@ actual class PerfilRepository actual constructor() {
             .data
             .usuario
         when {
-            usuario == null -> PerfilResultado.Error("Tu cuenta no tiene un perfil asociado.")
-            !usuario.activo -> PerfilResultado.Error("Tu cuenta está inactiva.")
+            usuario == null -> PerfilResultado.Error("Tu cuenta no tiene un perfil asociado.", definitivo = true)
+            !usuario.activo -> PerfilResultado.Error("Tu cuenta está inactiva.", definitivo = true)
             else -> PerfilResultado.Exito(nombre = usuario.nombre, rolNombre = usuario.rol.nombre)
         }
     } catch (error: CancellationException) {

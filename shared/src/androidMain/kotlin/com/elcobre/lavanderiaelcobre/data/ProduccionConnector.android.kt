@@ -5,6 +5,7 @@ import com.elcobre.lavanderiaelcobre.dataconnect.ComandaEtapaKey
 import com.elcobre.lavanderiaelcobre.dataconnect.ComandaHistorialEstadoKey
 import com.elcobre.lavanderiaelcobre.dataconnect.ComandaKey
 import com.elcobre.lavanderiaelcobre.dataconnect.ExampleConnector
+import com.elcobre.lavanderiaelcobre.dataconnect.UnidadCobro
 import com.google.firebase.Timestamp
 import com.google.firebase.dataconnect.ConnectorConfig
 import com.google.firebase.dataconnect.FirebaseDataConnect
@@ -34,10 +35,13 @@ internal data class DetalleResuelto(
     @Serializable(with = UUIDSerializer::class) val tipoServicioId: UUID,
     val cantidad: Int,
     val detalle: String?,
+    /** Parte del peso total de la comanda; la web lo registra en toda comanda. */
+    val pesoKg: Double?,
     val precioUnitario: Double,
     val subtotal: Double,
 ) {
-    fun conComanda(comandaId: UUID) = DetalleEdicion(comandaId, tipoPrendaId, tipoServicioId, cantidad, detalle, precioUnitario, subtotal)
+    fun conComanda(comandaId: UUID) =
+        DetalleEdicion(comandaId, tipoPrendaId, tipoServicioId, cantidad, detalle, pesoKg, precioUnitario, subtotal)
 }
 
 /** Igual que [DetalleResuelto] más `comandaId`, que `EditarComandaConDetalles` exige en cada línea. */
@@ -48,6 +52,7 @@ internal data class DetalleEdicion(
     @Serializable(with = UUIDSerializer::class) val tipoServicioId: UUID,
     val cantidad: Int,
     val detalle: String?,
+    val pesoKg: Double?,
     val precioUnitario: Double,
     val subtotal: Double,
 )
@@ -60,6 +65,9 @@ internal data class CrearComandaConFlujoVars(
     val empresa: String?,
     val proyecto: String?,
     val observaciones: String?,
+    val modalidadCobro: UnidadCobro,
+    /** Solo en KILO; en PRENDA va `null`. */
+    val precioKg: Double?,
     val detalles: List<DetalleResuelto>,
 )
 
@@ -79,6 +87,9 @@ internal data class EditarComandaConDetallesVars(
     val empresa: String?,
     val proyecto: String?,
     val observaciones: String?,
+    /** Obligatoria en el servidor: sin ella una comanda por kg perdería su modalidad y sus pesos. */
+    val modalidadCobro: UnidadCobro,
+    val precioKg: Double?,
     val detalles: List<DetalleEdicion>,
 )
 

@@ -1,5 +1,6 @@
 package com.elcobre.lavanderiaelcobre.data
 
+import com.elcobre.lavanderiaelcobre.data.auth.VigilanciaCuenta
 import com.google.firebase.dataconnect.DataConnectException
 import io.grpc.Status
 import io.grpc.StatusException
@@ -22,6 +23,8 @@ internal suspend fun <T> solicitud(block: suspend () -> T): T = try {
 } catch (error: StatusRuntimeException) {
     throw OperacionComandaException(mensajeTransporte(error.status), error)
 } catch (error: DataConnectException) {
+    // Si el servidor rechaza porque la cuenta quedó inactiva o sin perfil, se cierra la sesión.
+    VigilanciaCuenta.revisar(error.message)
     throw OperacionComandaException("No se pudo guardar o consultar los datos: ${error.message}", error)
 } catch (error: IllegalArgumentException) {
     throw OperacionComandaException("El código o los datos son inválidos.", error)

@@ -23,14 +23,20 @@ import com.elcobre.lavanderiaelcobre.data.model.Sesion
 import com.elcobre.lavanderiaelcobre.data.InventarioRepository
 import com.elcobre.lavanderiaelcobre.data.FirebaseInventarioRepository
 import com.elcobre.lavanderiaelcobre.data.auth.SesionPersistente
+import com.elcobre.lavanderiaelcobre.data.auth.VigilanciaCuenta
 import com.elcobre.lavanderiaelcobre.data.auth.PerfilResultado
 import com.elcobre.lavanderiaelcobre.data.auth.restaurarPerfilAutenticado
 import com.elcobre.lavanderiaelcobre.data.model.TipoAlerta
+import com.elcobre.lavanderiaelcobre.ui.gestion.ahoraMs
 import com.elcobre.lavanderiaelcobre.ui.screens.login.sesionParaRol
 import com.elcobre.lavanderiaelcobre.ui.theme.ModoTema
 
 /** Destinos de nivel superior: navegar a uno de estos reemplaza la pila en vez de apilar (semántica de bottom-nav). */
 private val TABS: Set<Pantalla> get() = TodasLasPestanas
+
+
+/** Cada cuánto se revisa en el servidor que la cuenta siga activa y con el mismo rol. */
+internal const val REVISION_CUENTA_MS = 3 * 60_000L
 
 /**
  * Dueño del estado de la app del Operario: pedidos, avisos, catálogo de insumos,
@@ -203,7 +209,12 @@ class CobreViewModel(
     }
 
     fun restaurarSesionSiExiste() {
-        if (SesionPersistente.obtener() == null) return
+        if (SesionPersistente.obtener(ahoraMs()) == null) {
+            // Sin "Recordarme" (o vencida a los 30 días) no debe quedar un token de Firebase
+            // guardado en el dispositivo: la próxima apertura pide la contraseña, como la web.
+            if (sesion == null) repository.cerrarSesion()
+            return
+        }
         val inicio = generacion
         scope.launch {
             val perfil = restaurarPerfil()
@@ -211,17 +222,57 @@ class CobreViewModel(
             val valida = (perfil as? PerfilResultado.Exito)?.let {
                 sesionParaRol(it.rolNombre, it.nombre)
             }
-            if (valida != null) iniciarSesion(valida)
-            else {
-                errorOperacion = (perfil as? PerfilResultado.Error)?.mensaje
-                    ?: "La sesión guardada ya no es válida. Inicia sesión nuevamente."
-                if (perfil == null) SesionPersistente.limpiar()
+            if (valida != null) {
+                iniciarSesion(valida)
+                return@launch
+            }
+            errorOperacion = when (perfil) {
+                is PerfilResultado.Error -> perfil.mensaje
+                is PerfilResultado.Exito -> "Tu cuenta no tiene acceso a la app móvil."
+                null -> "La sesión guardada ya no es válida. Inicia sesión nuevamente."
+            }
+            // Cuenta sin perfil, inactiva, sin verificar o que pasó a cliente: se cierra la
+            // sesión de Firebase y se borran los datos guardados. Un error de red los conserva
+            // para reintentar al reabrir la app.
+            val rechazada = perfil == null || perfil is PerfilResultado.Exito || (perfil as? PerfilResultado.Error)?.definitivo == true
+            if (rechazada) {
+                if (perfil != null) repository.cerrarSesion()
+                SesionPersistente.limpiar()
             }
         }
     }
 
     init {
+        VigilanciaCuenta.alRechazar { motivo -> scope.launch { cerrarPorCuenta(motivo) } }
         restaurarSesionSiExiste()
+    }
+
+    override fun onCleared() {
+        VigilanciaCuenta.alRechazar(null)
+        super.onCleared()
+    }
+
+    /**
+     * Revisa el perfil en el servidor: si administración desactivó la cuenta, le quitó el
+     * perfil o le cambió el rol, o Firebase la deshabilitó, se cierra la sesión con el
+     * motivo. [CobreApp] la llama al volver a la app y cada [REVISION_CUENTA_MS] mientras
+     * está visible. Un error de red no cierra la sesión.
+     */
+    fun verificarCuenta() {
+        val actual = sesion ?: return
+        val inicio = generacion
+        scope.launch {
+            val perfil = restaurarPerfil()
+            if (inicio != generacion || sesion !== actual) return@launch
+            VigilanciaCuenta.motivoCierre(actual, perfil) { sesionParaRol(it.rolNombre, it.nombre) }
+                ?.let { cerrarPorCuenta(it) }
+        }
+    }
+
+    private fun cerrarPorCuenta(motivo: String) {
+        if (sesion == null) return
+        cerrarSesion()
+        errorOperacion = motivo
     }
 
     fun iniciarSesion(s: Sesion) {

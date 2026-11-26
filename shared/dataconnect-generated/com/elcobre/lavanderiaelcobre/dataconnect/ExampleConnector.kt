@@ -19,6 +19,8 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
   override val dataConnect: com.google.firebase.dataconnect.FirebaseDataConnect
 
   
+    public val aceptarCondicionesVigentes: AceptarCondicionesVigentesMutation
+  
     public val actualizarEstadoIncidencia: ActualizarEstadoIncidenciaMutation
   
     public val actualizarEstadoSolicitudContacto: ActualizarEstadoSolicitudContactoMutation
@@ -47,6 +49,12 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
   
     public val autorizarGestionPrivacidad: AutorizarGestionPrivacidadQuery
   
+    public val autorizarModuloIa: AutorizarModuloIaQuery
+  
+    public val borrarSimulacionIa: BorrarSimulacionIaMutation
+  
+    public val borrarSimulacionesIa: BorrarSimulacionesIaMutation
+  
     public val completarEtapaComanda: CompletarEtapaComandaMutation
   
     public val configurarEtapaProduccion: ConfigurarEtapaProduccionMutation
@@ -60,6 +68,8 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
     public val crearClienteAdministrado: CrearClienteAdministradoMutation
   
     public val crearClienteComanda: CrearClienteComandaMutation
+  
+    public val crearClienteConCuenta: CrearClienteConCuentaMutation
   
     public val crearComanda: CrearComandaMutation
   
@@ -85,6 +95,8 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
   
     public val eliminarDetallesComanda: EliminarDetallesComandaMutation
   
+    public val eliminarTasaConsumo: EliminarTasaConsumoMutation
+  
     public val entregarComanda: EntregarComandaMutation
   
     public val gestionarSolicitudDerecho: GestionarSolicitudDerechoMutation
@@ -109,9 +121,13 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
   
     public val getComandasParaAlertas: GetComandasParaAlertasQuery
   
+    public val getComandasParaEntrega: GetComandasParaEntregaQuery
+  
     public val getComprobanteDerecho: GetComprobanteDerechoQuery
   
     public val getConteosInventario: GetConteosInventarioQuery
+  
+    public val getDatosEntrenamientoIa: GetDatosEntrenamientoIaQuery
   
     public val getDetalleReporteCuentas: GetDetalleReporteCuentasQuery
   
@@ -125,6 +141,8 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
   
     public val getFlotaVehiculos: GetFlotaVehiculosQuery
   
+    public val getHistorialAjustesIa: GetHistorialAjustesIaQuery
+  
     public val getHistorialInventario: GetHistorialInventarioQuery
   
     public val getHistorialVehiculos: GetHistorialVehiculosQuery
@@ -134,6 +152,8 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
     public val getInspeccionParaEvidencias: GetInspeccionParaEvidenciasQuery
   
     public val getInsumoPorQr: GetInsumoPorQrQuery
+  
+    public val getInsumosImportacionIa: GetInsumosImportacionIaQuery
   
     public val getInsumosOperario: GetInsumosOperarioQuery
   
@@ -155,9 +175,17 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
   
     public val getMisSalidasVehiculo: GetMisSalidasVehiculoQuery
   
+    public val getModeloComandaIa: GetModeloComandaIaQuery
+  
     public val getMovimientoFlotaPorInspeccion: GetMovimientoFlotaPorInspeccionQuery
   
+    public val getPanelIa: GetPanelIaQuery
+  
     public val getPanelProduccion: GetPanelProduccionQuery
+  
+    public val getPanelRepartidor: GetPanelRepartidorQuery
+  
+    public val getRegistrosExistentesIa: GetRegistrosExistentesIaQuery
   
     public val getReporteCuentas: GetReporteCuentasQuery
   
@@ -179,9 +207,15 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
   
     public val getStockInventario: GetStockInventarioQuery
   
+    public val getTasasSimulacionIa: GetTasasSimulacionIaQuery
+  
     public val getUsuarios: GetUsuariosQuery
   
     public val getVehiculos: GetVehiculosQuery
+  
+    public val guardarConfiguracionIa: GuardarConfiguracionIaMutation
+  
+    public val guardarTasaConsumo: GuardarTasaConsumoMutation
   
     public val iniciarSalidaVehiculo: IniciarSalidaVehiculoMutation
   
@@ -196,6 +230,8 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
     public val rechazarConteoInventario: RechazarConteoInventarioMutation
   
     public val recibirSolicitudDerecho: RecibirSolicitudDerechoMutation
+  
+    public val registrarConteoFisicoIa: RegistrarConteoFisicoIaMutation
   
     public val registrarConteoInventario: RegistrarConteoInventarioMutation
   
@@ -222,6 +258,8 @@ public interface ExampleConnector : com.google.firebase.dataconnect.generated.Ge
     public val registrarse: RegistrarseMutation
   
     public val registrarseComoCliente: RegistrarseComoClienteMutation
+  
+    public val reportarProblemaEntrega: ReportarProblemaEntregaMutation
   
     public val resolverMiIncidencia: ResolverMiIncidenciaMutation
   
@@ -271,6 +309,10 @@ public fun ExampleConnector.Companion.getInstance(
 private class ExampleConnectorImpl(
   override val dataConnect: com.google.firebase.dataconnect.FirebaseDataConnect
 ) : ExampleConnector {
+  
+    override val aceptarCondicionesVigentes by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      AceptarCondicionesVigentesMutationImpl(this)
+    }
   
     override val actualizarEstadoIncidencia by lazy(LazyThreadSafetyMode.PUBLICATION) {
       ActualizarEstadoIncidenciaMutationImpl(this)
@@ -328,6 +370,18 @@ private class ExampleConnectorImpl(
       AutorizarGestionPrivacidadQueryImpl(this)
     }
   
+    override val autorizarModuloIa by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      AutorizarModuloIaQueryImpl(this)
+    }
+  
+    override val borrarSimulacionIa by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      BorrarSimulacionIaMutationImpl(this)
+    }
+  
+    override val borrarSimulacionesIa by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      BorrarSimulacionesIaMutationImpl(this)
+    }
+  
     override val completarEtapaComanda by lazy(LazyThreadSafetyMode.PUBLICATION) {
       CompletarEtapaComandaMutationImpl(this)
     }
@@ -354,6 +408,10 @@ private class ExampleConnectorImpl(
   
     override val crearClienteComanda by lazy(LazyThreadSafetyMode.PUBLICATION) {
       CrearClienteComandaMutationImpl(this)
+    }
+  
+    override val crearClienteConCuenta by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      CrearClienteConCuentaMutationImpl(this)
     }
   
     override val crearComanda by lazy(LazyThreadSafetyMode.PUBLICATION) {
@@ -404,6 +462,10 @@ private class ExampleConnectorImpl(
       EliminarDetallesComandaMutationImpl(this)
     }
   
+    override val eliminarTasaConsumo by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      EliminarTasaConsumoMutationImpl(this)
+    }
+  
     override val entregarComanda by lazy(LazyThreadSafetyMode.PUBLICATION) {
       EntregarComandaMutationImpl(this)
     }
@@ -452,12 +514,20 @@ private class ExampleConnectorImpl(
       GetComandasParaAlertasQueryImpl(this)
     }
   
+    override val getComandasParaEntrega by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GetComandasParaEntregaQueryImpl(this)
+    }
+  
     override val getComprobanteDerecho by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetComprobanteDerechoQueryImpl(this)
     }
   
     override val getConteosInventario by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetConteosInventarioQueryImpl(this)
+    }
+  
+    override val getDatosEntrenamientoIa by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GetDatosEntrenamientoIaQueryImpl(this)
     }
   
     override val getDetalleReporteCuentas by lazy(LazyThreadSafetyMode.PUBLICATION) {
@@ -484,6 +554,10 @@ private class ExampleConnectorImpl(
       GetFlotaVehiculosQueryImpl(this)
     }
   
+    override val getHistorialAjustesIa by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GetHistorialAjustesIaQueryImpl(this)
+    }
+  
     override val getHistorialInventario by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetHistorialInventarioQueryImpl(this)
     }
@@ -502,6 +576,10 @@ private class ExampleConnectorImpl(
   
     override val getInsumoPorQr by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetInsumoPorQrQueryImpl(this)
+    }
+  
+    override val getInsumosImportacionIa by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GetInsumosImportacionIaQueryImpl(this)
     }
   
     override val getInsumosOperario by lazy(LazyThreadSafetyMode.PUBLICATION) {
@@ -544,12 +622,28 @@ private class ExampleConnectorImpl(
       GetMisSalidasVehiculoQueryImpl(this)
     }
   
+    override val getModeloComandaIa by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GetModeloComandaIaQueryImpl(this)
+    }
+  
     override val getMovimientoFlotaPorInspeccion by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetMovimientoFlotaPorInspeccionQueryImpl(this)
     }
   
+    override val getPanelIa by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GetPanelIaQueryImpl(this)
+    }
+  
     override val getPanelProduccion by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetPanelProduccionQueryImpl(this)
+    }
+  
+    override val getPanelRepartidor by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GetPanelRepartidorQueryImpl(this)
+    }
+  
+    override val getRegistrosExistentesIa by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GetRegistrosExistentesIaQueryImpl(this)
     }
   
     override val getReporteCuentas by lazy(LazyThreadSafetyMode.PUBLICATION) {
@@ -592,12 +686,24 @@ private class ExampleConnectorImpl(
       GetStockInventarioQueryImpl(this)
     }
   
+    override val getTasasSimulacionIa by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GetTasasSimulacionIaQueryImpl(this)
+    }
+  
     override val getUsuarios by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetUsuariosQueryImpl(this)
     }
   
     override val getVehiculos by lazy(LazyThreadSafetyMode.PUBLICATION) {
       GetVehiculosQueryImpl(this)
+    }
+  
+    override val guardarConfiguracionIa by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GuardarConfiguracionIaMutationImpl(this)
+    }
+  
+    override val guardarTasaConsumo by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      GuardarTasaConsumoMutationImpl(this)
     }
   
     override val iniciarSalidaVehiculo by lazy(LazyThreadSafetyMode.PUBLICATION) {
@@ -626,6 +732,10 @@ private class ExampleConnectorImpl(
   
     override val recibirSolicitudDerecho by lazy(LazyThreadSafetyMode.PUBLICATION) {
       RecibirSolicitudDerechoMutationImpl(this)
+    }
+  
+    override val registrarConteoFisicoIa by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      RegistrarConteoFisicoIaMutationImpl(this)
     }
   
     override val registrarConteoInventario by lazy(LazyThreadSafetyMode.PUBLICATION) {
@@ -680,6 +790,10 @@ private class ExampleConnectorImpl(
       RegistrarseComoClienteMutationImpl(this)
     }
   
+    override val reportarProblemaEntrega by lazy(LazyThreadSafetyMode.PUBLICATION) {
+      ReportarProblemaEntregaMutationImpl(this)
+    }
+  
     override val resolverMiIncidencia by lazy(LazyThreadSafetyMode.PUBLICATION) {
       ResolverMiIncidenciaMutationImpl(this)
     }
@@ -700,7 +814,8 @@ private class ExampleConnectorImpl(
   @com.google.firebase.dataconnect.ExperimentalFirebaseDataConnect
   override fun mutations(): List<com.google.firebase.dataconnect.generated.GeneratedMutation<ExampleConnector, *, *>> =
     listOf(
-      actualizarEstadoIncidencia,
+      aceptarCondicionesVigentes,
+        actualizarEstadoIncidencia,
         actualizarEstadoSolicitudContacto,
         actualizarInsumo,
         actualizarUsuario,
@@ -713,12 +828,15 @@ private class ExampleConnectorImpl(
         aprobarConteoInventario,
         asociarFlujoComandaPendiente,
         autoAsignarComandaOperario,
+        borrarSimulacionIa,
+        borrarSimulacionesIa,
         completarEtapaComanda,
         configurarEtapaProduccion,
         configurarLimitesEtapas,
         crearAviso,
         crearClienteAdministrado,
         crearClienteComanda,
+        crearClienteConCuenta,
         crearComanda,
         crearInsumo,
         crearSalidaVehiculo,
@@ -730,14 +848,18 @@ private class ExampleConnectorImpl(
         editarFichaCliente,
         editarVehiculoFlota,
         eliminarDetallesComanda,
+        eliminarTasaConsumo,
         entregarComanda,
         gestionarSolicitudDerecho,
+        guardarConfiguracionIa,
+        guardarTasaConsumo,
         iniciarSalidaVehiculo,
         prepararLimiteContacto,
         purgarLimitesContacto,
         reasignarOperarioEtapa,
         rechazarConteoInventario,
         recibirSolicitudDerecho,
+        registrarConteoFisicoIa,
         registrarConteoInventario,
         registrarEntradaInventario,
         registrarEvidenciaGuardada,
@@ -751,6 +873,7 @@ private class ExampleConnectorImpl(
         registrarVehiculoFlota,
         registrarse,
         registrarseComoCliente,
+        reportarProblemaEntrega,
         resolverMiIncidencia,
         vincularMiComanda,
         vincularMiFichaVerificada,
@@ -761,6 +884,7 @@ private class ExampleConnectorImpl(
   override fun queries(): List<com.google.firebase.dataconnect.generated.GeneratedQuery<ExampleConnector, *, *>> =
     listOf(
       autorizarGestionPrivacidad,
+        autorizarModuloIa,
         contarLimitesContactoVencidos,
         diagnosticoComandas,
         getAvisosAdministracion,
@@ -773,19 +897,23 @@ private class ExampleConnectorImpl(
         getComandasActivasCount,
         getComandasPaginadas,
         getComandasParaAlertas,
+        getComandasParaEntrega,
         getComprobanteDerecho,
         getConteosInventario,
+        getDatosEntrenamientoIa,
         getDetalleReporteCuentas,
         getDetalleReporteServicios,
         getEtapasProduccion,
         getFichasClientes,
         getFiltrosReportes,
         getFlotaVehiculos,
+        getHistorialAjustesIa,
         getHistorialInventario,
         getHistorialVehiculos,
         getIncidencias,
         getInspeccionParaEvidencias,
         getInsumoPorQr,
+        getInsumosImportacionIa,
         getInsumosOperario,
         getInventario,
         getLimiteContacto,
@@ -796,8 +924,12 @@ private class ExampleConnectorImpl(
         getMisComandasAsignadas,
         getMisConteosInventario,
         getMisSalidasVehiculo,
+        getModeloComandaIa,
         getMovimientoFlotaPorInspeccion,
+        getPanelIa,
         getPanelProduccion,
+        getPanelRepartidor,
+        getRegistrosExistentesIa,
         getReporteCuentas,
         getReporteServicios,
         getReporteVolumen,
@@ -808,6 +940,7 @@ private class ExampleConnectorImpl(
         getSolicitudContactoConfirmada,
         getSolicitudesContacto,
         getStockInventario,
+        getTasasSimulacionIa,
         getUsuarios,
         getVehiculos,
         listarSolicitudesDerecho,
@@ -944,6 +1077,21 @@ private open class ExampleConnectorGeneratedMutationImpl<Data, Variables>(
     "connector=$connector)"
 }
 
+
+
+private class AceptarCondicionesVigentesMutationImpl(
+  connector: ExampleConnector
+):
+  AceptarCondicionesVigentesMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      AceptarCondicionesVigentesMutation.Data,
+      AceptarCondicionesVigentesMutation.Variables
+  >(
+    connector,
+    AceptarCondicionesVigentesMutation.Companion.operationName,
+    AceptarCondicionesVigentesMutation.Companion.dataDeserializer,
+    AceptarCondicionesVigentesMutation.Companion.variablesSerializer,
+  )
 
 
 private class ActualizarEstadoIncidenciaMutationImpl(
@@ -1156,6 +1304,51 @@ private class AutorizarGestionPrivacidadQueryImpl(
   )
 
 
+private class AutorizarModuloIaQueryImpl(
+  connector: ExampleConnector
+):
+  AutorizarModuloIaQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      AutorizarModuloIaQuery.Data,
+      Unit
+  >(
+    connector,
+    AutorizarModuloIaQuery.Companion.operationName,
+    AutorizarModuloIaQuery.Companion.dataDeserializer,
+    AutorizarModuloIaQuery.Companion.variablesSerializer,
+  )
+
+
+private class BorrarSimulacionIaMutationImpl(
+  connector: ExampleConnector
+):
+  BorrarSimulacionIaMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      BorrarSimulacionIaMutation.Data,
+      BorrarSimulacionIaMutation.Variables
+  >(
+    connector,
+    BorrarSimulacionIaMutation.Companion.operationName,
+    BorrarSimulacionIaMutation.Companion.dataDeserializer,
+    BorrarSimulacionIaMutation.Companion.variablesSerializer,
+  )
+
+
+private class BorrarSimulacionesIaMutationImpl(
+  connector: ExampleConnector
+):
+  BorrarSimulacionesIaMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      BorrarSimulacionesIaMutation.Data,
+      Unit
+  >(
+    connector,
+    BorrarSimulacionesIaMutation.Companion.operationName,
+    BorrarSimulacionesIaMutation.Companion.dataDeserializer,
+    BorrarSimulacionesIaMutation.Companion.variablesSerializer,
+  )
+
+
 private class CompletarEtapaComandaMutationImpl(
   connector: ExampleConnector
 ):
@@ -1258,6 +1451,21 @@ private class CrearClienteComandaMutationImpl(
     CrearClienteComandaMutation.Companion.operationName,
     CrearClienteComandaMutation.Companion.dataDeserializer,
     CrearClienteComandaMutation.Companion.variablesSerializer,
+  )
+
+
+private class CrearClienteConCuentaMutationImpl(
+  connector: ExampleConnector
+):
+  CrearClienteConCuentaMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      CrearClienteConCuentaMutation.Data,
+      CrearClienteConCuentaMutation.Variables
+  >(
+    connector,
+    CrearClienteConCuentaMutation.Companion.operationName,
+    CrearClienteConCuentaMutation.Companion.dataDeserializer,
+    CrearClienteConCuentaMutation.Companion.variablesSerializer,
   )
 
 
@@ -1441,6 +1649,21 @@ private class EliminarDetallesComandaMutationImpl(
   )
 
 
+private class EliminarTasaConsumoMutationImpl(
+  connector: ExampleConnector
+):
+  EliminarTasaConsumoMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      EliminarTasaConsumoMutation.Data,
+      EliminarTasaConsumoMutation.Variables
+  >(
+    connector,
+    EliminarTasaConsumoMutation.Companion.operationName,
+    EliminarTasaConsumoMutation.Companion.dataDeserializer,
+    EliminarTasaConsumoMutation.Companion.variablesSerializer,
+  )
+
+
 private class EntregarComandaMutationImpl(
   connector: ExampleConnector
 ):
@@ -1621,6 +1844,21 @@ private class GetComandasParaAlertasQueryImpl(
   )
 
 
+private class GetComandasParaEntregaQueryImpl(
+  connector: ExampleConnector
+):
+  GetComandasParaEntregaQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      GetComandasParaEntregaQuery.Data,
+      GetComandasParaEntregaQuery.Variables
+  >(
+    connector,
+    GetComandasParaEntregaQuery.Companion.operationName,
+    GetComandasParaEntregaQuery.Companion.dataDeserializer,
+    GetComandasParaEntregaQuery.Companion.variablesSerializer,
+  )
+
+
 private class GetComprobanteDerechoQueryImpl(
   connector: ExampleConnector
 ):
@@ -1648,6 +1886,21 @@ private class GetConteosInventarioQueryImpl(
     GetConteosInventarioQuery.Companion.operationName,
     GetConteosInventarioQuery.Companion.dataDeserializer,
     GetConteosInventarioQuery.Companion.variablesSerializer,
+  )
+
+
+private class GetDatosEntrenamientoIaQueryImpl(
+  connector: ExampleConnector
+):
+  GetDatosEntrenamientoIaQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      GetDatosEntrenamientoIaQuery.Data,
+      Unit
+  >(
+    connector,
+    GetDatosEntrenamientoIaQuery.Companion.operationName,
+    GetDatosEntrenamientoIaQuery.Companion.dataDeserializer,
+    GetDatosEntrenamientoIaQuery.Companion.variablesSerializer,
   )
 
 
@@ -1741,6 +1994,21 @@ private class GetFlotaVehiculosQueryImpl(
   )
 
 
+private class GetHistorialAjustesIaQueryImpl(
+  connector: ExampleConnector
+):
+  GetHistorialAjustesIaQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      GetHistorialAjustesIaQuery.Data,
+      GetHistorialAjustesIaQuery.Variables
+  >(
+    connector,
+    GetHistorialAjustesIaQuery.Companion.operationName,
+    GetHistorialAjustesIaQuery.Companion.dataDeserializer,
+    GetHistorialAjustesIaQuery.Companion.variablesSerializer,
+  )
+
+
 private class GetHistorialInventarioQueryImpl(
   connector: ExampleConnector
 ):
@@ -1813,6 +2081,21 @@ private class GetInsumoPorQrQueryImpl(
     GetInsumoPorQrQuery.Companion.operationName,
     GetInsumoPorQrQuery.Companion.dataDeserializer,
     GetInsumoPorQrQuery.Companion.variablesSerializer,
+  )
+
+
+private class GetInsumosImportacionIaQueryImpl(
+  connector: ExampleConnector
+):
+  GetInsumosImportacionIaQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      GetInsumosImportacionIaQuery.Data,
+      Unit
+  >(
+    connector,
+    GetInsumosImportacionIaQuery.Companion.operationName,
+    GetInsumosImportacionIaQuery.Companion.dataDeserializer,
+    GetInsumosImportacionIaQuery.Companion.variablesSerializer,
   )
 
 
@@ -1966,6 +2249,21 @@ private class GetMisSalidasVehiculoQueryImpl(
   )
 
 
+private class GetModeloComandaIaQueryImpl(
+  connector: ExampleConnector
+):
+  GetModeloComandaIaQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      GetModeloComandaIaQuery.Data,
+      Unit
+  >(
+    connector,
+    GetModeloComandaIaQuery.Companion.operationName,
+    GetModeloComandaIaQuery.Companion.dataDeserializer,
+    GetModeloComandaIaQuery.Companion.variablesSerializer,
+  )
+
+
 private class GetMovimientoFlotaPorInspeccionQueryImpl(
   connector: ExampleConnector
 ):
@@ -1981,6 +2279,21 @@ private class GetMovimientoFlotaPorInspeccionQueryImpl(
   )
 
 
+private class GetPanelIaQueryImpl(
+  connector: ExampleConnector
+):
+  GetPanelIaQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      GetPanelIaQuery.Data,
+      Unit
+  >(
+    connector,
+    GetPanelIaQuery.Companion.operationName,
+    GetPanelIaQuery.Companion.dataDeserializer,
+    GetPanelIaQuery.Companion.variablesSerializer,
+  )
+
+
 private class GetPanelProduccionQueryImpl(
   connector: ExampleConnector
 ):
@@ -1993,6 +2306,36 @@ private class GetPanelProduccionQueryImpl(
     GetPanelProduccionQuery.Companion.operationName,
     GetPanelProduccionQuery.Companion.dataDeserializer,
     GetPanelProduccionQuery.Companion.variablesSerializer,
+  )
+
+
+private class GetPanelRepartidorQueryImpl(
+  connector: ExampleConnector
+):
+  GetPanelRepartidorQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      GetPanelRepartidorQuery.Data,
+      GetPanelRepartidorQuery.Variables
+  >(
+    connector,
+    GetPanelRepartidorQuery.Companion.operationName,
+    GetPanelRepartidorQuery.Companion.dataDeserializer,
+    GetPanelRepartidorQuery.Companion.variablesSerializer,
+  )
+
+
+private class GetRegistrosExistentesIaQueryImpl(
+  connector: ExampleConnector
+):
+  GetRegistrosExistentesIaQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      GetRegistrosExistentesIaQuery.Data,
+      GetRegistrosExistentesIaQuery.Variables
+  >(
+    connector,
+    GetRegistrosExistentesIaQuery.Companion.operationName,
+    GetRegistrosExistentesIaQuery.Companion.dataDeserializer,
+    GetRegistrosExistentesIaQuery.Companion.variablesSerializer,
   )
 
 
@@ -2146,6 +2489,21 @@ private class GetStockInventarioQueryImpl(
   )
 
 
+private class GetTasasSimulacionIaQueryImpl(
+  connector: ExampleConnector
+):
+  GetTasasSimulacionIaQuery,
+  ExampleConnectorGeneratedQueryImpl<
+      GetTasasSimulacionIaQuery.Data,
+      Unit
+  >(
+    connector,
+    GetTasasSimulacionIaQuery.Companion.operationName,
+    GetTasasSimulacionIaQuery.Companion.dataDeserializer,
+    GetTasasSimulacionIaQuery.Companion.variablesSerializer,
+  )
+
+
 private class GetUsuariosQueryImpl(
   connector: ExampleConnector
 ):
@@ -2173,6 +2531,36 @@ private class GetVehiculosQueryImpl(
     GetVehiculosQuery.Companion.operationName,
     GetVehiculosQuery.Companion.dataDeserializer,
     GetVehiculosQuery.Companion.variablesSerializer,
+  )
+
+
+private class GuardarConfiguracionIaMutationImpl(
+  connector: ExampleConnector
+):
+  GuardarConfiguracionIaMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      GuardarConfiguracionIaMutation.Data,
+      GuardarConfiguracionIaMutation.Variables
+  >(
+    connector,
+    GuardarConfiguracionIaMutation.Companion.operationName,
+    GuardarConfiguracionIaMutation.Companion.dataDeserializer,
+    GuardarConfiguracionIaMutation.Companion.variablesSerializer,
+  )
+
+
+private class GuardarTasaConsumoMutationImpl(
+  connector: ExampleConnector
+):
+  GuardarTasaConsumoMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      GuardarTasaConsumoMutation.Data,
+      GuardarTasaConsumoMutation.Variables
+  >(
+    connector,
+    GuardarTasaConsumoMutation.Companion.operationName,
+    GuardarTasaConsumoMutation.Companion.dataDeserializer,
+    GuardarTasaConsumoMutation.Companion.variablesSerializer,
   )
 
 
@@ -2278,6 +2666,21 @@ private class RecibirSolicitudDerechoMutationImpl(
     RecibirSolicitudDerechoMutation.Companion.operationName,
     RecibirSolicitudDerechoMutation.Companion.dataDeserializer,
     RecibirSolicitudDerechoMutation.Companion.variablesSerializer,
+  )
+
+
+private class RegistrarConteoFisicoIaMutationImpl(
+  connector: ExampleConnector
+):
+  RegistrarConteoFisicoIaMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      RegistrarConteoFisicoIaMutation.Data,
+      RegistrarConteoFisicoIaMutation.Variables
+  >(
+    connector,
+    RegistrarConteoFisicoIaMutation.Companion.operationName,
+    RegistrarConteoFisicoIaMutation.Companion.dataDeserializer,
+    RegistrarConteoFisicoIaMutation.Companion.variablesSerializer,
   )
 
 
@@ -2473,6 +2876,21 @@ private class RegistrarseComoClienteMutationImpl(
     RegistrarseComoClienteMutation.Companion.operationName,
     RegistrarseComoClienteMutation.Companion.dataDeserializer,
     RegistrarseComoClienteMutation.Companion.variablesSerializer,
+  )
+
+
+private class ReportarProblemaEntregaMutationImpl(
+  connector: ExampleConnector
+):
+  ReportarProblemaEntregaMutation,
+  ExampleConnectorGeneratedMutationImpl<
+      ReportarProblemaEntregaMutation.Data,
+      ReportarProblemaEntregaMutation.Variables
+  >(
+    connector,
+    ReportarProblemaEntregaMutation.Companion.operationName,
+    ReportarProblemaEntregaMutation.Companion.dataDeserializer,
+    ReportarProblemaEntregaMutation.Companion.variablesSerializer,
   )
 
 

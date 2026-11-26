@@ -1,18 +1,28 @@
 package com.elcobre.lavanderiaelcobre.data
 
+import com.elcobre.lavanderiaelcobre.data.model.ComandaEntrega
+import com.elcobre.lavanderiaelcobre.data.model.DisponibilidadVehiculo
+import com.elcobre.lavanderiaelcobre.data.model.EntregaRegistrada
+import com.elcobre.lavanderiaelcobre.data.model.EntregasReparto
 import com.elcobre.lavanderiaelcobre.data.model.EstadoCondicionVehiculo
+import com.elcobre.lavanderiaelcobre.data.model.EstadoIncidencia
 import com.elcobre.lavanderiaelcobre.data.model.EstadoSalida
 import com.elcobre.lavanderiaelcobre.data.model.InspeccionInput
 import com.elcobre.lavanderiaelcobre.data.model.InspeccionReparto
+import com.elcobre.lavanderiaelcobre.data.model.PanelReparto
+import com.elcobre.lavanderiaelcobre.data.model.ProblemaEntrega
 import com.elcobre.lavanderiaelcobre.data.model.SalidaReparto
-import com.elcobre.lavanderiaelcobre.data.model.Vehiculo
+import com.elcobre.lavanderiaelcobre.data.model.TipoClienteFicha
+import com.elcobre.lavanderiaelcobre.data.model.VehiculoReparto
 import com.elcobre.lavanderiaelcobre.dataconnect.EstadoVehiculo
 import com.elcobre.lavanderiaelcobre.dataconnect.ExampleConnector
-import com.elcobre.lavanderiaelcobre.dataconnect.GetMisSalidasVehiculoQuery
+import com.elcobre.lavanderiaelcobre.dataconnect.GetComandasParaEntregaQuery
+import com.elcobre.lavanderiaelcobre.dataconnect.GetPanelRepartidorQuery
 import com.elcobre.lavanderiaelcobre.dataconnect.MomentoInspeccion
 import com.elcobre.lavanderiaelcobre.dataconnect.execute
 import com.elcobre.lavanderiaelcobre.dataconnect.instance
 import com.elcobre.lavanderiaelcobre.dataconnect.ref
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.dataconnect.QueryRef
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -20,16 +30,87 @@ import kotlin.math.roundToInt
 
 actual fun crearRepartoRepository(): RepartoRepository = FirebaseRepartoRepository()
 
+private val SERVIDOR = QueryRef.FetchPolicy.SERVER_ONLY
+
 private fun estadoDc(estado: EstadoCondicionVehiculo): EstadoVehiculo = EstadoVehiculo.valueOf(estado.codigo)
 
-private fun GetMisSalidasVehiculoQuery.Data.SalidaVehiculosItem.InspeccionVehiculosOnSalidaItem.aInspeccion() = InspeccionReparto(
+private fun GetPanelRepartidorQuery.Data.MisSalidasItem.InspeccionesItem.aInspeccion() = InspeccionReparto(
     id = id.toString(),
     estado = EstadoCondicionVehiculo.desdeCodigo(estadoVehiculo.stringValue),
     kilometraje = kilometraje.roundToInt(),
     observaciones = observaciones,
     registradoEn = fechaHora(registradoEn),
-    fotos = fotoInspeccionVehiculos_on_inspeccion.size,
+    fotos = fotos.size,
 )
+
+private fun GetPanelRepartidorQuery.Data.MisSalidasItem.aSalida() = SalidaReparto(
+    id = id.toString(),
+    estado = EstadoSalida.desdeCodigo(estado.stringValue),
+    vehiculoId = vehiculo.id.toString(),
+    patente = vehiculo.patente,
+    vehiculo = listOf(vehiculo.marca, vehiculo.modelo).filter { it.isNotBlank() }.distinct().joinToString(" "),
+    creadoEn = fechaHora(creadoEn),
+    fechaSalida = fechaSalida?.let(::fechaHora),
+    fechaRetorno = fechaRetorno?.let(::fechaHora),
+    observaciones = observaciones,
+    antes = inspecciones.firstOrNull { it.momento.value == MomentoInspeccion.ANTES }?.aInspeccion(),
+    despues = inspecciones.firstOrNull { it.momento.value == MomentoInspeccion.DESPUES }?.aInspeccion(),
+)
+
+/** Ordena como la web: primero el vehículo propio, luego los disponibles y al final los que otra persona tiene en ruta. */
+private fun GetPanelRepartidorQuery.Data.aPanel(uid: String?): PanelReparto = PanelReparto(
+    vehiculos = vehiculos.map { v ->
+        val enCurso = v.enCurso.firstOrNull()
+        VehiculoReparto(
+            id = v.id.toString(),
+            patente = v.patente,
+            vehiculo = listOf(v.marca, v.modelo).filter { it.isNotBlank() }.distinct().joinToString(" "),
+            descripcion = v.descripcion,
+            disponibilidad = when {
+                enCurso == null -> DisponibilidadVehiculo.DISPONIBLE
+                enCurso.repartidor.id == uid -> DisponibilidadVehiculo.CONTIGO
+                else -> DisponibilidadVehiculo.EN_RUTA
+            },
+            // El odómetro no retrocede: el mayor kilometraje de sus últimas salidas.
+            kilometrajeActual = v.recientes.flatMap { it.inspecciones }.maxOfOrNull { it.kilometraje }?.roundToInt() ?: 0,
+            conductorActual = enCurso?.repartidor?.let { nombreCompleto(it.nombre, it.apellido) },
+        )
+    }.sortedBy { it.disponibilidad.ordinal },
+    salidas = misSalidas.map { it.aSalida() },
+)
+
+private fun GetComandasParaEntregaQuery.Data.ComandasItem.aEntrega(): ComandaEntrega {
+    val porTipo = prendas.groupBy { it.tipoPrenda.nombre }.mapValues { (_, l) -> l.sumOf { it.cantidad } }
+    val total = prendas.sumOf { it.cantidad }
+    val resumen = if (total == 0) {
+        "Sin prendas registradas"
+    } else {
+        "$total prenda${if (total == 1) "" else "s"} · " + porTipo.entries.joinToString(", ") { "${it.key} ×${it.value}" }
+    }
+    return ComandaEntrega(
+        id = id.toString(),
+        numero = numeroComanda,
+        cliente = cliente.nombre,
+        tipoCliente = TipoClienteFicha.desdeCodigo(cliente.tipoCliente.stringValue),
+        telefono = cliente.telefono,
+        direccion = cliente.direccion,
+        empresa = empresa,
+        proyecto = proyecto,
+        observaciones = observaciones,
+        fechaEntregaEstimada = fechaEntregaEstimada?.let(::fechaCorta),
+        prendas = resumen,
+        problemas = problemas.map {
+            ProblemaEntrega(
+                id = it.id.toString(),
+                motivo = it.motivo,
+                descripcion = it.descripcion,
+                estado = EstadoIncidencia.desdeCodigo(it.estado.stringValue),
+                fecha = fechaHora(it.fecha),
+                reportadaPor = nombreCompleto(it.reportadaPor.nombre, it.reportadaPor.apellido),
+            )
+        },
+    )
+}
 
 internal actual suspend fun programarSalidaFirebase(vehiculoId: String, repartidorId: String, observaciones: String?) {
     solicitud {
@@ -40,44 +121,32 @@ internal actual suspend fun programarSalidaFirebase(vehiculoId: String, repartid
 }
 
 /**
- * Salidas del repartidor. Las inspecciones se registran primero y las fotos después;
- * si la subida de una foto falla, el reintento reutiliza la inspección ya guardada
- * (se identifica por salida y momento) en vez de duplicarla.
+ * Sección del repartidor. Salida y regreso reutilizan el registro de flota de
+ * administración (`registrarSalidaFirebase`/`registrarRetornoFirebase`): ids generados
+ * en el dispositivo y consulta previa, así un reintento no duplica el movimiento.
  */
 private class FirebaseRepartoRepository : RepartoRepository {
     private val dc get() = ExampleConnector.instance
     private val inspeccionesPendientes = ConcurrentHashMap<String, String>()
 
-    override fun descartarReintentos() = inspeccionesPendientes.clear()
-
-    override suspend fun misSalidas(): List<SalidaReparto> = solicitud {
-        dc.getMisSalidasVehiculo.ref().execute(QueryRef.FetchPolicy.SERVER_ONLY).data.salidaVehiculos.map { s ->
-            SalidaReparto(
-                id = s.id.toString(),
-                estado = EstadoSalida.desdeCodigo(s.estado.stringValue),
-                vehiculoId = s.vehiculo.id.toString(),
-                patente = s.vehiculo.patente,
-                vehiculo = listOf(s.vehiculo.marca, s.vehiculo.modelo).filter { it.isNotBlank() }.distinct().joinToString(" "),
-                creadoEn = fechaHora(s.creadoEn),
-                fechaSalida = s.fechaSalida?.let(::fechaHora),
-                fechaRetorno = s.fechaRetorno?.let(::fechaHora),
-                observaciones = s.observaciones,
-                antes = s.inspeccionVehiculos_on_salida.firstOrNull { it.momento.value == MomentoInspeccion.ANTES }?.aInspeccion(),
-                despues = s.inspeccionVehiculos_on_salida.firstOrNull { it.momento.value == MomentoInspeccion.DESPUES }?.aInspeccion(),
-            )
-        }
+    override fun descartarReintentos() {
+        inspeccionesPendientes.clear()
+        descartarReintentosFlotaFirebase()
     }
 
-    override suspend fun vehiculos(): List<Vehiculo> = solicitud {
-        dc.getVehiculos.ref().execute(QueryRef.FetchPolicy.SERVER_ONLY).data.vehiculos.map {
-            Vehiculo(
-                id = it.id.toString(), patente = it.patente, modelo = it.modelo, kilometrajeActual = 0,
-                marca = it.marca, anio = it.anio, descripcion = it.descripcion, activo = it.activo,
-            )
-        }
+    override suspend fun panel(): PanelReparto = solicitud {
+        dc.getPanelRepartidor.ref { limit = 30 }.execute(SERVIDOR).data.aPanel(FirebaseAuth.getInstance().currentUser?.uid)
     }
 
-    override suspend fun iniciarSalida(salida: SalidaReparto, input: InspeccionInput): Unit = solicitud {
+    override suspend fun registrarSalida(input: SalidaFlotaInput): String {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: throw OperacionComandaException("Inicia sesión nuevamente.")
+        // El servidor exige que la salida sea del propio repartidor.
+        return registrarSalidaFirebase(input.copy(repartidorId = uid))
+    }
+
+    override suspend fun registrarRetorno(input: RetornoFlotaInput) = registrarRetornoFirebase(input)
+
+    override suspend fun iniciarProgramada(salida: SalidaReparto, input: InspeccionInput): Unit = solicitud {
         validarArchivosEvidencia(input.fotos)
         val clave = "${input.salidaId}|ANTES"
         val inspeccionId = salida.antes?.id ?: inspeccionesPendientes[clave] ?: dc.registrarInspeccionAntes.execute(
@@ -85,24 +154,6 @@ private class FirebaseRepartoRepository : RepartoRepository {
         ) { observaciones = input.observaciones?.trim()?.ifEmpty { null }?.take(500) }
             .data.inspeccionVehiculo_insert.id.toString()
         inspeccionesPendientes[clave] = inspeccionId
-        subirFotos(inspeccionId, input)
-        dc.iniciarSalidaVehiculo.execute(UUID.fromString(input.salidaId))
-        inspeccionesPendientes.remove(clave)
-    }
-
-    override suspend fun registrarRetorno(input: InspeccionInput): Unit = solicitud {
-        validarArchivosEvidencia(input.fotos)
-        val clave = "${input.salidaId}|DESPUES"
-        val inspeccionId = inspeccionesPendientes[clave] ?: dc.registrarInspeccionDespues.execute(
-            UUID.fromString(input.salidaId), estadoDc(input.estado), input.kilometraje.toDouble(),
-        ) { observaciones = input.observaciones?.trim()?.ifEmpty { null }?.take(500) }
-            .data.inspeccionVehiculo_insert.id.toString()
-        inspeccionesPendientes[clave] = inspeccionId
-        subirFotos(inspeccionId, input)
-        inspeccionesPendientes.remove(clave)
-    }
-
-    private suspend fun subirFotos(inspeccionId: String, input: InspeccionInput) {
         try {
             for ((indice, foto) in input.fotos.withIndex()) subirFotoInspeccion(inspeccionId, foto, indice + 1)
             eliminarCapturasConfirmadas(input.fotos.map { it.uri })
@@ -111,5 +162,25 @@ private class FirebaseRepartoRepository : RepartoRepository {
                 "La inspección ya se guardó. Hay fotografías pendientes: reintenta para subirlas. " + error.message, error,
             )
         }
+        dc.iniciarSalidaVehiculo.execute(UUID.fromString(input.salidaId))
+        inspeccionesPendientes.remove(clave)
+    }
+
+    override suspend fun entregas(): EntregasReparto = solicitud {
+        val data = dc.getComandasParaEntrega.ref { limit = 50 }.execute(SERVIDOR).data
+        EntregasReparto(
+            comandas = data.comandas.map { it.aEntrega() },
+            misEntregas = data.misEntregas.map {
+                EntregaRegistrada(it.id.toString(), fechaHora(it.fecha), it.motivo, it.comanda.numeroComanda, it.comanda.cliente.nombre)
+            },
+        )
+    }
+
+    override suspend fun entregar(comandaId: String, detalle: String?): Unit = solicitud {
+        dc.entregarComanda.execute(UUID.fromString(comandaId)) { this.detalle = detalle }
+    }
+
+    override suspend fun reportarProblema(comandaId: String, motivo: String, detalle: String?): Unit = solicitud {
+        dc.reportarProblemaEntrega.execute(UUID.fromString(comandaId), motivo) { this.detalle = detalle }
     }
 }

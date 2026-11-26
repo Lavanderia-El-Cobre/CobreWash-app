@@ -3,6 +3,7 @@ package com.elcobre.lavanderiaelcobre
 import com.elcobre.lavanderiaelcobre.data.auth.PerfilResultado
 import com.elcobre.lavanderiaelcobre.data.auth.DatosSesionGuardada
 import com.elcobre.lavanderiaelcobre.data.auth.SesionPersistente
+import com.elcobre.lavanderiaelcobre.ui.gestion.ahoraMs
 import com.elcobre.lavanderiaelcobre.data.model.Administrador
 import com.elcobre.lavanderiaelcobre.data.model.EtapaProceso
 import com.elcobre.lavanderiaelcobre.data.model.Operario
@@ -74,6 +75,7 @@ class CobreViewModelTest {
                 nombre = "Admin Flota",
                 rol = "admin",
             ),
+            ahoraMs(),
         )
         val vm = crearViewModel()
         vm.restaurarSesionSiExiste()
@@ -86,7 +88,7 @@ class CobreViewModelTest {
 
     @Test
     fun restauracion_usaElRolActualDelServidor() {
-        SesionPersistente.guardar(DatosSesionGuardada("admin@cobre.cl", "Rol viejo", "admin"))
+        SesionPersistente.guardar(DatosSesionGuardada("admin@cobre.cl", "Rol viejo", "admin"), ahoraMs())
         val vm = crearViewModel(PerfilResultado.Exito("Nombre vigente", "operario"))
         assertEquals(Pantalla.Dashboard, vm.pantalla)
         assertNull(vm.administrador)
@@ -95,7 +97,7 @@ class CobreViewModelTest {
 
     @Test
     fun restauracion_rechazaPerfilInactivoOErrorDeValidacion() {
-        SesionPersistente.guardar(DatosSesionGuardada("admin@cobre.cl", "Admin", "admin"))
+        SesionPersistente.guardar(DatosSesionGuardada("admin@cobre.cl", "Admin", "admin"), ahoraMs())
         val vm = CobreViewModel(
             FakeComandasRepository(),
             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.test.UnconfinedTestDispatcher()),
@@ -114,12 +116,13 @@ class CobreViewModelTest {
                 nombre = "Operario Planta",
                 rol = "operario",
             ),
+            ahoraMs(),
         )
         val vm = crearViewModel()
         vm.iniciarSesion(operario)
         vm.cerrarSesion()
 
-        assertNull(SesionPersistente.obtener())
+        assertNull(SesionPersistente.obtener(ahoraMs()))
     }
 
     @Test

@@ -45,6 +45,7 @@ import com.elcobre.lavanderiaelcobre.ui.components.GlassSearchField
 import com.elcobre.lavanderiaelcobre.ui.components.GlassSheet
 import com.elcobre.lavanderiaelcobre.ui.components.KpiTile
 import com.elcobre.lavanderiaelcobre.ui.components.LargeTitleScreen
+import com.elcobre.lavanderiaelcobre.ui.components.ProtegerCapturas
 import com.elcobre.lavanderiaelcobre.ui.components.readableWidth
 import com.elcobre.lavanderiaelcobre.ui.components.rememberShellContentPadding
 import com.elcobre.lavanderiaelcobre.ui.components.tonoEstadoComanda
@@ -58,6 +59,7 @@ import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
  */
 @Composable
 fun ComandasScreen(vm: ComandasViewModel, applySystemBarsInsets: Boolean = true) {
+    ProtegerCapturas()
     val window = CobreTheme.window
     val detalle = vm.detalle
     if (window.useListDetail) {

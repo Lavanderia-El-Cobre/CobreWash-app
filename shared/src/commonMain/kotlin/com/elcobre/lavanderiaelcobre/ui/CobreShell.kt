@@ -82,9 +82,11 @@ internal val NavAdmin = listOf(
     NavItem(CobreIcons.MoreHoriz, "Más", Pantalla.Mas),
 )
 
-/** Pestañas del repartidor: sus recorridos y ajustes. */
+/** Pestañas del repartidor, como la web: su vehículo, las entregas, los avisos y ajustes. */
 internal val NavRepartidor = listOf(
-    NavItem(CobreIcons.LocalShipping, "Recorridos", Pantalla.Reparto),
+    NavItem(CobreIcons.LocalShipping, "Mi vehículo", Pantalla.Reparto),
+    NavItem(CobreIcons.DoneAll, "Entregas", Pantalla.Entregas),
+    NavItem(CobreIcons.Campaign, "Avisos", Pantalla.Avisos),
     NavItem(CobreIcons.Person, "Ajustes", Pantalla.Configuracion),
 )
 

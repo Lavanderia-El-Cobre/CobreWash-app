@@ -34,6 +34,7 @@ import com.elcobre.lavanderiaelcobre.ui.components.GlassSearchField
 import com.elcobre.lavanderiaelcobre.ui.components.GlassSheet
 import com.elcobre.lavanderiaelcobre.ui.components.Iniciales
 import com.elcobre.lavanderiaelcobre.ui.components.LargeTitleScreen
+import com.elcobre.lavanderiaelcobre.ui.components.ProtegerCapturas
 import com.elcobre.lavanderiaelcobre.ui.components.Tono
 import com.elcobre.lavanderiaelcobre.ui.components.readableWidth
 import com.elcobre.lavanderiaelcobre.ui.gestion.ClientesViewModel
@@ -47,6 +48,7 @@ private data class EdicionFicha(val cliente: ClienteFicha?)
 /** Fichas de clientes con historial resumido, alta y edición (`/intranet/clientes`). */
 @Composable
 fun ClientesScreen(vm: ClientesViewModel, applySystemBarsInsets: Boolean = true) {
+    ProtegerCapturas()
     var edicion by remember { mutableStateOf<EdicionFicha?>(null) }
     LargeTitleScreen(
         title = "Clientes",

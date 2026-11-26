@@ -4,11 +4,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.elcobre.lavanderiaelcobre.data.IdentidadComanda
+import com.elcobre.lavanderiaelcobre.data.OperacionComandaException
 import com.elcobre.lavanderiaelcobre.data.RecepcionRepository
 import com.elcobre.lavanderiaelcobre.data.crearRecepcionRepository
 import com.elcobre.lavanderiaelcobre.data.model.CatalogosComanda
+import com.elcobre.lavanderiaelcobre.data.model.Cobro
 import com.elcobre.lavanderiaelcobre.data.model.ComandaGestion
 import com.elcobre.lavanderiaelcobre.data.model.EstadoComanda
+import com.elcobre.lavanderiaelcobre.data.model.EstadoEstimacion
 import com.elcobre.lavanderiaelcobre.data.model.FiltroComandas
 import com.elcobre.lavanderiaelcobre.data.model.FormularioComanda
 import com.elcobre.lavanderiaelcobre.data.model.LineaFormulario
@@ -68,6 +71,12 @@ class ComandasViewModel(
         private set
     private var identidad: IdentidadComanda? = null
 
+    /** Consumo de insumos estimado por la web para el servicio y el peso del formulario. */
+    var estimacion by mutableStateOf<EstadoEstimacion>(EstadoEstimacion.SinPeso)
+        private set
+    private var estimacionJob: Job? = null
+    private var claveEstimacion: Pair<String, Double>? = null
+
     fun refrescar(mas: Boolean = false) {
         if (mas && !hayMas) return
         if (mas) limite += PAGINA_COMANDAS
@@ -124,34 +133,109 @@ class ComandasViewModel(
         detalle = null
     }
 
-    private fun cargarCatalogos() = cargar { catalogos = repository.catalogos() }
+    /**
+     * Carga los catálogos y, si el formulario aún no tiene precio por kg, propone el
+     * del servicio elegido (como la web al abrir el formulario).
+     */
+    private fun cargarCatalogos() = cargar {
+        catalogos = repository.catalogos()
+        formulario?.let { f ->
+            val servicio = f.servicio.takeIf { it.isNotBlank() && edicion != null }
+                ?: catalogos.servicios.firstOrNull()?.nombre ?: f.servicio
+            val precio = f.precioKg.ifBlank { Cobro.formatearPrecio(precioKgDe(servicio)) }
+            formulario = f.copy(servicio = servicio, precioKg = precio)
+            formulario?.let(::pedirEstimacion)
+        }
+    }
 
     fun abrirNueva() {
-        cargarCatalogos()
         identidad = null
         edicion = null
         errorFormulario = null
         formulario = FormularioComanda()
+        cargarCatalogos()
     }
 
     fun abrirEdicion(comanda: ComandaGestion) {
         if (!comanda.puedeEditar) return
-        cargarCatalogos()
         edicion = comanda
         errorFormulario = null
         formulario = formularioDesde(comanda)
+        cargarCatalogos()
     }
+
+    /** Servicio de toda la comanda; propone su precio por kg si el campo está vacío o era el sugerido. */
+    fun seleccionarServicio(nombre: String) {
+        val f = formulario ?: return
+        val anteriorSugerido = Cobro.formatearPrecio(precioKgDe(f.servicio))
+        val precio = if (f.precioKg.isBlank() || f.precioKg == anteriorSugerido) {
+            Cobro.formatearPrecio(precioKgDe(nombre)).ifBlank { f.precioKg }
+        } else {
+            f.precioKg
+        }
+        val base = precioBase(nombre)
+        actualizarFormulario(
+            f.copy(
+                servicio = nombre,
+                precioKg = precio,
+                lineas = if (base == null) f.lineas else f.lineas.map { it.copy(servicio = nombre, precioUnitario = base) },
+            ),
+        )
+    }
+
+    private fun precioKgDe(servicio: String): Double? =
+        catalogos.servicios
+            .firstOrNull { Validaciones.normalizarCatalogo(it.nombre) == Validaciones.normalizarCatalogo(servicio) }
+            ?.precioKg
 
     fun cerrarFormulario() {
         if (guardando) return
         formulario = null
         edicion = null
         errorFormulario = null
+        limpiarEstimacion()
+    }
+
+    private fun limpiarEstimacion() {
+        estimacionJob?.cancel()
+        claveEstimacion = null
+        estimacion = EstadoEstimacion.SinPeso
     }
 
     fun actualizarFormulario(nuevo: FormularioComanda) {
         formulario = nuevo
         errorFormulario = null
+        pedirEstimacion(nuevo)
+    }
+
+    /**
+     * Pide la estimación a la web cuando cambian el servicio o el peso, esperando a que se
+     * deje de escribir. Solo informa: sin conexión muestra "no disponible" y la comanda
+     * se puede guardar igual.
+     */
+    private fun pedirEstimacion(f: FormularioComanda) {
+        val kg = Cobro.leerPesoKg(f.pesoKg)
+        val servicioId = catalogos.servicios
+            .firstOrNull { Validaciones.normalizarCatalogo(it.nombre) == Validaciones.normalizarCatalogo(f.servicio) }?.id
+        if (kg == null || servicioId == null) {
+            estimacionJob?.cancel()
+            claveEstimacion = null
+            estimacion = EstadoEstimacion.SinPeso
+            return
+        }
+        val clave = servicioId to kg
+        if (clave == claveEstimacion) return
+        claveEstimacion = clave
+        estimacionJob?.cancel()
+        estimacion = EstadoEstimacion.Cargando
+        estimacionJob = scope.launch {
+            delay(ESPERA_ESTIMACION_MS)
+            estimacion = try {
+                EstadoEstimacion.Lista(repository.estimarConsumo(servicioId, kg))
+            } catch (_: OperacionComandaException) {
+                EstadoEstimacion.NoDisponible
+            }
+        }
     }
 
     /** Al elegir un cliente del catálogo se adopta su tipo (hotel o particular). */
@@ -170,14 +254,13 @@ class ComandasViewModel(
         )
     }
 
-    /** Línea nueva con la primera prenda sugerida y el precio base del primer servicio. */
+    /** Línea nueva con la primera prenda sugerida y el precio base del servicio de la comanda. */
     fun agregarLinea() {
         val f = formulario ?: return
-        val servicio = catalogos.servicios.firstOrNull()
         val linea = LineaFormulario(
             prenda = prendasSugeridas(f.tipoCliente).first(),
-            servicio = servicio?.nombre ?: "Lavado",
-            precioUnitario = servicio?.precioBase ?: 0.0,
+            servicio = f.servicio,
+            precioUnitario = precioBase(f.servicio) ?: 0.0,
         )
         actualizarFormulario(f.copy(lineas = f.lineas + linea))
     }
@@ -223,16 +306,24 @@ class ComandasViewModel(
 
     private suspend fun crear(inicial: FormularioComanda) {
         var f = inicial
+        var avisoCuenta: String? = null
         if (f.nuevoCliente) {
             // La ficha queda creada aunque falle la comanda: el reintento la reutiliza.
-            val clienteId = repository.crearCliente(f.cliente)
-            f = f.copy(clienteId = clienteId, nuevoCliente = false)
+            val clienteId = if (f.registrarCuenta) {
+                // Con cuenta: el cliente recibe un enlace para crear su contraseña.
+                val resultado = repository.crearClienteConCuenta(f.cliente)
+                avisoCuenta = resultado.aviso(f.cliente.email.trim().lowercase())
+                resultado.id
+            } else {
+                repository.crearCliente(f.cliente)
+            }
+            f = f.copy(clienteId = clienteId, nuevoCliente = false, registrarCuenta = false, clienteInformado = false)
             formulario = f
         }
         val id = identidad ?: IdentidadComanda(idNuevo(), Validaciones.generarNumeroComanda()).also { identidad = it }
         val creada = repository.crearComanda(id, f)
         identidad = null
-        mensaje = "Comanda ${id.numero} creada correctamente."
+        mensaje = listOfNotNull("Comanda ${id.numero} creada correctamente.", avisoCuenta).joinToString(" ")
         detalle = repository.detalle(creada)
     }
 
@@ -281,10 +372,12 @@ class ComandasViewModel(
         identidad = null
         errorFormulario = null
         catalogos = CatalogosComanda()
+        limpiarEstimacion()
     }
 
     private companion object {
         const val ESPERA_BUSQUEDA_MS = 350L
+        const val ESPERA_ESTIMACION_MS = 600L
     }
 }
 

@@ -4,47 +4,112 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.elcobre.lavanderiaelcobre.data.RepartoRepository
+import com.elcobre.lavanderiaelcobre.data.RetornoFlotaInput
+import com.elcobre.lavanderiaelcobre.data.SalidaFlotaInput
 import com.elcobre.lavanderiaelcobre.data.crearRepartoRepository
-import com.elcobre.lavanderiaelcobre.data.model.EstadoSalida
+import com.elcobre.lavanderiaelcobre.data.model.ComandaEntrega
+import com.elcobre.lavanderiaelcobre.data.model.EntregasReparto
+import com.elcobre.lavanderiaelcobre.data.model.EstadoCondicionVehiculo
+import com.elcobre.lavanderiaelcobre.data.model.FotoChequeo
 import com.elcobre.lavanderiaelcobre.data.model.InspeccionInput
+import com.elcobre.lavanderiaelcobre.data.model.PanelReparto
 import com.elcobre.lavanderiaelcobre.data.model.SalidaReparto
-import com.elcobre.lavanderiaelcobre.data.model.Vehiculo
+import com.elcobre.lavanderiaelcobre.data.model.VehiculoReparto
+import com.elcobre.lavanderiaelcobre.data.model.filtrarComandasEntrega
+import com.elcobre.lavanderiaelcobre.data.model.motivoVisibleEntrega
+import com.elcobre.lavanderiaelcobre.data.model.normalizarDetalleEntrega
+import com.elcobre.lavanderiaelcobre.data.model.validarEntrega
 import com.elcobre.lavanderiaelcobre.data.model.validarInspeccion
+import com.elcobre.lavanderiaelcobre.data.model.validarMovimiento
+import com.elcobre.lavanderiaelcobre.data.model.validarProblemaEntrega
 import kotlinx.coroutines.CoroutineScope
 
+/** Datos del formulario de salida o regreso del repartidor. */
+data class MovimientoInput(
+    val kilometraje: Int?,
+    val estado: EstadoCondicionVehiculo,
+    val observaciones: String,
+    val fotos: List<FotoChequeo>,
+)
+
 /**
- * Recorridos del repartidor: salidas asignadas (programadas, en ruta y la bitácora de
- * finalizadas) y el catálogo de vehículos. Iniciar exige una inspección previa apta;
- * el retorno no puede registrar menos kilómetros que la salida.
+ * "Mi vehículo" del repartidor, como `/intranet/reparto`: elige un vehículo disponible,
+ * registra la salida con su inspección y fotos y, al volver, el regreso. Las salidas que
+ * administración programa desde la app se inician con su inspección previa.
  */
 class RepartoViewModel(
     private val repository: RepartoRepository = crearRepartoRepository(),
     scopeOverride: CoroutineScope? = null,
 ) : GestionViewModel(scopeOverride) {
-    var salidas by mutableStateOf<List<SalidaReparto>>(emptyList())
-        private set
-    var vehiculos by mutableStateOf<List<Vehiculo>>(emptyList())
+    var panel by mutableStateOf(PanelReparto())
         private set
 
-    val enRuta: List<SalidaReparto> get() = salidas.filter { it.estado == EstadoSalida.EN_SERVICIO }
-    val programadas: List<SalidaReparto> get() = salidas.filter { it.estado == EstadoSalida.PROGRAMADA }
-    val bitacora: List<SalidaReparto> get() = salidas.filter { it.estado == EstadoSalida.FINALIZADA || it.estado == EstadoSalida.CANCELADA }
-    val kilometrosRecorridos: Int get() = salidas.sumOf { it.kilometrosRecorridos ?: 0 }
+    val salidaEnCurso: SalidaReparto? get() = panel.salidaEnCurso
+    val programadas: List<SalidaReparto> get() = panel.programadas
+    val historial: List<SalidaReparto> get() = panel.historial
+    val kilometrosRecorridos: Int get() = panel.salidas.sumOf { it.kilometrosRecorridos ?: 0 }
 
-    fun refrescar() = cargar {
-        salidas = repository.misSalidas()
-        vehiculos = repository.vehiculos()
-    }
+    fun refrescar() = cargar { panel = repository.panel() }
 
-    /** Kilometraje mínimo aceptable: el mayor registrado para el vehículo en las salidas visibles. */
+    /** Kilometraje mínimo de una salida programada: el mayor registrado para su vehículo. */
     fun kilometrajeMinimo(salida: SalidaReparto): Int {
-        if (salida.estado == EstadoSalida.EN_SERVICIO) return salida.antes?.kilometraje ?: 0
-        return salidas.filter { it.vehiculoId == salida.vehiculoId }
+        if (salida.antes != null) return salida.antes.kilometraje
+        val delVehiculo = panel.vehiculos.firstOrNull { it.id == salida.vehiculoId }?.kilometrajeActual ?: 0
+        val enSalidas = panel.salidas.filter { it.vehiculoId == salida.vehiculoId }
             .flatMap { listOfNotNull(it.antes?.kilometraje, it.despues?.kilometraje) }
             .maxOrNull() ?: 0
+        return maxOf(delVehiculo, enSalidas)
     }
 
-    fun iniciar(salida: SalidaReparto, input: InspeccionInput, alTerminar: (String?) -> Unit) {
+    fun registrarSalida(vehiculo: VehiculoReparto, input: MovimientoInput, alTerminar: (String?) -> Unit) {
+        val problema = when {
+            salidaEnCurso != null -> "Ya tienes una salida en curso. Registra su regreso antes de sacar otro vehículo."
+            else -> validarMovimiento(input.kilometraje, vehiculo.kilometrajeActual, input.estado, true, input.observaciones)
+        }
+        if (problema != null) {
+            alTerminar(problema)
+            return
+        }
+        operar("Salida de ${vehiculo.patente} registrada. Buen viaje.", alTerminar = {
+            alTerminar(it)
+            refrescar()
+        }) {
+            repository.registrarSalida(
+                SalidaFlotaInput(
+                    vehiculoId = vehiculo.id,
+                    repartidorId = "",
+                    kilometraje = input.kilometraje ?: 0,
+                    estadoVehiculo = input.estado,
+                    observaciones = input.observaciones.trim().ifEmpty { null },
+                    fotos = input.fotos,
+                ),
+            )
+        }
+    }
+
+    fun registrarRetorno(salida: SalidaReparto, input: MovimientoInput, alTerminar: (String?) -> Unit) {
+        val minimo = salida.antes?.kilometraje ?: 0
+        validarMovimiento(input.kilometraje, minimo, input.estado, false, input.observaciones)?.let {
+            alTerminar(it)
+            return
+        }
+        operar("Regreso de ${salida.patente} registrado.", alTerminar = {
+            alTerminar(it)
+            refrescar()
+        }) {
+            repository.registrarRetorno(
+                RetornoFlotaInput(
+                    salidaId = salida.id,
+                    kilometraje = input.kilometraje ?: 0,
+                    estadoVehiculo = input.estado,
+                    observaciones = input.observaciones.trim().ifEmpty { null },
+                    fotos = input.fotos,
+                ),
+            )
+        }
+    }
+
+    fun iniciarProgramada(salida: SalidaReparto, input: InspeccionInput, alTerminar: (String?) -> Unit) {
         validarInspeccion(input.kilometraje, kilometrajeMinimo(salida), input.estado, esSalida = true, input.observaciones.orEmpty())
             ?.let {
                 alTerminar(it)
@@ -53,25 +118,78 @@ class RepartoViewModel(
         operar("Salida de ${salida.patente} iniciada. Buen viaje.", alTerminar = {
             alTerminar(it)
             refrescar()
-        }) { repository.iniciarSalida(salida, input) }
-    }
-
-    fun registrarRetorno(salida: SalidaReparto, input: InspeccionInput, alTerminar: (String?) -> Unit) {
-        validarInspeccion(input.kilometraje, kilometrajeMinimo(salida), input.estado, esSalida = false, input.observaciones.orEmpty())
-            ?.let {
-                alTerminar(it)
-                return
-            }
-        operar("Retorno de ${salida.patente} registrado.", alTerminar = {
-            alTerminar(it)
-            refrescar()
-        }) { repository.registrarRetorno(input) }
+        }) { repository.iniciarProgramada(salida, input) }
     }
 
     override fun reiniciar() {
         super.reiniciar()
         repository.descartarReintentos()
-        salidas = emptyList()
-        vehiculos = emptyList()
+        panel = PanelReparto()
     }
+}
+
+/**
+ * Entregas del repartidor, como `/intranet/entregas`: comandas listas (FINALIZADA) con
+ * búsqueda, marcar la entrega con un detalle opcional y reportar un problema.
+ */
+class EntregasViewModel(
+    private val repository: RepartoRepository = crearRepartoRepository(),
+    scopeOverride: CoroutineScope? = null,
+) : GestionViewModel(scopeOverride) {
+    var datos by mutableStateOf(EntregasReparto())
+        private set
+    var busqueda by mutableStateOf("")
+        private set
+
+    val comandas: List<ComandaEntrega> get() = filtrarComandasEntrega(datos.comandas, busqueda)
+    val conProblemas: Int get() = datos.comandas.count { it.problemasAbiertos.isNotEmpty() }
+
+    fun refrescar() = cargar { datos = repository.entregas() }
+
+    fun buscar(texto: String) {
+        busqueda = texto
+    }
+
+    fun entregar(comanda: ComandaEntrega, detalle: String, alTerminar: (String?) -> Unit) {
+        validarEntrega(detalle)?.let {
+            alTerminar(it)
+            return
+        }
+        operar("Comanda ${comanda.numero} entregada a ${comanda.cliente}.", alTerminar = {
+            alTerminar(it?.let(::mensajeEntrega))
+            refrescar()
+        }) { repository.entregar(comanda.id, normalizarDetalleEntrega(detalle)) }
+    }
+
+    fun reportarProblema(comanda: ComandaEntrega, motivo: String, detalle: String, alTerminar: (String?) -> Unit) {
+        validarProblemaEntrega(motivo, detalle)?.let {
+            alTerminar(it)
+            return
+        }
+        val confirmacion = "Problema reportado en ${comanda.numero}: ${motivoVisibleEntrega(motivo)}. " +
+            "Administración lo verá en incidencias."
+        operar(confirmacion, alTerminar = {
+            alTerminar(it?.let(::mensajeEntrega))
+            refrescar()
+        }) { repository.reportarProblema(comanda.id, motivo, normalizarDetalleEntrega(detalle)) }
+    }
+
+    override fun reiniciar() {
+        super.reiniciar()
+        datos = EntregasReparto()
+        busqueda = ""
+    }
+}
+
+/** Traduce los rechazos del servidor como `mapearErrorEntrega` de la web. */
+private val YA_NO_PENDIENTE = Regex(
+    "Solo se puede entregar una comanda finalizada|ya fue registrada|no está listo para entregar|Solo se pueden reportar problemas",
+    RegexOption.IGNORE_CASE,
+)
+
+internal fun mensajeEntrega(error: String): String = when {
+    YA_NO_PENDIENTE.containsMatchIn(error) -> "Esta comanda ya no está pendiente de entrega. Actualiza la lista."
+    Regex("inactiva", RegexOption.IGNORE_CASE).containsMatchIn(error) -> "Tu cuenta está inactiva. Contacta a administración."
+    Regex("No autorizado|reservada", RegexOption.IGNORE_CASE).containsMatchIn(error) -> "No tienes permisos para registrar entregas."
+    else -> error
 }

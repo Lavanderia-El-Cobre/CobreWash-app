@@ -46,7 +46,8 @@ interface AdministracionRepository {
     suspend fun usuarios(): List<UsuarioGestion> = noDisponible()
 
     /** Crea la cuenta en Firebase Auth sin cerrar la sesión del administrador y luego su perfil. */
-    suspend fun crearUsuario(input: NuevoUsuarioInput): Unit = noDisponible()
+    /** Crea la cuenta y envía la invitación por correo. Devuelve `true` si la invitación salió. */
+    suspend fun crearUsuario(input: NuevoUsuarioInput): Boolean = noDisponible()
     suspend fun actualizarUsuario(input: EdicionUsuarioInput): Unit = noDisponible()
 
     suspend fun stock(): List<InsumoInventario> = noDisponible()

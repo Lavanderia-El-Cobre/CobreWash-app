@@ -23,6 +23,7 @@ import com.elcobre.lavanderiaelcobre.ui.gestion.GestionViewModel
 import com.elcobre.lavanderiaelcobre.ui.gestion.IncidenciasViewModel
 import com.elcobre.lavanderiaelcobre.ui.gestion.PanelViewModel
 import com.elcobre.lavanderiaelcobre.ui.gestion.ProduccionViewModel
+import com.elcobre.lavanderiaelcobre.ui.gestion.EntregasViewModel
 import com.elcobre.lavanderiaelcobre.ui.gestion.RepartoViewModel
 import com.elcobre.lavanderiaelcobre.ui.gestion.ReportesViewModel
 import com.elcobre.lavanderiaelcobre.ui.gestion.StockViewModel
@@ -43,6 +44,7 @@ import com.elcobre.lavanderiaelcobre.ui.screens.gestion.IncidenciasScreen
 import com.elcobre.lavanderiaelcobre.ui.screens.mas.MasScreen
 import com.elcobre.lavanderiaelcobre.ui.screens.produccion.PermisosProduccion
 import com.elcobre.lavanderiaelcobre.ui.screens.produccion.ProduccionScreen
+import com.elcobre.lavanderiaelcobre.ui.screens.reparto.EntregasScreen
 import com.elcobre.lavanderiaelcobre.ui.screens.reparto.RepartoScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -324,26 +326,45 @@ private fun SeccionAdmin(
     }
 }
 
-/** Repartidor: sus recorridos y ajustes. */
+/** Repartidor (y conductor): su vehículo, las entregas, los avisos de su equipo y ajustes. */
 @Composable
 internal fun RepartidorPestanas(tab: Pantalla, vm: CobreViewModel) {
-    val reparto: RepartoViewModel = viewModel { RepartoViewModel() }
-    ReiniciarAlCambiarSesion(vm, listOf(reparto))
     val nombre = remember { vm.sesion?.nombre ?: "Repartidor" }
     val rol = remember { vm.sesion?.rolVisible ?: "Repartidor" }
-    RefrescoPeriodico(tab) { if (tab == Pantalla.Reparto) reparto.refrescar() }
+    // GetAvisosParaEquipo exige consultar con el rol propio ("repartidor" o "conductor").
+    val rolEquipo = remember { rol.lowercase().takeIf { it == "conductor" } ?: "repartidor" }
+    val reparto: RepartoViewModel = viewModel { RepartoViewModel() }
+    val entregas: EntregasViewModel = viewModel { EntregasViewModel() }
+    val avisos: AvisosEquipoViewModel = viewModel(key = "avisos-$rolEquipo") { AvisosEquipoViewModel(rolEquipo = rolEquipo) }
+    ReiniciarAlCambiarSesion(vm, listOf(reparto, entregas, avisos))
+    RefrescoPeriodico(Unit) { avisos.refrescar() }
+    RefrescoPeriodico(tab) {
+        when (tab) {
+            Pantalla.Reparto -> reparto.refrescar()
+            Pantalla.Entregas -> entregas.refrescar()
+            else -> Unit
+        }
+    }
+    LaunchedEffect(tab, avisos.avisos) { if (tab == Pantalla.Avisos) avisos.marcarLeidos() }
     PestanasScaffold(
         items = NavRepartidor,
         tabActual = tab,
         onSeleccionarTab = { vm.navegar(it) },
         onEscanearQR = null,
-        badges = mapOf(Pantalla.Reparto to reparto.programadas.size),
+        badges = mapOf(
+            Pantalla.Reparto to reparto.programadas.size,
+            Pantalla.Entregas to entregas.conProblemas,
+            Pantalla.Avisos to avisos.noLeidos,
+        ),
     ) {
         PestanasAnimadas(tab = tab, items = NavRepartidor) { pestana ->
             when (pestana) {
                 Pantalla.Reparto -> RepartoScreen(reparto, nombre)
+                Pantalla.Entregas -> EntregasScreen(entregas)
+                Pantalla.Avisos -> AvisosEquipo(avisos, "Avisos", "Comunicados de administración para reparto.")
                 Pantalla.Configuracion -> Ajustes(vm, nombre, rol, onCerrarSesion = {
                     reparto.reiniciar()
+                    entregas.reiniciar()
                     vm.cerrarSesion()
                 })
                 else -> Unit

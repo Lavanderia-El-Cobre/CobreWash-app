@@ -3,7 +3,11 @@ package com.elcobre.lavanderiaelcobre.data.auth
 /** Perfil real traído desde Data Connect tras autenticar (mismo esquema que la web). */
 sealed interface PerfilResultado {
     data class Exito(val nombre: String, val rolNombre: String) : PerfilResultado
-    data class Error(val mensaje: String) : PerfilResultado
+    /**
+     * [definitivo] indica que la cuenta no puede usar la app (sin perfil, inactiva o sin
+     * verificar): la sesión de Firebase se cierra. Un error de red no es definitivo.
+     */
+    data class Error(val mensaje: String, val definitivo: Boolean = false) : PerfilResultado
 }
 
 /**

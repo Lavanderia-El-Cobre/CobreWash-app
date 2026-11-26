@@ -80,9 +80,9 @@ val connector: ExampleConnector = ExampleConnector.getInstance(
 ### ExampleConnector - Query and Mutation Properties
 
 The `example` Data Connect connector defines
-51 queries and
-54 mutations,
-a total of 105 operations.
+61 queries and
+63 mutations,
+a total of 124 operations.
 Each of these operations is exposed
 as a property of [ExampleConnector].
 
@@ -93,8 +93,8 @@ which can be accessed via the [ExampleConnector.autorizarGestionPrivacidad] prop
 
 
 An example of the property for a mutation
-is the mutation named "ActualizarEstadoIncidencia",
-which can be accessed via the [ExampleConnector.actualizarEstadoIncidencia] property.
+is the mutation named "AceptarCondicionesVigentes",
+which can be accessed via the [ExampleConnector.aceptarCondicionesVigentes] property.
 
 
 ### ExampleConnector - The `dataConnect` Property
@@ -245,15 +245,15 @@ last argument of the `execute()` method.
 If a mutation has no variables then it can be easily executed
 by calling the `execute()` method with no arguments.
 
-For example, the "VincularMiFichaVerificada" mutation has no variables
+For example, the "BorrarSimulacionesIa" mutation has no variables
 and can be executed via the
-[ExampleConnector.vincularMiFichaVerificada]
+[ExampleConnector.borrarSimulacionesIa]
 property as follows:
 
 ```kotlin
 val connector = ExampleConnector.instance
-val mutationResult = connector.vincularMiFichaVerificada.execute()
-println("VincularMiFichaVerificada mutation returned: ${mutationResult.data}")
+val mutationResult = connector.borrarSimulacionesIa.execute()
+println("BorrarSimulacionesIa mutation returned: ${mutationResult.data}")
 ```
 
 

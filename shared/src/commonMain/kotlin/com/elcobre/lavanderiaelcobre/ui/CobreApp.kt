@@ -107,6 +107,16 @@ fun CobreApp() {
     val vm: CobreViewModel = viewModel { CobreViewModel() }
     ActualizarAvisosVisibles(vm)
     val lifecycle = LocalLifecycleOwner.current.lifecycle
+    // Al volver a la app, y cada pocos minutos mientras está visible, se revisa que la
+    // cuenta siga activa y con el mismo rol; si no, se cierra la sesión.
+    LaunchedEffect(vm.sesion, lifecycle) {
+        if (vm.sesion != null) lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                vm.verificarCuenta()
+                kotlinx.coroutines.delay(REVISION_CUENTA_MS)
+            }
+        }
+    }
     LaunchedEffect(vm.sesion, lifecycle) {
         if (vm.operario != null) lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {

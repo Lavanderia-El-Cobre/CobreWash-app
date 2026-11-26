@@ -20,8 +20,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.elcobre.lavanderiaelcobre.data.model.Cobro
 import com.elcobre.lavanderiaelcobre.data.model.FormularioComanda
 import com.elcobre.lavanderiaelcobre.data.model.LineaFormulario
+import com.elcobre.lavanderiaelcobre.data.model.ModalidadCobro
 import com.elcobre.lavanderiaelcobre.data.model.NuevoClienteInput
 import com.elcobre.lavanderiaelcobre.data.model.TipoClienteFicha
 import com.elcobre.lavanderiaelcobre.data.model.Validaciones
@@ -29,6 +31,8 @@ import com.elcobre.lavanderiaelcobre.data.model.clp
 import com.elcobre.lavanderiaelcobre.data.model.prendasSugeridas
 import com.elcobre.lavanderiaelcobre.ui.components.ButtonVariant
 import com.elcobre.lavanderiaelcobre.ui.components.CampoCantidad
+import com.elcobre.lavanderiaelcobre.ui.components.CampoTelefono
+import com.elcobre.lavanderiaelcobre.ui.components.CobreCheckbox
 import com.elcobre.lavanderiaelcobre.ui.components.CobreButton
 import com.elcobre.lavanderiaelcobre.ui.components.CobreIcons
 import com.elcobre.lavanderiaelcobre.ui.components.CobreTextField
@@ -73,13 +77,16 @@ internal fun ComandaFormularioSheet(vm: ComandasViewModel, formulario: Formulari
             onValueChange = { if (it.length <= 120) cambiar(formulario.copy(proyecto = it)) },
             label = "Proyecto (opcional)",
         )
-        SectionLabel("Prendas")
+        SeccionCobro(vm, formulario)
+        ConsumoEstimadoPanel(vm.estimacion, formulario.servicio)
+        SectionLabel(if (formulario.porKg) "Prendas (opcional por kg)" else "Prendas")
         formulario.lineas.forEachIndexed { indice, linea ->
             LineaEditor(
                 vm = vm,
                 linea = linea,
                 tipo = formulario.tipoCliente,
-                puedeQuitar = formulario.lineas.size > 1,
+                porKg = formulario.porKg,
+                puedeQuitar = formulario.lineas.size > 1 || formulario.porKg,
                 onCambiar = { nueva -> cambiar(formulario.copy(lineas = formulario.lineas.toMutableList().also { it[indice] = nueva })) },
                 onQuitar = { cambiar(formulario.copy(lineas = formulario.lineas.filterIndexed { i, _ -> i != indice })) },
             )
@@ -122,6 +129,7 @@ private fun SeccionCliente(vm: ComandasViewModel, formulario: FormularioComanda)
     )
     if (formulario.nuevoCliente) {
         CamposCliente(formulario.cliente) { vm.actualizarFormulario(formulario.copy(cliente = it)) }
+        CuentaClienteNuevo(formulario) { vm.actualizarFormulario(it) }
     } else {
         SelectorConBusqueda(
             etiqueta = "Cliente",
@@ -161,15 +169,9 @@ internal fun CamposCliente(cliente: NuevoClienteInput, enabled: Boolean = true, 
         supportingText = if (rutInvalido) "RUT no válido" else null,
         enabled = enabled,
     )
-    val tipoFono = Validaciones.tipoTelefono(cliente.telefono)
-    CobreTextField(
-        value = cliente.telefono,
-        onValueChange = { onCambiar(cliente.copy(telefono = Validaciones.formatearTelefono(it))) },
-        label = "Teléfono (opcional)",
-        placeholder = "+56 9 1234 5678",
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-        supportingText = if (cliente.telefono.isNotBlank()) tipoFono ?: "Número chileno no válido" else null,
-        isError = cliente.telefono.length > 8 && tipoFono == null,
+    CampoTelefono(
+        valor = cliente.telefono,
+        onCambiar = { onCambiar(cliente.copy(telefono = it)) },
         enabled = enabled,
     )
     CobreTextField(
@@ -188,11 +190,91 @@ internal fun CamposCliente(cliente: NuevoClienteInput, enabled: Boolean = true, 
     )
 }
 
+/**
+ * Registro opcional del cliente nuevo en la plataforma web, como la casilla de la web
+ * (`67d38eb`): solo si se marca se crea la cuenta y se le envía la invitación.
+ */
+@Composable
+private fun CuentaClienteNuevo(formulario: FormularioComanda, onCambiar: (FormularioComanda) -> Unit) {
+    CobreCheckbox(
+        checked = formulario.registrarCuenta,
+        onCheckedChange = { onCambiar(formulario.copy(registrarCuenta = it, clienteInformado = false)) },
+        label = "Registrar al cliente en la plataforma web",
+    )
+    if (formulario.registrarCuenta) {
+        Text(
+            "Se crea su cuenta con el correo indicado y recibe un enlace para definir su contraseña. " +
+                "Podrá revisar sus comandas en la web.",
+            style = MaterialTheme.typography.bodySmall,
+            color = CobreTheme.colors.textSecondary,
+        )
+        CobreCheckbox(
+            checked = formulario.clienteInformado,
+            onCheckedChange = { onCambiar(formulario.copy(clienteInformado = it)) },
+            label = "Informé al cliente sobre su cuenta, los Términos y Condiciones y el Aviso de Privacidad",
+        )
+    }
+}
+
+/** Modalidad de cobro, servicio de la comanda, peso total y precio por kg. */
+@Composable
+private fun SeccionCobro(vm: ComandasViewModel, formulario: FormularioComanda) {
+    val cambiar = vm::actualizarFormulario
+    SectionLabel("Cobro")
+    GlassSegmentedControl(
+        options = ModalidadCobro.entries,
+        selected = formulario.modalidad,
+        onSelect = { cambiar(formulario.copy(modalidad = it)) },
+        label = { it.etiqueta },
+    )
+    SelectorConBusqueda(
+        etiqueta = "Servicio",
+        valorActual = formulario.servicio,
+        opciones = vm.catalogos.servicios,
+        texto = { it.nombre },
+        detalle = {
+            if (formulario.porKg && it.precioKg > 0) "Precio por kg ${clp(it.precioKg)}" else "Precio base ${clp(it.precioBase)}"
+        },
+        onSeleccionar = { vm.seleccionarServicio(it.nombre) },
+        permitirTextoLibre = { vm.seleccionarServicio(it.trim()) },
+    )
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+        val pesoInvalido = formulario.pesoKg.isNotBlank() && Cobro.leerPesoKg(formulario.pesoKg) == null
+        CobreTextField(
+            value = formulario.pesoKg,
+            onValueChange = { texto ->
+                val limpio = texto.filter { it.isDigit() || it == ',' || it == '.' }.take(9)
+                cambiar(formulario.copy(pesoKg = limpio))
+            },
+            label = "Peso total (kg)",
+            placeholder = "12,5",
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            isError = pesoInvalido,
+            supportingText = if (pesoInvalido) "Mayor que 0 y hasta 10.000" else null,
+            modifier = Modifier.weight(1f),
+        )
+        if (formulario.porKg) {
+            val precioInvalido = formulario.precioKg.isNotBlank() && Cobro.leerPrecioKg(formulario.precioKg) == null
+            CobreTextField(
+                value = formulario.precioKg,
+                onValueChange = { texto -> cambiar(formulario.copy(precioKg = texto.filter(Char::isDigit).take(7))) },
+                label = "Precio por kg (CLP)",
+                placeholder = "2500",
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                isError = precioInvalido,
+                supportingText = if (precioInvalido) "Mayor que 0" else null,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
 @Composable
 private fun LineaEditor(
     vm: ComandasViewModel,
     linea: LineaFormulario,
     tipo: TipoClienteFicha,
+    porKg: Boolean,
     puedeQuitar: Boolean,
     onCambiar: (LineaFormulario) -> Unit,
     onQuitar: () -> Unit,
@@ -210,7 +292,8 @@ private fun LineaEditor(
                     opciones = prendas,
                     texto = { it },
                     onSeleccionar = { onCambiar(linea.copy(prenda = it)) },
-                    permitirTextoLibre = { onCambiar(linea.copy(prenda = it.uppercase())) },
+                    // Las prendas nuevas se guardan en mayúsculas y con hasta 60 caracteres.
+                    permitirTextoLibre = { onCambiar(linea.copy(prenda = Cobro.normalizarPrendaNueva(it))) },
                     modifier = Modifier.weight(1f),
                 )
                 if (puedeQuitar) GlassIconButton(
@@ -220,34 +303,27 @@ private fun LineaEditor(
                     size = 44.dp,
                 )
             }
-            SelectorConBusqueda(
-                etiqueta = "Servicio",
-                valorActual = linea.servicio,
-                opciones = vm.catalogos.servicios,
-                texto = { it.nombre },
-                detalle = { "Precio base ${clp(it.precioBase)}" },
-                onSeleccionar = { onCambiar(linea.copy(servicio = it.nombre, precioUnitario = it.precioBase)) },
-                permitirTextoLibre = { onCambiar(linea.copy(servicio = it)) },
-            )
-            CantidadesYPrecio(linea, tipo, onCambiar)
+            CantidadesYPrecio(linea, tipo, porKg, onCambiar)
             CobreTextField(
                 value = linea.detalle,
                 onValueChange = { if (it.length <= 150) onCambiar(linea.copy(detalle = it)) },
                 label = "Detalle (opcional)",
                 placeholder = "Color, marca o daño visible",
             )
-            Text(
-                "Subtotal ${clp(linea.subtotal)}",
-                style = MaterialTheme.typography.labelLarge,
-                color = CobreTheme.colors.textSecondary,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            if (!porKg) {
+                Text(
+                    "Subtotal ${clp(linea.subtotal)}",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = CobreTheme.colors.textSecondary,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun CantidadesYPrecio(linea: LineaFormulario, tipo: TipoClienteFicha, onCambiar: (LineaFormulario) -> Unit) {
+private fun CantidadesYPrecio(linea: LineaFormulario, tipo: TipoClienteFicha, porKg: Boolean, onCambiar: (LineaFormulario) -> Unit) {
     var precioTexto by remember(linea.servicio) { mutableStateOf(linea.precioUnitario.toLong().toString()) }
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {
         CampoCantidad(
@@ -264,6 +340,8 @@ private fun CantidadesYPrecio(linea: LineaFormulario, tipo: TipoClienteFicha, on
             )
         }
     }
+    // Por kg se cobra el peso: el precio de cada prenda no se usa.
+    if (porKg) return
     CobreTextField(
         value = precioTexto,
         onValueChange = { texto ->
@@ -282,6 +360,15 @@ private fun PieFormulario(vm: ComandasViewModel, formulario: FormularioComanda) 
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text("Total", style = MaterialTheme.typography.titleMedium, color = colors.textPrimary, modifier = Modifier.weight(1f))
         Text(clp(formulario.total), style = MaterialTheme.typography.titleLarge, color = colors.accentText, fontWeight = FontWeight.Bold)
+    }
+    val peso = Cobro.leerPesoKg(formulario.pesoKg)
+    val precioKg = Cobro.leerPrecioKg(formulario.precioKg)
+    if (formulario.porKg && peso != null && precioKg != null) {
+        Text(
+            "${Cobro.formatearPeso(peso)} kg × ${clp(precioKg)} por kg",
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textSecondary,
+        )
     }
     vm.errorFormulario?.let {
         Text(

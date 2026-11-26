@@ -1,3 +1,5 @@
+@file:Suppress("MaxLineLength") // Casos de prueba en una línea, como las pruebas de la web.
+
 package com.elcobre.lavanderiaelcobre
 
 import com.elcobre.lavanderiaelcobre.data.model.ComandaGestion
@@ -100,24 +102,33 @@ class ValidacionesTest {
     @Test
     fun formularioComanda_exigeClienteYPrendas() {
         assertEquals("Selecciona un cliente y agrega al menos una prenda.", FormularioComanda().validar())
-        val conCliente = FormularioComanda(clienteId = "c1", lineas = listOf(LineaFormulario(prenda = "")))
+        val conCliente = FormularioComanda(clienteId = "c1", lineas = listOf(LineaFormulario(prenda = "")), pesoKg = "2")
         assertEquals("Selecciona un cliente y agrega al menos una prenda.", conCliente.validar())
         assertNull(conCliente.copy(lineas = listOf(LineaFormulario(prenda = "CAMISA", precioUnitario = 1500.0))).validar())
     }
 
     @Test
     fun formularioComanda_validaClienteNuevo() {
-        val base = FormularioComanda(nuevoCliente = true, cliente = clienteValido, lineas = listOf(LineaFormulario(prenda = "TOALLA")))
+        val base = FormularioComanda(nuevoCliente = true, cliente = clienteValido, lineas = listOf(LineaFormulario(prenda = "TOALLA")), pesoKg = "2")
         assertNull(base.validar())
         assertEquals(
             "Ingresa un RUT chileno válido para el cliente.",
             base.copy(cliente = clienteValido.copy(rut = "11.111.111-2")).validar(),
         )
         assertEquals(
-            "Ingresa un celular o teléfono fijo chileno válido.",
-            base.copy(cliente = clienteValido.copy(telefono = "123")).validar(),
+            "El celular chileno debe tener 8 dígitos después de +56 9.",
+            base.copy(cliente = clienteValido.copy(telefono = "+56 9 123")).validar(),
         )
-        assertEquals("Ingresa un correo válido.", base.copy(cliente = clienteValido.copy(email = "hotel@")).validar())
+        assertNull(base.copy(cliente = clienteValido.copy(telefono = "+51 912 345 678")).validar(), "Teléfonos de Latinoamérica")
+        assertEquals("Ingresa un correo válido o déjalo en blanco.", base.copy(cliente = clienteValido.copy(email = "hotel@")).validar())
+        // Con cuenta en la plataforma: correo obligatorio y confirmación de que se informó al cliente.
+        val conCuenta = base.copy(registrarCuenta = true)
+        assertEquals("Ingresa el correo del cliente: se usa para crear su cuenta.", conCuenta.validar())
+        assertEquals(
+            "Confirma que informaste al cliente sobre su cuenta.",
+            conCuenta.copy(cliente = clienteValido.copy(email = "hotel@cobre.cl")).validar(),
+        )
+        assertNull(conCuenta.copy(cliente = clienteValido.copy(email = "hotel@cobre.cl"), clienteInformado = true).validar())
     }
 
     @Test
@@ -206,12 +217,18 @@ class ValidacionesTest {
 
     @Test
     fun nuevoUsuario_validaComoLaWeb() {
-        val base = NuevoUsuarioInput("r1", "operario", "Ana", "Pérez", "12.345.678-5", "", "ana@cobre.cl", "cobre2026")
+        val base = NuevoUsuarioInput("r1", "operario", "Ana", "Pérez", "12.345.678-5", "", "ana@cobre.cl", informado = true)
         assertNull(validarNuevoUsuario(base))
         assertEquals("Todos los campos son obligatorios.", validarNuevoUsuario(base.copy(apellido = "")))
         assertEquals("El RUT ingresado no es válido.", validarNuevoUsuario(base.copy(rut = "1-1")))
-        assertEquals("Mínimo 8 caracteres", validarNuevoUsuario(base.copy(contrasena = "abc1")))
         assertEquals("Selecciona el tipo de cliente.", validarNuevoUsuario(base.copy(rolNombre = "cliente")))
+        // Sin contraseña: la persona la define con la invitación; el admin confirma que la informó.
+        assertEquals(
+            "Confirma que informaste a la persona de los Términos y Condiciones y del Aviso de Privacidad.",
+            validarNuevoUsuario(base.copy(informado = false)),
+        )
+        assertNotNull(validarNuevoUsuario(base.copy(telefono = "+51 912")))
+        assertNull(validarNuevoUsuario(base.copy(telefono = "+51 912 345 678")))
     }
 
     @Test
