@@ -190,6 +190,9 @@ private val FormaCampo = RoundedCornerShape(12.dp)
  * Campo de formulario de la app: etiqueta arriba y caja rellena de esquinas suaves que se
  * enmarca en cobre al enfocarse (o en rojo con [isError]). Reemplaza al campo con contorno
  * y etiqueta flotante de Material en login, formularios de flota, conteos y comentarios.
+ *
+ * Como [label] se dibuja en un `Text` externo, se propaga manualmente como
+ * `contentDescription` sobre `BasicTextField` para lectores de pantalla.
  */
 @Composable
 fun CobreTextField(

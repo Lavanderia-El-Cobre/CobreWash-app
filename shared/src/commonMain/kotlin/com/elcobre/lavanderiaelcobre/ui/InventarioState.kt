@@ -12,25 +12,54 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import com.elcobre.lavanderiaelcobre.data.offline.AccionEnColaException
 
+/**
+ * Estado observable del módulo de inventario en planta (catálogo de insumos activos,
+ * insumo seleccionado, conteos físicos pendientes y búsqueda por código QR).
+ *
+ * Usa propiedades `mutableStateOf` con setter privado para exponer snapshots inmutables a
+ * Compose, y contadores internos ([generacion] y [revision]) para descartar respuestas
+ * asíncronas obsoletas tras cambiar de sesión o escanear un insumo mientras el catálogo carga.
+ */
 class InventarioState(private val scope: CoroutineScope, private val repository: InventarioRepository) {
+    /** Catálogo de insumos activos disponibles para el operario. */
     var insumos by mutableStateOf<List<InsumoInventario>>(emptyList())
         private set
+
+    /** Insumo actualmente abierto en la ficha de detalle o registro de conteo. */
     var seleccionado by mutableStateOf<InsumoInventario?>(null)
         private set
+
+    /** Último conteo físico conocido por identificador de insumo. */
     var conteos by mutableStateOf<Map<String, ConteoFisico>>(emptyMap())
         private set
+
+    /** Indica si se está refrescando el catálogo desde el repositorio. */
     var cargando by mutableStateOf(false)
         private set
+
+    /** Indica si hay una búsqueda por código QR en curso. */
     var buscando by mutableStateOf(false)
         private set
+
+    /** Indica si se está enviando un conteo físico para evitar envíos duplicados. */
     var enviandoConteo by mutableStateOf(false)
         private set
+
+    /** Mensaje de error visible en pantalla para la última operación fallida. */
     var error by mutableStateOf<String?>(null)
         private set
+
+    // Invalida respuestas en vuelo cuando cambia la sesión activa.
     private var generacion = 0
     private var habilitado = false
+
+    // Evita que un refresco previo sobrescriba un insumo recién incorporado por escaneo QR.
     private var revision = 0
 
+    /**
+     * Reinicia por completo el estado al iniciar o cerrar sesión y avanza [generacion]
+     * para ignorar cualquier corrutina en curso perteneciente a la sesión anterior.
+     */
     fun cambiarSesion(activo: Boolean) {
         generacion++
         habilitado = activo
@@ -43,8 +72,10 @@ class InventarioState(private val scope: CoroutineScope, private val repository:
         error = null
     }
 
+    /** Selecciona un insumo para inspección/conteo o limpia la selección con `null`. */
     fun seleccionar(insumo: InsumoInventario?) { seleccionado = insumo }
 
+    /** Devuelve el último conteo físico registrado para [insumoId], si existe. */
     fun conteoDe(insumoId: String): ConteoFisico? = conteos[insumoId]
 
     /**
@@ -99,6 +130,11 @@ class InventarioState(private val scope: CoroutineScope, private val repository:
         return true
     }
 
+    /**
+     * Recarga el catálogo de insumos activos y los últimos conteos del usuario.
+     * Si durante la consulta cambia la sesión o entra un escaneo QR ([revision]),
+     * se evita pisar la lista más reciente.
+     */
     fun refrescar() {
         if (!habilitado || cargando) return
         val inicio = generacion
@@ -131,6 +167,13 @@ class InventarioState(private val scope: CoroutineScope, private val repository:
         }
     }
 
+    /**
+     * Busca un insumo a partir del contenido crudo de un código QR, valida que esté activo
+     * y lo selecciona en la lista local. Incrementa [revision] para que un [refrescar]
+     * concurrente no descarte el insumo recién escaneado.
+     *
+     * @param onResultado Recibe `null` si el escaneo tuvo éxito o el mensaje de error a mostrar.
+     */
     fun escanear(raw: String, onResultado: (String?) -> Unit) {
         if (!habilitado || buscando) return
         val codigo = extraerQrInsumo(raw)

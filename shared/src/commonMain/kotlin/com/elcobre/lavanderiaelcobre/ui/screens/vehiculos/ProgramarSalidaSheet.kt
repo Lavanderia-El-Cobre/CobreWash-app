@@ -18,8 +18,9 @@ import com.elcobre.lavanderiaelcobre.ui.screens.produccion.ErrorHoja
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 
 /**
- * Programa una salida para un repartidor (`CrearSalidaVehiculo`): queda PROGRAMADA y el
- * repartidor la inspecciona con fotos e inicia desde su app, en vez de despacharla aquí.
+ * Hoja de administración para programar una salida (`CrearSalidaVehiculo`): queda en estado
+ * `PROGRAMADA` para que el repartidor haga la inspección con fotos e inicie el recorrido en
+ * su app. Si solo hay un conductor disponible, se preselecciona automáticamente.
  */
 @Composable
 internal fun ProgramarSalidaSheet(
@@ -90,7 +91,10 @@ internal fun ProgramarSalidaSheet(
     }
 }
 
-/** Muestra [ProgramarSalidaSheet] con los vehículos disponibles y los repartidores activos. */
+/**
+ * Envuelve [ProgramarSalidaSheet] filtrando solo vehículos activos que no estén en ruta y
+ * usuarios con rol conductor o repartidor; cierra la hoja al confirmar la programación.
+ */
 @Composable
 internal fun HojaProgramarSalida(
     abierta: Boolean,

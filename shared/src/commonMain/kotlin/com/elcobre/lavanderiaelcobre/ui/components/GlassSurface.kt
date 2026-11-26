@@ -109,6 +109,7 @@ fun GlassSurface(
     val backdrop = LocalGlassBackdrop.current
     val usarBlur = backdrop != null && !CobreTheme.reduceTransparency
 
+    // 0.78f conserva el contraste de `onAccentFill` dejando filtrar el desenfoque en vidrio teñido.
     val tintColor = tint?.copy(alpha = 0.78f) ?: material.tint
     val fallbackColor = tint ?: material.fallback
     val contentColor = if (tint != null) colors.onAccentFill else colors.textPrimary

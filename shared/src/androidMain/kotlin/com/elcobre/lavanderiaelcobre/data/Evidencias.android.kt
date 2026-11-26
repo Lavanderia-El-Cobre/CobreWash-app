@@ -19,6 +19,10 @@ private const val API_ORIGEN = ORIGEN_WEB
 /** Falla al subir una fotografía; [codigo] es la respuesta HTTP o `null` si no hubo conexión. */
 internal class FalloSubidaFoto(message: String, val codigo: Int?, cause: Throwable? = null) : OperacionComandaException(message, cause)
 
+/**
+ * Valida antes de encolar o subir que no se superen las 20 fotografías por inspección
+ * y que cada archivo local exista y pese entre 4 bytes y [MAX_FOTO] (3 MB).
+ */
 internal fun validarArchivosEvidencia(fotos: List<FotoChequeo>) {
     if (fotos.size > 20) throw OperacionComandaException("Máximo 20 fotografías por inspección.")
     for (foto in fotos) {
@@ -29,15 +33,25 @@ internal fun validarArchivosEvidencia(fotos: List<FotoChequeo>) {
     }
 }
 
+/** Obtiene el ID token vigente de Firebase Auth para autenticar llamadas al backend web. */
 internal suspend fun tokenEvidencia(): String = FirebaseAuth.getInstance().currentUser
     ?.getIdToken(false)?.await()?.token ?: throw OperacionComandaException("Inicia sesión nuevamente.")
 
+/**
+ * Convierte una ruta de Storage de inspección en su endpoint autenticado del backend web.
+ * Valida estrictamente el formato UUID para rechazar rutas inesperadas o manipulación de path.
+ */
 internal fun endpointFoto(ruta: String): String? {
     val regex = Regex("^vehiculos/inspecciones/([a-fA-F0-9-]{36})/([a-fA-F0-9-]{36})\\.jpg$")
     val match = regex.matchEntire(ruta) ?: return null
     return "$API_ORIGEN/api/inspecciones/${match.groupValues[1]}/fotos/${match.groupValues[2]}"
 }
 
+/**
+ * Sube una fotografía JPEG de inspección mediante `PUT` autenticado con el ID token.
+ * Usa un UUID determinista derivado de inspección, foto y URI para que los reintentos
+ * sean idempotentes y no dupliquen evidencias en el servidor.
+ */
 internal suspend fun subirFotoInspeccion(inspeccionId: String, foto: FotoChequeo, orden: Int) {
     val token = tokenEvidencia()
     withContext(Dispatchers.IO) {
@@ -53,6 +67,7 @@ internal suspend fun subirFotoInspeccion(inspeccionId: String, foto: FotoChequeo
             conexion.setRequestProperty("Authorization", "Bearer $token")
             conexion.setRequestProperty("Content-Type", "image/jpeg")
             val file = File(foto.uri.removePrefix("file://"))
+            // Streaming de longitud fija para evitar cargar el archivo completo en memoria.
             conexion.setFixedLengthStreamingMode(file.length())
             file.inputStream().use { input -> conexion.outputStream.use { output -> input.copyTo(output) } }
             val codigo = conexion.responseCode
@@ -65,6 +80,10 @@ internal suspend fun subirFotoInspeccion(inspeccionId: String, foto: FotoChequeo
     }
 }
 
+/**
+ * Descarga una fotografía remota de inspección validando su ruta y autenticando con Bearer token.
+ * Acota la lectura a [MAX_FOTO] bytes y devuelve `null` ante errores de red o respuestas no válidas.
+ */
 internal suspend fun descargarFotoEvidencia(ruta: String): ByteArray? {
     val url = endpointFoto(ruta) ?: return null
     val token = tokenEvidencia()

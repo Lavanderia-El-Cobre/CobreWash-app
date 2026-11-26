@@ -1,5 +1,6 @@
 package com.elcobre.lavanderiaelcobre.data.model
 
+// Patrones chilenos soportados: moderna (AAAA-00), antigua (AA-0000) y moto (AAA-000).
 private val PATENTE_MODERNA_REGEX = Regex("^[A-Z]{4}\\d{2}$")
 private val PATENTE_ANTIGUA_REGEX = Regex("^[A-Z]{2}\\d{4}$")
 private val PATENTE_MOTO_REGEX = Regex("^[A-Z]{3}\\d{3}$")
@@ -12,6 +13,10 @@ enum class EstadoCondicionVehiculo(val codigo: String, val etiqueta: String) {
     NO_APTO("NO_APTO", "No apto");
 
     companion object {
+        /**
+         * Mapea el código persistido en backend sin distinguir mayúsculas; usa [APTO] como
+         * respaldo seguro ante valores nulos o desconocidos.
+         */
         fun desdeCodigo(codigo: String?): EstadoCondicionVehiculo =
             entries.firstOrNull { it.codigo.equals(codigo, ignoreCase = true) } ?: APTO
     }
@@ -58,6 +63,10 @@ data class Vehiculo(
     val descripcion: String? = null,
     val activo: Boolean = true,
 ) {
+    /**
+     * Etiqueta legible para UI combinando [marca], [modelo] y [anio] sin repetir texto
+     * cuando la marca o el año ya vienen incluidos en el modelo.
+     */
     val nombreCompleto: String
         get() {
             val base = listOf(marca.trim(), modelo.trim())
@@ -108,6 +117,7 @@ data class ChequeoVehiculo(
     val kilometrosRecorridos: Int?
         get() = if (estaCerrado) (kmEntrada!! - kmSalida!!).coerceAtLeast(0) else null
 
+    /** Registra la inspección de salida y marca la copia resultante como en ruta ([estaEnRuta]). */
     fun registrarSalida(
         km: Int,
         fotos: List<FotoChequeo>,
@@ -122,6 +132,7 @@ data class ChequeoVehiculo(
         horaSalida = hora,
     )
 
+    /** Registra la inspección de retorno, cierra la jornada ([estaCerrado]) y habilita [kilometrosRecorridos]. */
     fun registrarEntrada(
         km: Int,
         fotos: List<FotoChequeo>,

@@ -1,6 +1,6 @@
 plugins {
-    // this is necessary to avoid the plugins to be loaded multiple times
-    // in each subproject's classloader
+    // Declarar los plugins aquí con `apply false` evita cargarlos múltiples veces
+    // en los classloaders de cada subproyecto.
     alias(libs.plugins.androidApplication) apply false
     alias(libs.plugins.androidMultiplatformLibrary) apply false
     alias(libs.plugins.composeMultiplatform) apply false
@@ -25,6 +25,7 @@ detekt {
     )
 }
 
+// Genera reportes TXT (consola/CI), XML (integraciones) y HTML (revisión local).
 tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
     reports {
         txt.required.set(true)

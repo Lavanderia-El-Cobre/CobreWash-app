@@ -17,8 +17,12 @@ import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 import io.github.alexzhirkevich.qrose.rememberQrCodePainter
 
 /**
- * Código QR dibujado en la app. Siempre negro sobre blanco y con margen claro, también
- * en tema oscuro, para que lo lean los escáneres y las cámaras de los clientes.
+ * Código QR dibujado en la app. Siempre negro sobre blanco y con margen claro (quiet zone
+ * de 12 dp), también en tema oscuro, para que lo lean los escáneres y las cámaras.
+ *
+ * @param valor Contenido codificado en el QR.
+ * @param descripcion Texto accesible (`contentDescription`) para lectores de pantalla.
+ * @param tamano Lado del código QR en dp, sin incluir el margen blanco exterior.
  */
 @Composable
 fun CodigoQr(valor: String, descripcion: String, modifier: Modifier = Modifier, tamano: Dp = 160.dp) {

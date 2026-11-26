@@ -31,8 +31,10 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.roundToInt
 import com.elcobre.lavanderiaelcobre.data.offline.CacheLectura
 
+/** Implementación Android de [RepartoRepository] sobre Data Connect, caché de lectura y cola offline. */
 actual fun crearRepartoRepository(): RepartoRepository = FirebaseRepartoRepository()
 
+/** Política directa al servidor antes de actualizar la copia local de [CacheLectura]. */
 private val SERVIDOR = QueryRef.FetchPolicy.SERVER_ONLY
 
 private fun estadoDc(estado: EstadoCondicionVehiculo): EstadoVehiculo = EstadoVehiculo.valueOf(estado.codigo)
@@ -115,6 +117,7 @@ private fun GetComandasParaEntregaQuery.Data.ComandasItem.aEntrega(): ComandaEnt
     )
 }
 
+/** Programa una salida de vehículo para un repartidor directamente en Data Connect. */
 internal actual suspend fun programarSalidaFirebase(vehiculoId: String, repartidorId: String, observaciones: String?) {
     solicitud {
         ExampleConnector.instance.crearSalidaVehiculo.execute(UUID.fromString(vehiculoId), repartidorId) {
@@ -151,6 +154,11 @@ private class FirebaseRepartoRepository : RepartoRepository {
 
     override suspend fun registrarRetorno(input: RetornoFlotaInput) = registrarRetornoFirebase(input)
 
+    /**
+     * Inicia una salida ya programada: registra la inspección previa, sube las fotografías
+     * y cambia el estado de la salida. Conserva el ID de inspección en [inspeccionesPendientes]
+     * para que un reintento tras fallo al subir fotos no cree inspecciones duplicadas.
+     */
     override suspend fun iniciarProgramada(salida: SalidaReparto, input: InspeccionInput): Unit = solicitud {
         validarArchivosEvidencia(input.fotos)
         val clave = "${input.salidaId}|ANTES"

@@ -44,7 +44,7 @@ import androidx.compose.ui.unit.dp
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreShapes
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 
-/** Barra de progreso y error de carga en la cabecera de una lista. */
+/** Barra de progreso y error de carga (anunciado con `liveRegion`) en la cabecera de una lista. */
 @Composable
 fun EstadoCarga(cargando: Boolean, error: String?, modifier: Modifier = Modifier) {
     val colors = CobreTheme.colors
@@ -132,7 +132,8 @@ fun FilaDato(etiqueta: String, valor: String?, modifier: Modifier = Modifier) {
 
 /**
  * Indicador numérico que también filtra (como las tarjetas de estado de la web). Con
- * [onClick] nulo es solo informativo.
+ * [onClick] nulo es solo informativo; cuando es interactivo expone `Role.Checkbox` y
+ * `selected` para accesibilidad.
  */
 @Composable
 fun KpiTile(
@@ -353,6 +354,7 @@ private fun <T> HojaSeleccion(
     }
 }
 
+// Limita el renderizado dentro del `verticalScroll` de `GlassSheet` para mantener fluidez.
 private const val MAX_OPCIONES_VISIBLES = 60
 
 /** Pastilla redonda con la inicial de un nombre (usuarios, clientes). */

@@ -22,12 +22,17 @@ import java.util.UUID
 import java.text.SimpleDateFormat
 import java.util.Locale
 
+/** Busca una comanda operativa por su UUID de QR y carga su detalle completo desde el servidor. */
 actual suspend fun buscarComandaPorQrFirebase(codigoQr: String): Pedido? = solicitud {
     val data = ExampleConnector.instance.getComandaOperativaPorQr.ref(UUID.fromString(codigoQr))
         .execute(QueryRef.FetchPolicy.SERVER_ONLY).data.comanda
     data?.let { getComandaDetalleFirebase(it.id.toString()) }
 }
 
+/**
+ * Obtiene todas las comandas activas de planta paginando de a 50 registros (`SERVER_ONLY`)
+ * y resolviendo el detalle operativo de cada una.
+ */
 actual suspend fun getComandasActivasFirebase(): List<Pedido> = solicitud {
     val resultado = mutableListOf<Pedido>()
     var pagina: List<GetSeguimientoProduccionQuery.Data.ComandasItem>
@@ -43,6 +48,10 @@ actual suspend fun getComandasActivasFirebase(): List<Pedido> = solicitud {
     resultado
 }
 
+/**
+ * Obtiene las comandas asignadas al operario autenticado paginando de a 50 registros
+ * y deduplicando por ID por si la lista cambia mientras se recorren páginas.
+ */
 actual suspend fun getMisComandasAsignadasFirebase(): List<Pedido> = solicitud {
     val resultado = mutableListOf<Pedido>()
     var pagina: List<GetMisComandasAsignadasQuery.Data.ComandasItem>
@@ -70,6 +79,7 @@ private fun etapa(orden: Int): EtapaProceso = when (orden) {
     else -> EtapaProceso.ENTREGA
 }
 
+/** Consulta en Data Connect (`SERVER_ONLY`) el detalle operativo de una comanda por su UUID. */
 actual suspend fun getComandaDetalleFirebase(id: String): Pedido? = solicitud {
     ExampleConnector.instance.getComandaDetalleOperario.ref(UUID.fromString(id))
         .execute(QueryRef.FetchPolicy.SERVER_ONLY).data.comanda?.let(::mapearComanda)
@@ -145,12 +155,14 @@ private fun mapearAsignada(c: GetMisComandasAsignadasQuery.Data.ComandasItem): P
     )
 }
 
+/** Autoasigna al operario autenticado todas las etapas pendientes de una comanda. */
 actual suspend fun autoAsignarComandaFirebase(comandaId: String) = solicitud {
     val cantidad = ExampleConnector.instance.autoAsignarComandaOperario.execute(UUID.fromString(comandaId))
         .data.comandaEtapa_updateMany
     if (cantidad == 0) throw OperacionComandaException("La comanda no tiene etapas pendientes para asignar.")
 }
 
+/** Marca una etapa productiva como completada y actualiza el estado global de la comanda. */
 actual suspend fun completarEtapaFirebase(
     comandaId: String, etapaId: String, orden: Int, estadoComandaActual: String,
 ): Boolean = solicitud {

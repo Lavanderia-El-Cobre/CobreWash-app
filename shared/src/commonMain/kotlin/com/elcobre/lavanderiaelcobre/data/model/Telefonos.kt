@@ -27,8 +27,10 @@ data class PaisTelefono(
     val prefijoVisible: String get() = "+$codigo" + (prefijo?.let { " $it" } ?: "")
 }
 
+/** Resultado de analizar un teléfono: país detectado, dígitos nacionales y si el prefijo es válido. */
 data class TelefonoDetectado(val pais: PaisTelefono, val nacional: String, val reconocido: Boolean)
 
+/** Catálogo latinoamericano, detección de país, validación y formateo canónico de teléfonos. */
 // Tabla de países y validaciones con salidas tempranas, portadas línea a línea de lib/telefonos.ts.
 @Suppress("TooManyFunctions", "MagicNumber", "ReturnCount", "MaxLineLength")
 object Telefonos {

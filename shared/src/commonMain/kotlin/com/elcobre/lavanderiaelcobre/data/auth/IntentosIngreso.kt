@@ -24,6 +24,10 @@ data class EstadoIntentos(
 /** Tipo de fallo de un intento de ingreso, según el código de Firebase. */
 enum class FalloIngreso { CREDENCIALES, BLOQUEO_SERVIDOR, OTRO }
 
+/**
+ * Gestor del bloqueo progresivo local tras contraseñas incorrectas. Persiste su estado
+ * en [SesionPersistente] para que el bloqueo sobreviva al cierre de la app.
+ */
 @Suppress("MagicNumber")
 object IntentosIngreso {
     const val INTENTOS_LIBRES = 5
@@ -55,12 +59,14 @@ object IntentosIngreso {
         restantes = (INTENTOS_LIBRES - registro.fallos).coerceAtLeast(0),
     )
 
+    /** Calcula la duración del bloqueo exponencial en milisegundos según [fallos] acumulados. */
     fun duracionBloqueo(fallos: Int): Long {
         if (fallos < INTENTOS_LIBRES) return 0
         val exponente = (fallos - INTENTOS_LIBRES).coerceAtMost(10)
         return min(BLOQUEO_BASE_MS * (1L shl exponente), BLOQUEO_MAX_MS)
     }
 
+    /** Estado vigente del contador y bloqueo en el instante [ahora]. */
     fun estado(ahora: Long = ahoraMs()): EstadoIntentos = estado(leer(ahora), ahora)
 
     /** Registra un intento fallido y devuelve el bloqueo resultante. */
@@ -85,6 +91,7 @@ object IntentosIngreso {
         return estado(nuevo, ahora)
     }
 
+    /** Reinicia el contador y levanta cualquier bloqueo local (se llama tras un ingreso exitoso). */
     fun limpiar() = SesionPersistente.guardarIntentos(null)
 
     /** "1:05 min" o "45 s" para mostrar el tiempo restante de bloqueo. */

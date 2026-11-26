@@ -39,6 +39,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/**
+ * Implementación Android del capturador fotográfico de evidencias.
+ * Gestiona el permiso `CAMERA`, conserva la ruta temporal en `rememberSaveable` para sobrevivir
+ * recreaciones de actividad durante el uso de la cámara y normaliza la imagen en `Dispatchers.IO`.
+ */
 @Composable
 actual fun rememberCapturadorFoto(onFotoCapturada: (uri: String) -> Unit): () -> Unit {
     val context = LocalContext.current
@@ -79,11 +84,13 @@ actual fun rememberCapturadorFoto(onFotoCapturada: (uri: String) -> Unit): () ->
 
 private fun avisar(context: Context, mensaje: String) = Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show()
 
+/** Crea un JPEG temporal (`captura-*.jpg`) en la carpeta privada limpiada por `ArchivosEvidencia`. */
 private fun crearArchivo(context: Context): File? = try {
     val carpeta = File(context.filesDir, "evidencias_flota")
     if (!carpeta.exists() && !carpeta.mkdirs()) null else File.createTempFile("captura-", ".jpg", carpeta)
 } catch (_: IOException) { null }
 
+/** Expone [archivo] a la app de cámara mediante `FileProvider` y limpia si falla el lanzamiento. */
 private fun lanzarCamara(context: Context, archivo: File, lanzador: ActivityResultLauncher<android.net.Uri>) {
     try {
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", archivo)
@@ -97,6 +104,10 @@ private fun lanzarCamara(context: Context, archivo: File, lanzador: ActivityResu
     }
 }
 
+/**
+ * Reduce resolución (<= 2200 px de lado mayor) mediante submuestreo, corrige orientación EXIF
+ * y recomprime a JPEG 85% validando que el resultado no supere el límite de 3 MB.
+ */
 private fun prepararCaptura(archivo: File): Boolean = try {
     val limites = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     BitmapFactory.decodeFile(archivo.absolutePath, limites)
@@ -128,6 +139,10 @@ private fun matrizOrientacion(orientacion: Int): Matrix = Matrix().apply {
     }
 }
 
+/**
+ * Muestra la miniatura de una evidencia fotográfica, ya sea remota (`vehiculos/inspecciones/...`)
+ * descargada con autenticación o local desde disco, con ícono de respaldo si falla la carga.
+ */
 @Composable
 actual fun MiniaturaFotoChequeo(uri: String, descripcion: String?, tint: Color, modifier: Modifier) {
     val bitmap by produceState<ImageBitmap?>(initialValue = null, uri) {

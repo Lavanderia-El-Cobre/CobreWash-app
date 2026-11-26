@@ -23,11 +23,13 @@ object CacheLectura {
     /** `true` si lo que se muestra viene de la copia guardada (sin conexión). */
     val desdeCache: StateFlow<Boolean> = _desdeCache.asStateFlow()
 
+    /** Inyecta la fábrica de archivos por clave/UID y la rutina de borrado global al iniciar la app. */
     fun configurar(fabrica: (String) -> AlmacenCola, borrarTodo: () -> Unit) {
         this.fabrica = fabrica
         this.borrarTodo = borrarTodo
     }
 
+    /** Borra todas las copias locales y reinicia [desdeCache]; obligatorio al cerrar sesión. */
     fun limpiar() {
         borrarTodo()
         _desdeCache.value = false

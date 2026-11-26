@@ -108,7 +108,10 @@ private val SeparacionRail = 20.dp
 /** Resorte de la píldora: se desliza y asienta con un leve rebote, como el selector de iOS. */
 private fun <T> resortePildora() = spring<T>(dampingRatio = 0.78f, stiffness = 380f)
 
-/** Espacio que la barra inferior flotante le quita al contenido, además de la barra de navegación del sistema. */
+/**
+ * Espacio vertical que la barra inferior flotante reserva respecto al contenido,
+ * adicional al inset de la barra de navegación del sistema.
+ */
 internal val EspacioBarraInferior: Dp = AltoBarra + MargenFlotante + SeparacionContenido
 
 /** Contadores que se muestran sobre cada tab (p. ej. avisos sin leer); los ceros no se dibujan. */
@@ -245,6 +248,7 @@ internal fun FloatingRail(
     }
 }
 
+/** Tabs apilados verticalmente con una píldora cobre tenue que se desliza con resorte. */
 @Composable
 private fun PestanasVerticales(
     items: List<NavItem>,
@@ -275,6 +279,7 @@ private fun PestanasVerticales(
     }
 }
 
+/** Índice flotante del tab activo; acotado a >= 0 para evitar desplazamientos negativos. */
 private fun indiceDe(items: List<NavItem>, tab: Pantalla): Float =
     items.indexOfFirst { it.pantalla == tab }.coerceAtLeast(0).toFloat()
 
@@ -284,7 +289,11 @@ private fun Pildora(modifier: Modifier) {
     Box(modifier = modifier.clip(CobreShapes.full).background(CobreTheme.colors.accentContainer))
 }
 
-/** Un tab: ícono + etiqueta, cobre si está seleccionado. La píldora la dibuja el contenedor. */
+/**
+ * Un tab: ícono + etiqueta, en cobre si está seleccionado. La píldora la dibuja el
+ * contenedor y reemplaza al ripple (`indication = null`); `mergeDescendants` unifica
+ * etiqueta y contador de pendientes para lectores de pantalla.
+ */
 @Composable
 private fun TabItem(
     item: NavItem,

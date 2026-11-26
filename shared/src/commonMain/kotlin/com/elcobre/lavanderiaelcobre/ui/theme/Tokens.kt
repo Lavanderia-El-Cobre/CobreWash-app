@@ -127,7 +127,10 @@ object CobreShapes {
     val full = RoundedCornerShape(percent = 50)
 }
 
-/** Formas de Material 3 alineadas a la escala, para que los componentes M3 (diálogos, menús) no usen sus 28dp por defecto. */
+/**
+ * Formas de Material 3 alineadas a [CobreShapes] para que los componentes M3
+ * (diálogos, menús) no usen su radio de 28 dp por defecto.
+ */
 internal val CobreMaterialShapes = Shapes(
     extraSmall = CobreShapes.sm,
     small = CobreShapes.md,
@@ -153,6 +156,10 @@ data class GlassMaterial(
     val strokeBottom: Color,
 )
 
+/**
+ * Calcula radio de desenfoque, tinte y degradado de borde especular ([GlassMaterial.strokeTop]
+ * a [GlassMaterial.strokeBottom]) para el nivel de vidrio y polaridad del tema.
+ */
 internal fun glassMaterial(level: GlassLevel, dark: Boolean): GlassMaterial {
     val base = if (dark) Graphite2 else Color.White
     val (blur, tintAlpha) = when (level) {
@@ -169,5 +176,8 @@ internal fun glassMaterial(level: GlassLevel, dark: Boolean): GlassMaterial {
     )
 }
 
+/** Roles de color publicados por [CobreTheme]; usa `staticCompositionLocalOf` por baja frecuencia de cambio. */
 internal val LocalCobreColors = staticCompositionLocalOf { CobreLightRoles }
+
+/** Preferencia de accesibilidad para reemplazar superficies translúcidas con su versión casi opaca. */
 internal val LocalReduceTransparency = staticCompositionLocalOf { false }

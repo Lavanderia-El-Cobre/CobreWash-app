@@ -23,6 +23,7 @@ import kotlinx.serialization.serializer
  * clases serializables propias que respetan exactamente los campos permitidos.
  */
 
+/** Instancia del conector `produccion` compartiendo ubicación y servicio con [ExampleConnector]. */
 private val ConectorProduccion: FirebaseDataConnect by lazy {
     val base = ExampleConnector.config
     FirebaseDataConnect.getInstance(ConnectorConfig(connector = "produccion", location = base.location, serviceId = base.serviceId))

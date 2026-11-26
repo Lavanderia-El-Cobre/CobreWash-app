@@ -12,8 +12,10 @@ import com.elcobre.lavanderiaelcobre.data.model.NuevoClienteInput
 import com.elcobre.lavanderiaelcobre.data.model.PaginaComandas
 import com.elcobre.lavanderiaelcobre.data.model.PaginaProduccion
 
+/** Mensaje uniforme cuando una operación aún no cuenta con implementación nativa en la plataforma. */
 internal const val NO_DISPONIBLE_PLATAFORMA = "Esta función aún no está disponible en iOS."
 
+/** Centraliza el fallo por defecto de interfaces de repositorio en plataformas sin soporte aún. */
 internal fun noDisponible(): Nothing = throw OperacionComandaException(NO_DISPONIBLE_PLATAFORMA)
 
 /** Identidad de una comanda nueva: se conserva entre reintentos para no duplicarla. */
@@ -80,10 +82,14 @@ interface RecepcionRepository {
 interface ProduccionRepository {
     suspend fun seguimiento(buscar: String, offset: Int, limit: Int): PaginaProduccion = noDisponible()
     suspend fun completarEtapa(comanda: ComandaGestion): Unit = noDisponible()
+
+    /** Reasigna una etapa activa a otro operario dejando [motivo] registrado en el historial. */
     suspend fun reasignar(comandaId: String, etapaId: String, operarioId: String, motivo: String): Unit = noDisponible()
     suspend fun reportarIncidencia(comandaId: String, motivo: String, descripcion: String): Unit = noDisponible()
 }
 
+/** Fábrica por plataforma de [RecepcionRepository] (Firebase Data Connect en Android; stub en iOS). */
 expect fun crearRecepcionRepository(): RecepcionRepository
 
+/** Fábrica por plataforma de [ProduccionRepository] (Firebase Data Connect en Android; stub en iOS). */
 expect fun crearProduccionRepository(): ProduccionRepository

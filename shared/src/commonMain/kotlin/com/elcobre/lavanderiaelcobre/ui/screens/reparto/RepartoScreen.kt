@@ -79,9 +79,9 @@ private sealed interface Movimiento {
 }
 
 /**
- * "Mi vehículo" del repartidor, como `/intranet/reparto` de la web: la salida en curso con
- * su regreso, los vehículos activos con su disponibilidad para registrar una salida y el
- * historial. Las salidas que administración programa desde la app también aparecen aquí.
+ * "Mi vehículo" del repartidor, como `/intranet/reparto` de la web: gestiona la salida en
+ * curso y su regreso, las salidas programadas por administración, la flota disponible y el
+ * historial. Observa la cola offline para impedir salidas o regresos duplicados sin red.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Suppress("LongMethod") // Una lista con sus secciones; cada tarjeta ya vive en su propia función.
@@ -256,7 +256,10 @@ private fun resumenInspeccion(i: InspeccionReparto): String =
     listOfNotNull("${i.kilometraje} km", i.estado.etiqueta, if (i.fotos > 0) "${i.fotos} foto(s)" else null, i.observaciones)
         .joinToString(" · ")
 
-/** Formulario de salida o regreso: odómetro, estado del vehículo, fotos y observaciones. */
+/**
+ * Formulario de salida o regreso: odómetro, condición del vehículo, fotos y observaciones.
+ * Si [yaInspeccionada] no es nulo, omite los campos de chequeo y solo pide confirmar el inicio.
+ */
 @Suppress("LongParameterList")
 @Composable
 private fun MovimientoSheet(

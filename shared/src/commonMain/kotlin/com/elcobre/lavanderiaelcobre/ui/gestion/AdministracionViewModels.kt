@@ -31,8 +31,9 @@ import com.elcobre.lavanderiaelcobre.data.model.validarNuevoUsuario
 import kotlinx.coroutines.CoroutineScope
 
 /**
- * Avisos de un rol. Recepción lee los dirigidos a su equipo; administración ve todos
- * los publicados y puede publicar nuevos (`/intranet/comunicacion`).
+ * Avisos filtrados por rol. Recepción lee únicamente los dirigidos a su equipo;
+ * administración ([rolEquipo] nulo) consulta todos los publicados y puede emitir nuevos
+ * (`/intranet/comunicacion`).
  */
 class AvisosEquipoViewModel(
     private val rolEquipo: String?,
@@ -44,12 +45,16 @@ class AvisosEquipoViewModel(
     var total by mutableStateOf(0)
         private set
     private var limite = PAGINA_COMANDAS
+
+    // Identificadores marcados como leídos en la sesión actual para la insignia local.
     private var vistos by mutableStateOf<Set<String>>(emptySet())
 
+    /** Solo administración (sin filtro de rol de equipo) puede publicar avisos. */
     val puedePublicar: Boolean get() = rolEquipo == null
     val hayMas: Boolean get() = avisos.size < total
     val noLeidos: Int get() = avisos.count { it.id !in vistos }
 
+    /** Recarga los avisos; si [mas] es `true`, amplía el límite en una página adicional. */
     fun refrescar(mas: Boolean = false) {
         if (mas && !hayMas) return
         if (mas) limite += PAGINA_COMANDAS
@@ -65,10 +70,15 @@ class AvisosEquipoViewModel(
         }
     }
 
+    /** Marca como leídos los avisos actualmente cargados para limpiar la insignia. */
     fun marcarLeidos() {
         vistos = vistos + avisos.map { it.id }
     }
 
+    /**
+     * Valida y publica un aviso institucional; [alTerminar] recibe el error si falla.
+     * Solo se ejecuta cuando [puedePublicar] es `true`.
+     */
     fun publicar(input: NuevoAvisoInput, alTerminar: (String?) -> Unit) {
         if (!puedePublicar) return
         validarAviso(input)?.let {
@@ -98,6 +108,7 @@ class PanelViewModel(
     var resumen by mutableStateOf<ResumenPanel?>(null)
         private set
 
+    /** Obtiene los indicadores actualizados de producción, atrasos e incidencias abiertas. */
     fun refrescar() = cargar { resumen = repository.resumenPanel() }
 
     override fun reiniciar() {
@@ -120,6 +131,7 @@ class UsuariosViewModel(
     var filtroActivo by mutableStateOf<Boolean?>(null)
         private set
 
+    /** Cuentas filtradas localmente por estado activo/inactivo y texto en nombre o correo. */
     val filtrados: List<UsuarioGestion>
         get() {
             val q = busqueda.trim().lowercase()
@@ -129,6 +141,7 @@ class UsuariosViewModel(
             }
         }
 
+    /** Carga el catálogo de roles disponibles y el listado completo de cuentas. */
     fun refrescar() = cargar {
         roles = repository.roles()
         usuarios = repository.usuarios()
@@ -142,6 +155,10 @@ class UsuariosViewModel(
         filtroActivo = activo
     }
 
+    /**
+     * Valida y crea una cuenta nueva. Si el alta tiene éxito pero falla el envío de correo
+     * de invitación, igualmente refresca la lista e indica la alternativa de recuperación.
+     */
     fun crear(input: NuevoUsuarioInput, alTerminar: (String?) -> Unit) {
         validarNuevoUsuario(input)?.let {
             alTerminar(it)
@@ -161,6 +178,7 @@ class UsuariosViewModel(
         }
     }
 
+    /** Valida rol, nombre y teléfono antes de persistir cambios sobre una cuenta existente. */
     fun editar(input: EdicionUsuarioInput, alTerminar: (String?) -> Unit) {
         (validarEdicionUsuario(input.rolId, input.nombre) ?: Telefonos.validar(input.telefono.orEmpty()))?.let {
             alTerminar(it)
@@ -172,6 +190,7 @@ class UsuariosViewModel(
         }) { repository.actualizarUsuario(input) }
     }
 
+    /** Invierte el estado activo/inactivo de [usuario] y sincroniza la lista tras responder. */
     fun alternarActivo(usuario: UsuarioGestion) {
         val input = EdicionUsuarioInput(usuario.id, usuario.rol.id, usuario.nombre, usuario.apellido, usuario.telefono, !usuario.activo)
         val confirmacion = if (usuario.activo) "${usuario.nombreCompleto} quedó inactivo." else "${usuario.nombreCompleto} quedó activo."
@@ -212,15 +231,19 @@ class StockViewModel(
 
     val filtrados: List<InsumoInventario>
         get() = busqueda.trim().lowercase().let { q -> if (q.isEmpty()) insumos else insumos.filter { it.nombre.lowercase().contains(q) } }
+
+    /** Cantidad de insumos activos en estado bajo o crítico respecto a su stock mínimo. */
     val bajoMinimo: Int get() = insumos.count { it.activo && it.estado != "OK" }
     val hayMasMovimientos: Boolean get() = movimientos.size < totalMovimientos
 
+    /** Recarga el stock actual, los conteos pendientes y los 20 conteos resueltos más recientes. */
     fun refrescar() = cargar {
         insumos = repository.stock()
         conteosPendientes = repository.conteos("PENDIENTE")
         conteosResueltos = repository.conteos(null).filter { it.estado != "PENDIENTE" }.take(20)
     }
 
+    /** Carga el historial de movimientos de inventario; con [mas] amplía una página más. */
     fun refrescarMovimientos(mas: Boolean = false) {
         if (mas && !hayMasMovimientos) return
         if (mas) limiteMovimientos += PAGINA_COMANDAS
@@ -236,6 +259,7 @@ class StockViewModel(
         busqueda = texto
     }
 
+    /** Valida y registra un insumo nuevo en catálogo; el servidor genera su código QR. */
     fun crearInsumo(input: NuevoInsumoInput, alTerminar: (String?) -> Unit) {
         validarInsumo(input.nombre, input.unidad, input.stockMinimo, input.stockInicial)?.let {
             alTerminar(it)
@@ -247,6 +271,7 @@ class StockViewModel(
         }) { repository.crearInsumo(input) }
     }
 
+    /** Valida y guarda cambios de nombre, unidad, mínimo o vigencia de un insumo existente. */
     fun actualizarInsumo(insumo: InsumoInventario, alTerminar: (String?) -> Unit) {
         validarInsumo(insumo.nombre, insumo.unidad, insumo.stockMinimo)?.let {
             alTerminar(it)
@@ -258,6 +283,7 @@ class StockViewModel(
         }) { repository.actualizarInsumo(insumo) }
     }
 
+    /** Registra una entrada o salida manual de stock y actualiza tanto inventario como historial. */
     fun registrarMovimiento(
         insumo: InsumoInventario,
         tipo: TipoMovimientoInventario,
@@ -278,6 +304,11 @@ class StockViewModel(
         }) { repository.registrarMovimiento(insumo.id, tipo, requireNotNull(cantidad), motivo) }
     }
 
+    /**
+     * Aprueba o rechaza un conteo físico enviado desde planta. Si el stock del sistema cambió
+     * después de tomar el conteo (`desactualizado`), se bloquea la aprobación para evitar
+     * sobrescribir movimientos posteriores.
+     */
     fun resolverConteo(conteo: ConteoGestion, aprobar: Boolean, motivo: String, alTerminar: (String?) -> Unit) {
         if (motivo.isBlank()) {
             alTerminar("Escribe el motivo de la resolución.")
@@ -308,7 +339,6 @@ class StockViewModel(
 }
 
 /** Reportes de administración (`/intranet/reportes`) por periodo: cuentas, servicios y cierres. */
-
 class ReportesViewModel(
     private val repository: AdministracionRepository = crearAdministracionRepository(),
     scopeOverride: CoroutineScope? = null,
@@ -319,6 +349,7 @@ class ReportesViewModel(
     var reporte by mutableStateOf<ReporteGestion?>(null)
         private set
 
+    /** Consulta el reporte del [periodo] activo descartando respuestas obsoletas si cambió. */
     fun refrescar() {
         val hasta = ahora()
         val desde = hasta - periodo.dias * DIA_MS
@@ -329,6 +360,7 @@ class ReportesViewModel(
         }
     }
 
+    /** Cambia el rango temporal y recarga; evita consultas redundantes si ya está cargado. */
     fun elegirPeriodo(nuevo: PeriodoReporte) {
         if (nuevo == periodo && reporte != null) return
         periodo = nuevo
@@ -356,6 +388,10 @@ class EtapasViewModel(
 
     fun refrescar() = cargar { etapas = repository.etapas() }
 
+    /**
+     * Valida nombre (hasta 40 caracteres) y tiempo estimado (entre 1 minuto y 30 días)
+     * antes de guardar. Los cambios solo afectan a los flujos creados en adelante.
+     */
     fun guardar(etapa: EtapaConfig, alTerminar: (String?) -> Unit) {
         val minutos = etapa.tiempoEstimadoMin
         val problema = when {

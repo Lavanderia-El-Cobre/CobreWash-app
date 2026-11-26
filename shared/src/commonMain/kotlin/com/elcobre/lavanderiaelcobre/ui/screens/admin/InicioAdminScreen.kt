@@ -33,8 +33,9 @@ import com.elcobre.lavanderiaelcobre.ui.screens.produccion.textoAtraso
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 
 /**
- * Panel de inicio del administrador (`/intranet`): cuánta producción hay, cuánta va
- * atrasada y cuáles necesitan atención. Tocar una comanda abre su detalle en Comandas.
+ * Panel de inicio del administrador (`/intranet`): resume la producción activa, destaca
+ * primero las comandas atrasadas ordenadas de mayor a menor atraso y muestra hasta 12
+ * movimientos recientes sin duplicarlas. Tocar una comanda abre su detalle en Comandas.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -97,6 +98,7 @@ fun InicioAdminScreen(
     }
 }
 
+/** Tarjeta compacta de comanda en el panel; resalta con franja roja si presenta atraso. */
 @Composable
 private fun FilaPanel(comanda: ComandaGestion, atraso: Int, onClick: () -> Unit, modifier: Modifier) {
     val colors = CobreTheme.colors

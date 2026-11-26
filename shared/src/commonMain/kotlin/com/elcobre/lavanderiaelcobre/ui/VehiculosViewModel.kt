@@ -31,10 +31,17 @@ import kotlinx.coroutines.launch
 import com.elcobre.lavanderiaelcobre.data.offline.AccionEnColaException
 
 /**
- * Estado de la flota de reparto (`RF-VE01` a `RF-VE04`), separado de [CobreViewModel]
- * porque lo gobierna la sesión de Administrador. Cuando recibe un [VehiculosRepository]
- * sincroniza vehículos, conductores, salidas e inspecciones con Firebase Data Connect;
- * sin repositorio opera en memoria para pruebas unitarias síncronas.
+ * Estado de la flota de reparto (`RF-VE01` a `RF-VE04`), separado de [CobreViewModel] porque
+ * pertenece a la sesión de Administrador. Cuando recibe un [VehiculosRepository] sincroniza
+ * vehículos, conductores, salidas e inspecciones con Firebase Data Connect; sin repositorio
+ * opera en memoria para pruebas unitarias síncronas.
+ *
+ * Contrato de estado:
+ * - Las colecciones observables usan [SnapshotStateList] con modelos inmutables actualizados por
+ *   índice ([reemplazarPrimero]) o reemplazo completo al sincronizar.
+ * - [generacion] descarta respuestas en vuelo cuando cambia la sesión.
+ * - Si el movimiento se guarda en backend pero falla la subida de fotos, el input queda retenido
+ *   para reintentar solo las evidencias sin duplicar el registro.
  */
 @Suppress("TooManyFunctions", "LongParameterList")
 class VehiculosViewModel(
@@ -43,18 +50,25 @@ class VehiculosViewModel(
 ) : ViewModel() {
 
     private val scope: CoroutineScope get() = scopeOverride ?: viewModelScope
+
+    // Retienen movimientos ya guardados en servidor cuya carga de fotos falló, para permitir
+    // reintentar las evidencias sin volver a validar ni duplicar la salida o el retorno.
     private val salidasConFotosPendientes = mutableMapOf<String, SalidaFlotaInput>()
     private val retornosConFotosPendientes = mutableMapOf<String, RetornoFlotaInput>()
 
     private val _vehiculos: SnapshotStateList<Vehiculo> = mutableStateListOf()
+
+    /** Vehículos registrados en la flota (lista observable para Compose). */
     val vehiculos: List<Vehiculo> get() = _vehiculos
 
     private val _conductores: SnapshotStateList<ConductorFlota> = mutableStateListOf()
+
+    /** Conductores y repartidores habilitados para autorizar salidas. */
     val conductores: List<ConductorFlota> get() = _conductores
 
     private val _chequeosVehiculo: SnapshotStateList<ChequeoVehiculo> = mutableStateListOf()
 
-    /** Chequeos de vehículo (check-in/checkout), más reciente primero. */
+    /** Chequeos de vehículo (salidas y retornos), ordenados del más reciente al más antiguo. */
     val chequeosVehiculo: List<ChequeoVehiculo> get() = _chequeosVehiculo
 
     var cargando by mutableStateOf(false)
@@ -75,8 +89,10 @@ class VehiculosViewModel(
     private var chequeoContador = _chequeosVehiculo.size
     private var vehiculoContador = _vehiculos.size
 
+    /** Indicadores agregados de la flota (disponibles, en ruta e inactivos). */
     val kpis: KpisFlota get() = calcularKpisFlota(_vehiculos, _chequeosVehiculo)
 
+    /** Flota filtrada por [filtro] y coincidencia sin mayúsculas en patente, modelo o conductor. */
     val vehiculosFiltrados: List<Vehiculo>
         get() {
             val termino = busqueda.trim().lowercase()
@@ -97,6 +113,10 @@ class VehiculosViewModel(
             }
         }
 
+    /**
+     * Sincroniza el ciclo de vida de este ViewModel con la sesión de Administrador: incrementa
+     * [generacion], descarta reintentos pendientes y limpia listas y filtros al cerrar sesión.
+     */
     fun cambiarSesion(activo: Boolean) {
         generacion++
         salidasConFotosPendientes.clear()
@@ -129,15 +149,18 @@ class VehiculosViewModel(
         mensajeExito = null
     }
 
+    /** Indica si [vehiculoId] tiene una salida o retorno guardado con fotos pendientes de subir. */
     fun tieneFotosPendientes(vehiculoId: String): Boolean =
         salidasConFotosPendientes.containsKey(vehiculoId) || retornosConFotosPendientes.containsKey(vehiculoId)
 
+    /** Descarta los reintentos de subida de evidencias fotográficas pendientes en memoria y repo. */
     fun descartarReintentos() {
         salidasConFotosPendientes.clear()
         retornosConFotosPendientes.clear()
         repository?.descartarReintentos()
     }
 
+    /** Consulta vehículos, conductores y chequeos en el repositorio si la sesión está habilitada. */
     fun refrescarFlota() {
         val repo = repository ?: return
         if (!habilitado || cargando) return
@@ -177,7 +200,10 @@ class VehiculosViewModel(
         _chequeosVehiculo.addAll(nuevosChequeos.distinctBy { it.id })
     }
 
-    /** RF-VE01: agrega un vehículo nuevo a la flota, normalizando la patente chilena. */
+    /**
+     * RF-VE01: agrega un vehículo nuevo a la flota. Normaliza la patente chilena, valida su
+     * formato y rechaza duplicados antes de persistir en servidor o en memoria (pruebas).
+     */
     fun registrarVehiculo(
         patente: String,
         modelo: String,
@@ -261,6 +287,7 @@ class VehiculosViewModel(
         }
     }
 
+    /** Devuelve el chequeo de salida abierto actualmente en ruta para [vehiculoId], si existe. */
     fun chequeoEnRuta(vehiculoId: String): ChequeoVehiculo? =
         _chequeosVehiculo.firstOrNull { it.vehiculoId == vehiculoId && it.estaEnRuta }
 
@@ -268,6 +295,10 @@ class VehiculosViewModel(
     fun historialVehiculo(vehiculoId: String): List<ChequeoVehiculo> =
         _chequeosVehiculo.filter { it.vehiculoId == vehiculoId }
 
+    /**
+     * Reglas previas a una salida: el vehículo debe estar activo, sin ruta abierta, en condición
+     * distinta de [EstadoCondicionVehiculo.NO_APTO] y con odómetro mayor o igual al último registro.
+     */
     private fun validarSalidaLocal(
         vehiculoId: String,
         km: Int,
@@ -285,7 +316,11 @@ class VehiculosViewModel(
         }
     }
 
-    /** RF-VE02: registra la salida del vehículo con inspección inicial y validación de condición/odómetro. */
+    /**
+     * RF-VE02: registra la salida del vehículo con inspección inicial y validación de condición y
+     * odómetro. Si es un reintento de fotos pendientes omite la validación local para completar
+     * solo la subida de evidencias sobre la salida ya persistida.
+     */
     fun registrarSalidaVehiculo(
         vehiculoId: String,
         km: Int,
@@ -347,7 +382,11 @@ class VehiculosViewModel(
         }
     }
 
-    /** RF-VE03: registra el retorno del vehículo con inspección posterior y cierra la salida activa. */
+    /**
+     * RF-VE03: registra el retorno del vehículo con inspección posterior, validando que el
+     * kilometraje no sea menor al de salida, y cierra la salida activa. Si había fotos pendientes
+     * de un retorno previo, reintenta directamente con las nuevas evidencias.
+     */
     fun registrarEntradaVehiculo(
         vehiculoId: String,
         km: Int,
@@ -412,6 +451,11 @@ class VehiculosViewModel(
         }
     }
 
+    /**
+     * Serializa mutaciones de flota con [operacionEnCurso], recarga la instantánea completa desde
+     * el backend al concluir y gestiona acciones encoladas sin conexión ([AccionEnColaException])
+     * protegiendo el estado con [generacion].
+     */
     private fun ejecutarMutacion(confirmacion: String, accion: suspend () -> Unit) {
         val repo = repository ?: return
         if (!habilitado || operacionEnCurso) return

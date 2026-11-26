@@ -19,12 +19,21 @@ private var inMemoryRecordarme: Boolean = false
 private var inMemoryHasta: Long = 0
 private var inMemoryIntentos: String? = null
 
+/**
+ * Inicializa las preferencias privadas (`MODE_PRIVATE`) donde se persiste la sesión recordada
+ * y el contador de intentos fallidos de inicio de sesión.
+ */
 fun inicializarSesionPersistente(context: Context) {
     if (prefs == null) {
         prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 }
 
+/**
+ * Implementación Android de [SesionPersistente] sobre `SharedPreferences` privadas.
+ * Incluye respaldo en memoria para entornos sin contexto inicializado, control de vigencia
+ * por [DURACION_SESION_RECORDADA_MS] y limpieza de claves legadas de versiones anteriores.
+ */
 actual object SesionPersistente {
     actual fun guardar(datos: DatosSesionGuardada, ahoraMs: Long) {
         val hasta = ahoraMs + DURACION_SESION_RECORDADA_MS

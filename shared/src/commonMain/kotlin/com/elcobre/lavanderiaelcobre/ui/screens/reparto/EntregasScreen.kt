@@ -55,9 +55,10 @@ private sealed interface AccionEntrega {
 }
 
 /**
- * Entregas del repartidor, como `/intranet/entregas` de la web: comandas listas para
- * entregar con los datos de contacto del cliente, marcar la entrega con un detalle
- * opcional y reportar un problema (queda en incidencias sin cerrar la comanda).
+ * Entregas del repartidor, equivalente a `/intranet/entregas`: lista las comandas listas
+ * con datos de contacto del cliente, muestra la insignia "Sin enviar" cuando hay acciones
+ * encoladas sin conexión y permite confirmar entregas o reportar problemas (sin cerrar la
+ * comanda). Activa [ProtegerCapturas] por mostrar direcciones y teléfonos de clientes.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -191,6 +192,7 @@ private fun ComandaEntregaCard(
     }
 }
 
+/** Hoja de confirmación de entrega; el detalle de quien recibe es opcional. */
 @Composable
 private fun EntregarSheet(vm: EntregasViewModel, comanda: ComandaEntrega, onCerrar: () -> Unit) {
     var detalle by remember { mutableStateOf("") }
@@ -220,6 +222,7 @@ private fun EntregarSheet(vm: EntregasViewModel, comanda: ComandaEntrega, onCerr
     }
 }
 
+/** Hoja para reportar un problema de entrega; exige descripción cuando el motivo es "Otro". */
 @Composable
 private fun ProblemaSheet(vm: EntregasViewModel, comanda: ComandaEntrega, onCerrar: () -> Unit) {
     var motivo by remember { mutableStateOf("") }

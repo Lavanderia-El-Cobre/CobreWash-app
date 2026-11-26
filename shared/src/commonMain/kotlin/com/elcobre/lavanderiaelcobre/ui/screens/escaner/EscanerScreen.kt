@@ -63,10 +63,15 @@ import com.elcobre.lavanderiaelcobre.ui.theme.Ink
 private val LadoMaxVisor = 380.dp
 
 /**
- * Escáner real de comandas e insumos con búsqueda manual de respaldo.
+ * Escáner QR en vivo de comandas e insumos para el personal operativo de planta, con
+ * búsqueda manual local y remota de respaldo.
  *
- * El visor se limita por el alto disponible y, en horizontal, va a la izquierda con las
- * acciones a la derecha, para que todo entre sin scroll en un teléfono acostado.
+ * Despacha automáticamente según el formato del QR leído (comanda oficial o insumo) y
+ * pausa la cámara durante la consulta para evitar lecturas repetidas. Mantiene localmente
+ * el código manual, el mensaje de estado/error y un retardo inicial de reactivación.
+ *
+ * El visor se limita por el alto disponible y, en horizontal ancho, se ubica a la
+ * izquierda con los controles a la derecha para evitar scroll en teléfonos acostados.
  */
 @Composable
 fun EscanerScreen(
@@ -83,23 +88,24 @@ fun EscanerScreen(
     val haptic = LocalHapticFeedback.current
     val window = CobreTheme.window
 
-    // Cooldown para evitar que, al volver de Detalle, la cámara vuelva a atrapar el QR
-    // de inmediato y te mande de regreso sin dejarte respirar.
+    // Retardo inicial para evitar que, al volver de Detalle, la cámara vuelva a leer
+    // el mismo QR de inmediato antes de que el usuario aparte el teléfono.
     LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(1200)
         isScanning = true
     }
 
+    // Pausa el visor mientras consulta en backend y solo lo reactiva si hubo error.
     val alLeerQr: (String) -> Unit = { rawUrl ->
         val uuid = extraerCodigoQr(rawUrl)
         if (uuid != null) {
-            isScanning = false // Pausar escáner
+            isScanning = false
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             error = "Buscando comanda en la base de datos..."
             onEscanearQr(uuid) { errorMsg ->
                 if (errorMsg != null) {
                     error = errorMsg
-                    isScanning = true // Reanudar escaneo si falló
+                    isScanning = true
                 }
             }
         } else if (extraerQrInsumo(rawUrl) != null) {

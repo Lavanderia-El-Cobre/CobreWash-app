@@ -41,6 +41,13 @@ import com.elcobre.lavanderiaelcobre.ui.theme.DarkSurface1
 
 private const val ORIGEN_PRIVACIDAD = com.elcobre.lavanderiaelcobre.data.ORIGEN_WEB
 
+/**
+ * Acceso al aviso de privacidad y canal de derechos ARCO+ (Ley N° 21.719).
+ *
+ * Muestra un botón compacto de vidrio (p. ej. en login) o una tarjeta completa cuando
+ * [mostrarTarjeta] es `true` (en configuración). Al tocarlo abre una [GlassSheet] con el
+ * resumen del tratamiento de datos y enlaces externos a la web.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AvisoPrivacidad(modifier: Modifier = Modifier, mostrarTarjeta: Boolean = false) {
@@ -213,6 +220,10 @@ private fun AccionesPrivacidad(onAbrirEnlace: (String) -> Unit) {
     }
 }
 
+/**
+ * Recordatorio breve en línea para pantallas de captura fotográfica de flota: indica
+ * fotografiar únicamente el estado del vehículo y evitar datos personales sensibles.
+ */
 @Composable
 fun RecordatorioPrivacidadFotos() {
     Row(

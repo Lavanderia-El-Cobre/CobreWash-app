@@ -12,6 +12,10 @@ import java.util.UUID
 
 private const val PAGINA = 50
 
+/**
+ * Descarga el catálogo completo de insumos en páginas de [PAGINA] elementos directo
+ * del servidor y elimina posibles duplicados si el catálogo cambia entre páginas.
+ */
 internal actual suspend fun catalogoInsumosFirebase(): List<InsumoInventario> = solicitud {
     val resultado = mutableListOf<InsumoInventario>()
     var pagina: List<GetInsumosOperarioQuery.Data.InsumosItem>
@@ -30,6 +34,7 @@ internal actual suspend fun catalogoInsumosFirebase(): List<InsumoInventario> = 
     resultado.distinctBy { it.id }
 }
 
+/** Busca un insumo por su UUID de código QR directamente en el servidor. */
 internal actual suspend fun insumoPorQrFirebase(codigo: String): InsumoInventario? = solicitud {
     ExampleConnector.instance.getInsumoPorQr.ref(UUID.fromString(codigo))
         .execute(QueryRef.FetchPolicy.SERVER_ONLY).data.insumo?.let {
@@ -38,12 +43,17 @@ internal actual suspend fun insumoPorQrFirebase(codigo: String): InsumoInventari
         }
 }
 
+/** Obtiene los últimos conteos físicos enviados por el usuario autenticado. */
 internal actual suspend fun misConteosInventarioFirebase(): List<ConteoFisico> = solicitud {
     ExampleConnector.instance.getMisConteosInventario.ref { limit = PAGINA }
         .execute(QueryRef.FetchPolicy.SERVER_ONLY).data.conteoInventarios
         .map(::aConteo)
 }
 
+/**
+ * Registra un conteo físico de inventario en Data Connect adjuntando [revisionStock]
+ * para que administración detecte si el stock cambió antes de aprobar el ajuste.
+ */
 internal actual suspend fun registrarConteoInventarioFirebase(insumoId: String, cantidad: Double, revisionStock: Int) {
     solicitud {
         ExampleConnector.instance.registrarConteoInventario

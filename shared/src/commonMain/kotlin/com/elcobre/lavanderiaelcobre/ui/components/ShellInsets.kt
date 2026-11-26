@@ -22,6 +22,9 @@ val LocalShellPadding = staticCompositionLocalOf { PaddingValues(0.dp) }
  * Padding total para contenido de borde a borde que pasa por debajo del vidrio:
  * barras del sistema + navegación flotante + [extra]. Va como `contentPadding` de la
  * lista, no como padding del contenedor, para que el contenido se vea a través del vidrio.
+ *
+ * @param incluirSistema Desactívalo (`false`) cuando un contenedor padre (p. ej. panel de
+ * tablet) ya aplicó los insets de las barras del sistema para evitar duplicarlos.
  */
 @Composable
 fun rememberShellContentPadding(

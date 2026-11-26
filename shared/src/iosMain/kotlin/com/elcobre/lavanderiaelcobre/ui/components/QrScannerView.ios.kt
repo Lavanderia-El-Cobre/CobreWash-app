@@ -6,6 +6,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 
+/**
+ * Vista provisional del escáner QR en iOS.
+ *
+ * La captura de cámara mediante `AVFoundation` aún no está implementada; mientras tanto muestra
+ * un aviso centrado e ignora [isActive] y [onQrCodeScanned].
+ */
 @Composable
 actual fun QrScannerView(
     modifier: Modifier,

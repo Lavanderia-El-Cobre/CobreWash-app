@@ -51,6 +51,11 @@ import com.elcobre.lavanderiaelcobre.ui.screens.comandas.EtapaFila
 import com.elcobre.lavanderiaelcobre.ui.screens.comandas.ProgresoEtapas
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 
+/**
+ * Seguimiento de comandas activas en planta (`/intranet/seguimiento`). Muestra una tarjeta
+ * expandible a la vez con etapas, atrasos calculados frente a [ahoraMs] y acciones filtradas
+ * por [permisos] según el rol del usuario.
+ */
 @Composable
 fun ProduccionScreen(
     vm: ProduccionViewModel,
@@ -185,6 +190,7 @@ private fun ProduccionCard(
     }
 }
 
+/** Botones de acción en el área expandida de una comanda según los [permisos] del rol. */
 @Composable
 private fun AccionesProduccion(
     comanda: ComandaGestion,
@@ -234,6 +240,7 @@ private fun AccionesProduccion(
     }
 }
 
+/** Hoja de administración para reasignar el operario responsable de la etapa activa. */
 @Composable
 private fun ReasignarSheet(vm: ProduccionViewModel, comanda: ComandaGestion, onCerrar: () -> Unit) {
     val etapa = comanda.etapaActual ?: return
@@ -276,6 +283,7 @@ private fun ReasignarSheet(vm: ProduccionViewModel, comanda: ComandaGestion, onC
     }
 }
 
+/** Hoja de planta para registrar una incidencia tipificada sobre la comanda seleccionada. */
 @Composable
 private fun IncidenciaSheet(vm: ProduccionViewModel, comanda: ComandaGestion, onCerrar: () -> Unit) {
     var motivo by remember { mutableStateOf(MotivosIncidencia.first()) }
@@ -309,6 +317,7 @@ private fun IncidenciaSheet(vm: ProduccionViewModel, comanda: ComandaGestion, on
     }
 }
 
+/** Banner compacto de error reutilizado dentro de hojas modales, con anuncio accesible. */
 @Composable
 internal fun ErrorHoja(error: String?) {
     if (error == null) return

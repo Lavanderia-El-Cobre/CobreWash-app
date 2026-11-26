@@ -172,6 +172,17 @@ private suspend fun resolverIngreso(
     return ResultadoIngreso.Entrar(sesion)
 }
 
+/**
+ * Pantalla de inicio de sesión para el personal autorizado de Lavandería El Cobre
+ * (operario, administración, recepción y reparto/conducción; excluye clientes web).
+ *
+ * Flujos principales: autenticación contra Firebase con bloqueo progresivo ante intentos
+ * fallidos, verificación obligatoria de correo en cuentas nuevas, persistencia opcional
+ * de sesión («Recordarme»), recuperación de contraseña por correo y cambio rápido de tema.
+ *
+ * Gestiona en estado local las credenciales, carga, avisos/errores y la pantalla breve de
+ * confirmación exitosa antes de entregar la [Sesion] resuelta mediante [onLogin].
+ */
 @Composable
 fun LoginScreen(
     onLogin: (Sesion) -> Unit,

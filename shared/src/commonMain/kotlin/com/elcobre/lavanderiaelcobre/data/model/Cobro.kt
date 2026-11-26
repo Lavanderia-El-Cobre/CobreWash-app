@@ -18,6 +18,10 @@ enum class ModalidadCobro(val etiqueta: String) {
     }
 }
 
+/**
+ * Utilidades de cálculo, parseo y formateo para cobros por prenda y por kilogramo.
+ * Replica el redondeo de JavaScript (`Math.round`) y el reparto proporcional de la web.
+ */
 @Suppress("MagicNumber")
 object Cobro {
     const val PRECIO_KG_MAXIMO = 1_000_000

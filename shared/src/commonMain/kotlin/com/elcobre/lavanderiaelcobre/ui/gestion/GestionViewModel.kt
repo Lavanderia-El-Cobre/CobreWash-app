@@ -18,10 +18,14 @@ import com.elcobre.lavanderiaelcobre.data.offline.AccionEnColaException
  * para que los datos de una cuenta nunca aparezcan en la siguiente.
  */
 abstract class GestionViewModel(private val scopeOverride: CoroutineScope? = null) : ViewModel() {
+    /** Scope usado para corrutinas; permite inyectar un `TestScope` en pruebas unitarias. */
     protected val scope: CoroutineScope get() = scopeOverride ?: viewModelScope
 
+    /** Indica si existe al menos una lectura activa lanzada con [cargar]. */
     var cargando by mutableStateOf(false)
         private set
+
+    /** Indica si hay una escritura en curso lanzada con [operar]; evita envíos duplicados. */
     var guardando by mutableStateOf(false)
         private set
     var error by mutableStateOf<String?>(null)
@@ -29,7 +33,10 @@ abstract class GestionViewModel(private val scopeOverride: CoroutineScope? = nul
     var mensaje by mutableStateOf<String?>(null)
         protected set
 
+    // Contador de generación: cada reinicio incrementa el valor para ignorar respuestas viejas.
     private var generacion = 0
+
+    // Cuenta lecturas simultáneas para apagar [cargando] solo cuando terminen todas.
     private var lecturas = 0
     private var sesion: Any? = null
 
@@ -93,6 +100,7 @@ abstract class GestionViewModel(private val scopeOverride: CoroutineScope? = nul
         }
     }
 
+    /** Limpia los avisos de éxito y error visibles en la pantalla actual. */
     fun limpiarMensajes() {
         mensaje = null
         error = null

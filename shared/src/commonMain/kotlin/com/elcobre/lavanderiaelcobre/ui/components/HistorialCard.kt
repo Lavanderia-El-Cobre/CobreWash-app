@@ -52,6 +52,10 @@ fun HistorialCard(pedido: Pedido, modifier: Modifier = Modifier) {
     }
 }
 
+/**
+ * Fila individual de la línea de tiempo: ícono con color semántico según [tipo], conector
+ * vertical (omitido cuando [esUltimo] es `true`), título, hora, detalle y autor.
+ */
 @Composable
 fun EventoFila(
     tipo: TipoEvento,

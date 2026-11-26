@@ -45,14 +45,18 @@ class ColaAcciones(private val almacen: AlmacenCola) {
         _acciones.value = lista
     }
 
+    /** Encola al final (FIFO) y persiste la cola completa de forma serializada con [mutex]. */
     suspend fun agregar(accion: AccionPendiente) = mutex.withLock { guardar(_acciones.value + accion) }
 
+    /** Reemplaza la acción con el mismo `id` preservando su posición en la cola. */
     suspend fun actualizar(accion: AccionPendiente) = mutex.withLock {
         guardar(_acciones.value.map { if (it.id == accion.id) accion else it })
     }
 
+    /** Elimina la acción confirmada o descartada y actualiza el respaldo persistente. */
     suspend fun quitar(id: String) = mutex.withLock { guardar(_acciones.value.filterNot { it.id == id }) }
 
+    /** Devuelve la acción por [id] desde el estado actual en memoria, o `null` si ya no existe. */
     fun buscar(id: String): AccionPendiente? = _acciones.value.firstOrNull { it.id == id }
 
     /** Archivos de fotos que todavía deben subirse: la limpieza de capturas no los borra. */
@@ -138,4 +142,5 @@ sealed interface ResultadoRegistro {
     data class Rechazada(val mensaje: String) : ResultadoRegistro
 }
 
+/** Contadores al cierre de una pasada de sincronización y motivo de pausa si expiró la sesión. */
 data class ResumenSincronizacion(val enviadas: Int, val pendientes: Int, val requierenAtencion: Int, val pausada: String?)

@@ -5,6 +5,12 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import kotlinx.coroutines.tasks.await
 
+/**
+ * Revalida la sesión persistida en Firebase Authentication al reabrir la app.
+ * Fuerza la renovación del ID token (`getIdToken(true)`) para detectar cuentas revocadas
+ * o deshabilitadas, verifica consistencia de UID ante cierres concurrentes, exige correo
+ * verificado si corresponde y finalmente carga el perfil vigente desde Data Connect.
+ */
 actual suspend fun restaurarPerfilAutenticado(): PerfilResultado? {
     val auth = FirebaseAuth.getInstance()
     val user = auth.currentUser ?: return null

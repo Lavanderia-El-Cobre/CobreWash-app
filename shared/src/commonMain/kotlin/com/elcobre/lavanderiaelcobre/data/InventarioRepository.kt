@@ -9,6 +9,10 @@ import kotlin.uuid.Uuid
 import com.elcobre.lavanderiaelcobre.data.offline.CacheLectura
 import kotlinx.serialization.builtins.ListSerializer
 
+/**
+ * Insumo del catálogo de inventario. Es `@Serializable` para persistirse en [CacheLectura]
+ * y permitir consultas y escaneo de QR incluso sin conexión.
+ */
 @Serializable
 data class InsumoInventario(
     val id: String,
@@ -21,6 +25,7 @@ data class InsumoInventario(
     /** Versión del saldo en Firebase: un conteo solo se acepta si coincide con la vigente. */
     val revisionStock: Int = 0,
 ) {
+    /** Clasificación visual del stock: `Crítico` (<= 50 % del mínimo), `Bajo` (<= mínimo) u `OK`. */
     val estado: String get() = when {
         !activo -> "Inactivo"
         stockMinimo > 0 && stockActual <= stockMinimo * 0.5 -> "Crítico"
@@ -51,7 +56,11 @@ data class ConteoFisico(
     val motivoResolucion: String? = null,
 ) {
     val diferencia: Double get() = cantidadContada - stockSistema
+
+    /** Tolerancia de `0.001` para evitar falsos descuadres por aritmética de punto flotante. */
     val coincide: Boolean get() = kotlin.math.abs(diferencia) < 0.001
+
+    /** Resumen legible de la desviación respecto al stock del sistema. */
     val estadoConteo: String
         get() = when {
             coincide -> "Cuadrado"
@@ -60,6 +69,7 @@ data class ConteoFisico(
         }
 }
 
+/** Contrato de acceso al catálogo de insumos y registro de conteos físicos de planta. */
 interface InventarioRepository {
     suspend fun catalogo(): List<InsumoInventario>
     suspend fun porQr(codigo: String): InsumoInventario?
@@ -72,6 +82,10 @@ interface InventarioRepository {
         throw OperacionComandaException("El registro de conteos no está disponible.")
 }
 
+/**
+ * Implementación sobre Firebase con respaldo offline: [catalogo] y [porQr] usan [CacheLectura],
+ * y [registrarConteo] se encola en [AccionesSinConexion] con UUID idempotente y [InsumoInventario.revisionStock].
+ */
 class FirebaseInventarioRepository : InventarioRepository {
     override suspend fun catalogo(): List<InsumoInventario> =
         CacheLectura.leer("insumos", ListSerializer(InsumoInventario.serializer())) { catalogoInsumosFirebase() }
@@ -96,6 +110,7 @@ class FirebaseInventarioRepository : InventarioRepository {
     )
 }
 
+/** Puentes `expect`/`actual` por plataforma contra Firebase Data Connect para inventario. */
 internal expect suspend fun catalogoInsumosFirebase(): List<InsumoInventario>
 internal expect suspend fun insumoPorQrFirebase(codigo: String): InsumoInventario?
 internal expect suspend fun misConteosInventarioFirebase(): List<ConteoFisico>

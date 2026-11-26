@@ -24,6 +24,7 @@ data class SolicitudContacto(
     val creadoEn: String,
 )
 
+/** Página de solicitudes de contacto junto con el [total] disponible para paginar. */
 data class PaginaSolicitudes(val solicitudes: List<SolicitudContacto>, val total: Int)
 
 /** Rol del catálogo `Rol`; el id hace falta para crear usuarios y avisos dirigidos. */
@@ -36,11 +37,14 @@ enum class DestinatarioAviso(val etiqueta: String, val rol: String?) {
     RECEPCIONISTA("Recepción", "recepcionista"),
 }
 
+/** Datos para publicar un nuevo aviso interno desde administración. */
 data class NuevoAvisoInput(val titulo: String, val contenido: String, val destinatario: DestinatarioAviso)
 
+/** Límites de longitud para avisos, sincronizados con las validaciones del servidor. */
 const val TITULO_AVISO_MAXIMO = 120
 const val CONTENIDO_AVISO_MAXIMO = 1000
 
+/** Devuelve el mensaje de error si el aviso incumple límites o está vacío, o `null` si es válido. */
 fun validarAviso(input: NuevoAvisoInput): String? = when {
     input.titulo.isBlank() || input.titulo.trim().length > TITULO_AVISO_MAXIMO ->
         "Escribe un título de hasta $TITULO_AVISO_MAXIMO caracteres."
@@ -97,14 +101,17 @@ fun validarNuevoUsuario(input: NuevoUsuarioInput): String? {
     }
 }
 
+/** Valida los campos obligatorios al editar una cuenta existente. */
 fun validarEdicionUsuario(rolId: String, nombre: String): String? =
     if (rolId.isBlank() || nombre.isBlank()) "El rol y el nombre son obligatorios." else null
 
+/** Dirección de un movimiento de stock de inventario. */
 enum class TipoMovimientoInventario(val etiqueta: String) {
     ENTRADA("Entrada"),
     SALIDA("Salida"),
 }
 
+/** Registro histórico de una entrada o salida de inventario con autor y motivo. */
 data class MovimientoInventario(
     val id: String,
     val tipo: TipoMovimientoInventario,
@@ -116,6 +123,7 @@ data class MovimientoInventario(
     val usuario: String?,
 )
 
+/** Página de movimientos de inventario con el [total] disponible para paginar. */
 data class PaginaMovimientos(val movimientos: List<MovimientoInventario>, val total: Int)
 
 /** Conteo físico visto por administración, con quién lo registró y el stock vigente. */
@@ -141,8 +149,10 @@ data class ConteoGestion(
     val desactualizado: Boolean get() = revisionConteo != revisionActual
 }
 
+/** Datos para dar de alta un insumo en el catálogo de inventario. */
 data class NuevoInsumoInput(val nombre: String, val unidad: String, val stockInicial: Double, val stockMinimo: Double)
 
+/** Valida nombre, unidad y stocks no negativos al crear o editar un insumo. */
 fun validarInsumo(nombre: String, unidad: String, stockMinimo: Double, stockInicial: Double = 0.0): String? = when {
     nombre.isBlank() || nombre.length > 80 -> "Escribe un nombre de hasta 80 caracteres."
     unidad.isBlank() || unidad.length > 20 -> "Escribe una unidad de medida de hasta 20 caracteres."
@@ -150,6 +160,7 @@ fun validarInsumo(nombre: String, unidad: String, stockMinimo: Double, stockInic
     else -> null
 }
 
+/** Valida la cantidad de una entrada o salida, impidiendo egresos mayores al [stockActual]. */
 fun validarMovimiento(cantidad: Double?, stockActual: Double, tipo: TipoMovimientoInventario): String? = when {
     cantidad == null || cantidad <= 0 -> "Ingresa una cantidad mayor que cero."
     tipo == TipoMovimientoInventario.SALIDA && cantidad > stockActual -> "La salida supera el stock disponible."
@@ -169,6 +180,10 @@ data class ResumenPanel(
 /** Fila de un reporte agregado (por cliente/empresa o por servicio). */
 data class FilaReporte(val etiqueta: String, val comandas: Int, val prendas: Int, val monto: Double)
 
+/**
+ * Reporte operativo de un periodo agrupado por cuenta y por servicio. Los totales globales se
+ * suman sobre [porCuenta] porque cada comanda pertenece a una única cuenta.
+ */
 data class ReporteGestion(
     val desde: String,
     val hasta: String,

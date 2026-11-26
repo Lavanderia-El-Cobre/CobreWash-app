@@ -9,6 +9,10 @@ import java.io.IOException
 private var carpetaEvidencias: File? = null
 private const val RETENCION_TEMPORAL_MS = 48L * 60 * 60 * 1000
 
+/**
+ * Inicializa la carpeta privada de evidencias fotográficas y purga capturas temporales
+ * vencidas (> 48 h) que no pertenezcan a acciones pendientes de sincronización.
+ */
 fun inicializarArchivosEvidencia(context: Context) {
     // La cola debe estar cargada antes de limpiar: sus fotos aún no subidas no se borran.
     inicializarAccionesSinConexion(context)
@@ -16,11 +20,17 @@ fun inicializarArchivosEvidencia(context: Context) {
     limpiarArchivosEvidencia(carpetaEvidencias, System.currentTimeMillis() - RETENCION_TEMPORAL_MS)
 }
 
-/** Fotos de acciones en cola (modo sin conexión): se conservan hasta que se suban o se descarte la acción. */
+/**
+ * Rutas canónicas de fotos referenciadas por la cola sin conexión.
+ * Se protegen de la limpieza automática hasta que se confirmen o se descarte la acción.
+ */
 private fun fotosEnCola(): Set<String> = AccionesSinConexion.cola?.rutasFotos().orEmpty()
     .mapNotNull { runCatching { File(it.removePrefix("file://")).canonicalPath }.getOrNull() }.toSet()
 
-/** Solo archivos temporales propios: nunca borra directorios ni sigue rutas fuera de la carpeta. */
+/**
+ * Elimina capturas temporales anteriores a [antesDe] dentro de [carpeta], excluyendo
+ * las rutas en [protegidas]. Nunca borra directorios ni sigue rutas fuera de la carpeta.
+ */
 internal fun limpiarArchivosEvidencia(carpeta: File?, antesDe: Long = Long.MAX_VALUE, protegidas: Set<String> = fotosEnCola()) {
     carpeta?.listFiles()?.forEach { archivo ->
         val enCola = runCatching { archivo.canonicalPath in protegidas }.getOrDefault(false)
@@ -28,11 +38,16 @@ internal fun limpiarArchivosEvidencia(carpeta: File?, antesDe: Long = Long.MAX_V
     }
 }
 
+/**
+ * Verifica mediante ruta canónica que [archivo] sea un JPEG generado por la app (`captura-*.jpg`)
+ * y resida directamente en [carpeta], evitando borrados fuera del directorio privado.
+ */
 internal fun esCapturaPropia(carpeta: File, archivo: File): Boolean = try {
     archivo.isFile && archivo.name.startsWith("captura-") && archivo.extension == "jpg" &&
         archivo.canonicalFile.parentFile == carpeta.canonicalFile
 } catch (_: IOException) { false }
 
+/** Borra del dispositivo las capturas locales ya confirmadas en el servidor. */
 internal fun eliminarCapturasConfirmadas(rutas: List<String>) {
     val carpeta = carpetaEvidencias ?: return
     rutas.forEach { ruta ->
@@ -41,4 +56,8 @@ internal fun eliminarCapturasConfirmadas(rutas: List<String>) {
     }
 }
 
+/**
+ * Purga las capturas locales al cerrar sesión para no dejar fotografías operativas
+ * en dispositivos compartidos, respetando las protegidas por la cola pendiente.
+ */
 internal fun eliminarCapturasAlSalir() = limpiarArchivosEvidencia(carpetaEvidencias)

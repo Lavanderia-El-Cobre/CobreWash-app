@@ -97,11 +97,24 @@ import com.elcobre.lavanderiaelcobre.ui.components.rememberAccionesPendientes
 import com.elcobre.lavanderiaelcobre.ui.components.ChipTono
 import com.elcobre.lavanderiaelcobre.ui.components.Tono
 
+/** Ancho mínimo para activar la vista dividida maestro-detalle en tablet. */
 private val ANCHO_TABLET_SPLIT = 720.dp
 
 /** Ancho de la lista de comandas junto al detalle en tablet. */
 private val AnchoListaTablet = 360.dp
 
+/**
+ * Tablero principal de seguimiento de producción para el rol Operario de planta.
+ *
+ * Permite buscar comandas por código o cliente, filtrar por [TipoComanda], inspeccionar
+ * el avance por etapas y registrar avances, comentarios o alertas. Se adapta al ancho
+ * disponible: en móvil muestra tarjetas expandibles que navegan al detalle (con
+ * transición compartida opcional); en tablet (`>= ANCHO_TABLET_SPLIT`) divide la vista
+ * en lista fija y panel de detalle en línea.
+ *
+ * Mantiene en estado local el filtro, el texto de búsqueda, la tarjeta expandida y la
+ * comanda seleccionada, derivando la lista visible de forma reactiva sobre [pedidos].
+ */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun DashboardScreen(
@@ -339,7 +352,7 @@ private fun MobileDashboardLayout(
             },
             onAvanzarEtapa = onAvanzarEtapa,
             onSeleccionar = onAbrirPedido,
-            onDoubleClick = { }, // En móvil no usamos doble clic para ocultar sidebar
+            onDoubleClick = { }, // En móvil el detalle se abre con toque simple.
             onLimpiar = {
                 onFiltroChange(null)
                 onBusquedaChange("")

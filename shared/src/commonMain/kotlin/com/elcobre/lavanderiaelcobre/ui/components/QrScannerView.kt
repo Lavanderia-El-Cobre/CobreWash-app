@@ -4,11 +4,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
 /**
- * Componente multiplataforma que renderiza la vista de cámara y escanea códigos QR.
- * En Android utiliza CameraX y ML Kit (Barcode Scanning).
- * 
- * @param onQrCodeScanned Callback que se invoca con el contenido (rawValue) del QR detectado.
- * @param isActive Controla si el escáner debe estar activo procesando frames o pausado.
+ * Componente multiplataforma que renderiza la vista nativa de cámara y escanea códigos QR
+ * (en Android mediante CameraX y ML Kit Barcode Scanning).
+ *
+ * @param isActive Controla si el escáner procesa fotogramas o permanece pausado.
+ * @param onQrCodeScanned Callback invocado con el contenido (`rawValue`) del QR detectado.
  */
 @Composable
 expect fun QrScannerView(

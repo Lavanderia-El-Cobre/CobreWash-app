@@ -13,9 +13,13 @@ import com.elcobre.lavanderiaelcobre.dataconnect.ref
 import com.google.firebase.dataconnect.QueryRef
 import java.util.UUID
 
+/** Implementación Android de [ComunicacionRepository] conectada a Firebase Data Connect. */
 actual fun crearComunicacionRepository(): ComunicacionRepository = FirebaseComunicacionRepository()
 
-/** Cotizaciones (`/intranet/solicitudes`) y comunicación interna (`/intranet/comunicacion`). */
+/**
+ * Gestiona solicitudes de cotización (`/intranet/solicitudes`) y avisos internos
+ * (`/intranet/comunicacion`) consultando siempre directo al servidor.
+ */
 private class FirebaseComunicacionRepository : ComunicacionRepository {
     private val dc get() = ExampleConnector.instance
 

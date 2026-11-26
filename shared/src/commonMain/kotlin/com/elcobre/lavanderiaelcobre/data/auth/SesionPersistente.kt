@@ -25,12 +25,22 @@ expect object SesionPersistente {
 
     /** La sesión recordada vigente en [ahoraMs], o `null` si no hay o ya venció (y la borra). */
     fun obtener(ahoraMs: Long): DatosSesionGuardada?
+
+    /** Elimina la sesión guardada en el dispositivo (al cerrar sesión o invalidar la cuenta). */
     fun limpiar()
+
+    /** Indica si existe una sesión recordada almacenada localmente. */
     fun estaRecordado(): Boolean
+
+    /** Persiste la preferencia del interruptor "Recordarme" en la pantalla de ingreso. */
     fun setRecordarme(recordar: Boolean)
+
+    /** Devuelve la última preferencia guardada del interruptor "Recordarme". */
     fun getRecordarme(): Boolean
 
-    /** Registro del bloqueo de intentos de ingreso ([IntentosIngreso]); `null` lo borra. */
+    /** Registro serializado del bloqueo de intentos de ingreso ([IntentosIngreso]). */
     fun leerIntentos(): String?
+
+    /** Persiste el registro de intentos fallidos; `null` lo elimina. */
     fun guardarIntentos(valor: String?)
 }

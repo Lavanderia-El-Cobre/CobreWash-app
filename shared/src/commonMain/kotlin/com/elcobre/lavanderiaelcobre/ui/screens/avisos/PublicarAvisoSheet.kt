@@ -20,7 +20,10 @@ import com.elcobre.lavanderiaelcobre.ui.gestion.AvisosEquipoViewModel
 import com.elcobre.lavanderiaelcobre.ui.screens.produccion.ErrorHoja
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 
-/** Publicación de un aviso para todos, operarios o recepción (`/intranet/comunicacion`). */
+/**
+ * Hoja modal de administración para publicar un aviso dirigido a todos, operarios o
+ * recepción (`/intranet/comunicacion`). Impide cerrar la hoja mientras el envío está en curso.
+ */
 @Composable
 fun PublicarAvisoSheet(vm: AvisosEquipoViewModel, onCerrar: () -> Unit) {
     var titulo by remember { mutableStateOf("") }

@@ -2,7 +2,10 @@ package com.elcobre.lavanderiaelcobre.data.auth
 
 /** Resultado de un intento de autenticación contra Firebase Auth. */
 sealed interface AuthResultado {
+    /** Autenticación aceptada con el identificador y correo de la cuenta. */
     data class Exito(val uid: String, val email: String) : AuthResultado
+
+    /** Fallo legible y clasificado en [fallo] para alimentar el bloqueo progresivo ([IntentosIngreso]). */
     data class Error(val mensaje: String, val fallo: FalloIngreso = FalloIngreso.OTRO) : AuthResultado
 }
 

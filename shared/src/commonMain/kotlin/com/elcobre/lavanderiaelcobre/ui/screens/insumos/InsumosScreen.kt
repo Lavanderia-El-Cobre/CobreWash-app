@@ -60,6 +60,7 @@ import com.elcobre.lavanderiaelcobre.ui.theme.CobreColors
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreShapes
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 
+/** Filtros rápidos para el catálogo de insumos en bodega. */
 private enum class FiltroInsumo(val etiqueta: String) {
     TODOS("Todos"),
     ALERTA("Stock bajo"),
@@ -67,9 +68,15 @@ private enum class FiltroInsumo(val etiqueta: String) {
 }
 
 /**
- * Catálogo real de Firebase con verificación de conteo físico por QR para el operario
- * (RF-IN10). Título grande, KPIs, búsqueda y filtro segmentado; el escaneo se abre en
- * una hoja inferior.
+ * Catálogo de inventario conectado a Firebase con verificación de conteo físico por QR
+ * para el rol Operario de planta (`RF-IN10`).
+ *
+ * Presenta KPIs resumen, búsqueda por nombre o código QR, filtro segmentado y escaneo
+ * en hoja inferior ([EscanerInsumo]). El operario solo envía conteos físicos para
+ * revisión; los ajustes definitivos de stock quedan reservados a administración.
+ *
+ * Mantiene en estado local el término de búsqueda, el filtro activo y la apertura del
+ * escáner, mientras delega los datos y el registro de conteos a [inventario].
  */
 @Composable
 fun InsumosScreen(inventario: InventarioState, applySystemBarsInsets: Boolean = true) {
@@ -279,15 +286,17 @@ private fun KpiInsumo(titulo: String, valor: String, colorValor: Color, modifier
     }
 }
 
+/** Formatea cantidades con coma decimal y omite `.0` en valores enteros. */
 private fun cantidad(valor: Double): String = valor.toString().removeSuffix(".0").replace('.', ',')
 
-/** Color del estado de stock: OK = éxito, crítico = peligro, resto = aviso. */
+/** Color de acento del estado de stock: OK = éxito, crítico = peligro, resto = aviso. */
 private fun colorParaEstadoInsumo(estado: String, colors: CobreColors): Color = when {
     estado.equals("OK", ignoreCase = true) -> colors.success
     estado.contains("Crítico", ignoreCase = true) -> colors.danger
     else -> colors.warning
 }
 
+/** Variante de texto con contraste legible sobre fondos claros y oscuros. */
 private fun textoParaEstadoInsumo(estado: String, colors: CobreColors): Color = when {
     estado.equals("OK", ignoreCase = true) -> colors.successText
     estado.contains("Crítico", ignoreCase = true) -> colors.dangerText
@@ -305,6 +314,8 @@ private fun InsumoCard(
     val colorEstado = colorParaEstadoInsumo(insumo.estado, colors)
     val textoEstado = textoParaEstadoInsumo(insumo.estado, colors)
     val iconoEstado = if (insumo.estado == "OK") CobreIcons.CheckCircle else CobreIcons.Warning
+    // Usa el doble del mínimo como referencia de barra llena y garantiza 5 % visible
+    // para que un stock en cero siga mostrando indicador de estado.
     val proporcion = if (insumo.stockMinimo > 0.0) {
         (insumo.stockActual / (insumo.stockMinimo * 2.0)).toFloat().coerceIn(0.05f, 1f)
     } else {

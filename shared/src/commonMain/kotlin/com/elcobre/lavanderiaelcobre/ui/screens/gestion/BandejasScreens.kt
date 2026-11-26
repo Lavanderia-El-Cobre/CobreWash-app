@@ -48,7 +48,10 @@ private fun tonoSolicitud(estado: EstadoSolicitud): Tono = when (estado) {
 /** Filtro "Todas" + cada estado, para los chips de las bandejas. */
 private data class OpcionFiltro<T>(val etiqueta: String, val valor: T?)
 
-/** Incidencias de producción con su gestión de estado (admin y recepción). */
+/**
+ * Bandeja de incidencias de producción y reparto para administración y recepción. Permite
+ * filtrar por estado y cambiar la resolución directamente desde cada tarjeta.
+ */
 @Composable
 fun IncidenciasScreen(vm: IncidenciasViewModel, applySystemBarsInsets: Boolean = true) {
     val opciones = listOf(OpcionFiltro<EstadoIncidencia>("Todas", null)) + EstadoIncidencia.entries.map { OpcionFiltro(it.etiqueta, it) }
@@ -83,6 +86,7 @@ fun IncidenciasScreen(vm: IncidenciasViewModel, applySystemBarsInsets: Boolean =
     }
 }
 
+/** Tarjeta de incidencia con franja roja si está abierta y selector inline de estado. */
 @Composable
 private fun IncidenciaCard(incidencia: IncidenciaGestion, guardando: Boolean, onCambiar: (EstadoIncidencia) -> Unit, modifier: Modifier) {
     val colors = CobreTheme.colors
@@ -114,7 +118,10 @@ private fun IncidenciaCard(incidencia: IncidenciaGestion, guardando: Boolean, on
     }
 }
 
-/** Bandeja de cotizaciones del sitio público, con su estado de atención. */
+/**
+ * Bandeja de cotizaciones enviadas desde el sitio público (recepción y administración),
+ * con filtro remoto por estado, paginación incremental y cambio directo de estado.
+ */
 @Composable
 fun CotizacionesScreen(vm: CotizacionesViewModel, applySystemBarsInsets: Boolean = true) {
     val opciones = listOf(OpcionFiltro<EstadoSolicitud>("Todas", null)) + EstadoSolicitud.entries.map { OpcionFiltro(it.etiqueta, it) }

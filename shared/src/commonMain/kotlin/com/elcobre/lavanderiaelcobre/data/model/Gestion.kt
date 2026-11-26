@@ -16,6 +16,7 @@ enum class EstadoComanda(val etiqueta: String) {
     }
 }
 
+/** Tipo de cliente de la ficha; en [HOTEL] el detalle registra entregado, recibido y pendiente. */
 enum class TipoClienteFicha(val etiqueta: String) {
     PARTICULAR("Particular"),
     HOTEL("Hotel"),
@@ -43,6 +44,7 @@ data class ClienteFicha(
     val ultimaComanda: String? = null,
 )
 
+/** Servicio del catálogo de tarifas (`TipoServicio`) con su precio base y precio sugerido por kg. */
 data class TipoServicioCatalogo(
     val id: String,
     val nombre: String,
@@ -52,6 +54,7 @@ data class TipoServicioCatalogo(
     val precioKg: Double = 0.0,
 )
 
+/** Tipo de prenda disponible en el catálogo (`TipoPrenda`). */
 data class TipoPrendaCatalogo(val id: String, val nombre: String)
 
 /** Catálogos que necesita el formulario de comanda (`GetCatalogosComanda`). */
@@ -75,6 +78,7 @@ data class LineaComanda(
     val subtotal: Double get() = subtotalGuardado ?: (cantidad * precioUnitario)
 }
 
+/** Estado de avance de una etapa dentro del flujo de producción de una comanda. */
 enum class EstadoEtapaProduccion(val etiqueta: String) {
     PENDIENTE("Pendiente"),
     EN_PROCESO("En proceso"),
@@ -101,6 +105,7 @@ data class EtapaComanda(
     val inicioMs: Long? = null,
 )
 
+/** Evento del historial cronológico de trazabilidad de una comanda. */
 data class EventoComanda(val titulo: String, val detalle: String, val fecha: String, val autor: String)
 
 /** Comanda vista desde recepción o administración (lista y detalle). */
@@ -150,6 +155,7 @@ data class ComandaGestion(
 /** Límites iniciales por etapa en minutos, como `LIMITES_ETAPAS` de la web. */
 private val LimitesEtapasMin = mapOf(1 to 15, 2 to 90, 3 to 60, 4 to 60, 5 to 1440)
 
+/** Devuelve el límite de tiempo en minutos de la etapa, o el valor por defecto según su [orden]. */
 fun limiteEtapaMin(orden: Int, minutos: Int?): Int? = minutos ?: LimitesEtapasMin[orden]
 
 /**
@@ -174,6 +180,7 @@ private fun vencimientoEtapaActual(comanda: ComandaGestion): Long? {
     return if (inicio != null && limite != null) inicio + limite * 60_000L else null
 }
 
+/** Porcentaje entero (0..100) de etapas completadas dentro del flujo de una comanda. */
 fun progresoEtapas(etapas: List<EtapaComanda>): Int {
     if (etapas.isEmpty()) return 0
     return etapas.count { it.estado == EstadoEtapaProduccion.COMPLETADA } * 100 / etapas.size
@@ -191,6 +198,7 @@ data class FiltroComandas(
     val cliente: String = "",
 )
 
+/** Resultado paginado de comandas con los conteos acumulados por [EstadoComanda]. */
 data class PaginaComandas(
     val comandas: List<ComandaGestion>,
     val total: Int,
@@ -200,12 +208,14 @@ data class PaginaComandas(
 /** Persona que puede recibir asignaciones (operario) o salidas (repartidor). */
 data class PersonaRef(val id: String, val nombre: String)
 
+/** Página de seguimiento de planta junto con la lista de operarios disponibles para reasignar. */
 data class PaginaProduccion(
     val comandas: List<ComandaGestion>,
     val total: Int,
     val operarios: List<PersonaRef>,
 )
 
+/** Estados posibles del ciclo de vida de una incidencia de producción o entrega. */
 enum class EstadoIncidencia(val etiqueta: String) {
     ABIERTA("Abierta"),
     EN_REVISION("En revisión"),
@@ -217,6 +227,7 @@ enum class EstadoIncidencia(val etiqueta: String) {
     }
 }
 
+/** Incidencia reportada en planta o entrega, vista desde la bandeja de recepción y administración. */
 data class IncidenciaGestion(
     val id: String,
     val motivo: String,

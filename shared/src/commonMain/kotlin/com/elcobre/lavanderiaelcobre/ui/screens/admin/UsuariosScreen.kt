@@ -79,7 +79,11 @@ private sealed interface HojaUsuario {
     data class Editar(val usuario: UsuarioGestion) : HojaUsuario
 }
 
-/** Gestión de cuentas (`/intranet/usuarios`). */
+/**
+ * Gestión de cuentas para administración (`/intranet/usuarios`): búsqueda, filtro por
+ * vigencia, alta con invitación por correo y edición. Activa [ProtegerCapturas] por
+ * exhibir datos personales (correo y RUT).
+ */
 @Composable
 fun UsuariosScreen(vm: UsuariosViewModel, applySystemBarsInsets: Boolean = true) {
     ProtegerCapturas()
@@ -147,6 +151,10 @@ private fun UsuarioCard(usuario: UsuarioGestion, onClick: () -> Unit, modifier: 
     }
 }
 
+/**
+ * Hoja de alta de cuenta. Muestra tipo de cliente y dirección solo cuando se elige el rol
+ * `cliente`, y exige confirmar que la persona fue informada de Términos y Privacidad.
+ */
 @Composable
 private fun NuevoUsuarioSheet(vm: UsuariosViewModel, onCerrar: () -> Unit) {
     var datos by remember { mutableStateOf(NuevoUsuarioInput("", "", "", "", "", "", "")) }
@@ -215,6 +223,10 @@ private fun SelectorRol(roles: List<RolRef>, rolId: String, onSeleccionar: (RolR
     )
 }
 
+/**
+ * Hoja de edición de cuenta existente. Usa confirmación en dos pasos (`confirmarEstado`)
+ * para evitar desactivar o reactivar cuentas por un toque accidental.
+ */
 @Composable
 private fun EditarUsuarioSheet(vm: UsuariosViewModel, usuario: UsuarioGestion, onCerrar: () -> Unit) {
     var rolId by remember { mutableStateOf(usuario.rol.id) }

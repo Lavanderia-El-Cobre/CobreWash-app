@@ -10,14 +10,21 @@ import com.google.firebase.dataconnect.QueryRef
 import java.util.UUID
 import com.google.firebase.auth.FirebaseAuth
 
+/** Registra un comentario operativo en el historial de la comanda vía Data Connect. */
 actual suspend fun comentarComandaFirebase(id: String, texto: String): Unit = solicitud<Unit> {
     ExampleConnector.instance.agregarComentarioComanda.execute(UUID.fromString(id), texto.trim())
 }
 
+/** Registra una incidencia operativa sobre una comanda en Firebase Data Connect. */
 actual suspend fun alertarComandaFirebase(id: String, motivo: String, texto: String): Unit = solicitud<Unit> {
     ExampleConnector.instance.registrarIncidenciaComanda.execute(UUID.fromString(id), motivo) { descripcion = texto }
 }
 
+/**
+ * Resuelve las incidencias abiertas de una comanda desde la vista de operario.
+ * Valida antes de mutar que todas pertenezcan al usuario autenticado, respetando la
+ * regla de autorización que reserva a administración las reportadas por terceros.
+ */
 actual suspend fun resolverComandaFirebase(id: String): Unit = solicitud<Unit> {
     val incidencias = ExampleConnector.instance.getComandaDetalleOperario.ref(UUID.fromString(id))
         .execute(QueryRef.FetchPolicy.SERVER_ONLY).data.comanda?.incidenciaComandas_on_comanda.orEmpty()
@@ -29,6 +36,10 @@ actual suspend fun resolverComandaFirebase(id: String): Unit = solicitud<Unit> {
     for (incidencia in incidencias) ExampleConnector.instance.resolverMiIncidencia.execute(incidencia.id)
 }
 
+/**
+ * Busca una comanda por su número exacto (sin distinguir mayúsculas) consultando
+ * el seguimiento de producción y cargando luego su detalle operativo completo.
+ */
 actual suspend fun buscarNumeroComandaFirebase(numero: String): Pedido? = solicitud {
     val filas = ExampleConnector.instance.getSeguimientoProduccion.ref { buscar = numero.trim(); limit = 100 }
         .execute(QueryRef.FetchPolicy.SERVER_ONLY).data.comandas

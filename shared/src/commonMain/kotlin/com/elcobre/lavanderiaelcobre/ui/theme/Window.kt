@@ -18,12 +18,14 @@ enum class HeightClass { Compact, Medium, Expanded }
  */
 @Immutable
 data class CobreWindow(val width: Dp, val height: Dp) {
+    /** Clasificación de ancho según breakpoints de Material 3 (600 dp y 840 dp). */
     val widthClass: WidthClass = when {
         width < 600.dp -> WidthClass.Compact
         width < 840.dp -> WidthClass.Medium
         else -> WidthClass.Expanded
     }
 
+    /** Clasificación de alto según breakpoints de Material 3 (480 dp y 900 dp). */
     val heightClass: HeightClass = when {
         height < 480.dp -> HeightClass.Compact
         height < 900.dp -> HeightClass.Medium

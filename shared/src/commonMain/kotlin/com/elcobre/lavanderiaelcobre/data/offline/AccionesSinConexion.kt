@@ -25,6 +25,7 @@ object AccionesSinConexion {
     /** Estado de la red según la plataforma (para el aviso "Sin conexión"). */
     val conectado: StateFlow<Boolean> = _conectado.asStateFlow()
 
+    /** Registra la cola, el sincronizador y los hooks nativos al iniciar la aplicación. */
     fun configurar(cola: ColaAcciones, sincronizador: Sincronizador, uidActual: () -> String?, programarEnvio: () -> Unit) {
         this.cola = cola
         this.sincronizador = sincronizador
@@ -32,10 +33,12 @@ object AccionesSinConexion {
         this.programarEnvio = programarEnvio
     }
 
+    /** Actualiza el estado de red reportado por el monitor de conectividad de la plataforma. */
     fun informarConexion(conectado: Boolean) {
         _conectado.value = conectado
     }
 
+    /** UID de la cuenta autenticada actualmente, o `null` si no hay sesión activa. */
     fun uid(): String? = uidActual()
 
     /**

@@ -35,8 +35,10 @@ import com.elcobre.lavanderiaelcobre.dataconnect.ref
 import com.google.firebase.dataconnect.QueryRef
 import java.util.UUID
 
+/** Implementación Android de [RecepcionRepository] respaldada por Firebase Data Connect. */
 actual fun crearRecepcionRepository(): RecepcionRepository = FirebaseRecepcionRepository()
 
+/** Política sin caché local para evitar estados desactualizados en recepción y caja. */
 private val SERVER = QueryRef.FetchPolicy.SERVER_ONLY
 
 private fun tipoClienteDc(tipo: TipoClienteFicha): TipoCliente =

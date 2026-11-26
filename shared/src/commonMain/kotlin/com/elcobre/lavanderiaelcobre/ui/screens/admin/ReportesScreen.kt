@@ -51,7 +51,10 @@ import com.elcobre.lavanderiaelcobre.ui.screens.produccion.ErrorHoja
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreShapes
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 
-/** Reportes por periodo: comandas recibidas, prendas y facturación por cuenta y por servicio. */
+/**
+ * Reportes de administración (`/intranet/reportes`) filtrables por periodo: muestra KPIs
+ * de volumen y facturación junto con desgloses por cliente/empresa y por servicio.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ReportesScreen(vm: ReportesViewModel, applySystemBarsInsets: Boolean = true) {
@@ -90,7 +93,10 @@ fun ReportesScreen(vm: ReportesViewModel, applySystemBarsInsets: Boolean = true)
     }
 }
 
-/** Filas con barra proporcional al monto: se lee de un vistazo en tablet y en teléfono. */
+/**
+ * Filas con barra proporcional al monto máximo (hasta [MAX_FILAS] entradas). Agrupa la
+ * semántica de cada fila para que lectores de pantalla anuncien etiqueta, volumen y monto.
+ */
 @Composable
 private fun TablaReporte(filas: List<FilaReporte>, modifier: Modifier) {
     val colors = CobreTheme.colors
@@ -135,7 +141,10 @@ private fun TablaReporte(filas: List<FilaReporte>, modifier: Modifier) {
 
 private const val MAX_FILAS = 25
 
-/** Configuración de las etapas del flujo: nombre, descripción y tiempo estimado. */
+/**
+ * Configuración de etapas del flujo de producción para administración: permite editar
+ * nombre, descripción y tiempo estimado de alerta. Los cambios aplican solo a flujos nuevos.
+ */
 @Composable
 fun EtapasScreen(vm: EtapasViewModel, applySystemBarsInsets: Boolean = true) {
     var editando by remember { mutableStateOf<EtapaConfig?>(null) }
@@ -173,6 +182,7 @@ fun EtapasScreen(vm: EtapasViewModel, applySystemBarsInsets: Boolean = true) {
     editando?.let { etapa -> EditarEtapaSheet(vm, etapa, onCerrar = { editando = null }) }
 }
 
+/** Hoja de edición de una etapa; si el tiempo queda vacío usa el límite sugerido por defecto. */
 @Composable
 private fun EditarEtapaSheet(vm: EtapasViewModel, etapa: EtapaConfig, onCerrar: () -> Unit) {
     var nombre by remember { mutableStateOf(etapa.nombre) }

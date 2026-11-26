@@ -33,6 +33,7 @@ class ClientesViewModel(
     var busqueda by mutableStateOf("")
         private set
 
+    /** Filtra localmente por nombre, correo o RUT normalizado sin puntos ni guion. */
     val filtrados: List<ClienteFicha>
         get() {
             val q = busqueda.trim().lowercase()
@@ -92,10 +93,13 @@ class ProduccionViewModel(
         private set
     private var limite = PAGINA_COMANDAS
     private var busquedaJob: Job? = null
+
+    // Contador para descartar respuestas antiguas si el usuario cambia la búsqueda rápido.
     private var consulta = 0
 
     val hayMas: Boolean get() = comandas.size < total
 
+    /** Carga las comandas activas en planta; con [mas] amplía el límite en una página. */
     fun refrescar(mas: Boolean = false) {
         if (mas && !hayMas) return
         if (mas) limite += PAGINA_COMANDAS
@@ -112,6 +116,7 @@ class ProduccionViewModel(
         }
     }
 
+    /** Aplica espera de 350 ms antes de consultar para evitar solicitudes en cada pulsación. */
     fun buscar(texto: String) {
         busqueda = texto
         limite = PAGINA_COMANDAS
@@ -122,6 +127,7 @@ class ProduccionViewModel(
         }
     }
 
+    /** Completa la etapa en curso de [comanda] y refresca la vista incluso si hubo conflicto. */
     fun completarEtapa(comanda: ComandaGestion) {
         val etapa = comanda.etapaActual ?: return
         operar("${etapa.nombre} completada en ${comanda.numero}.", alTerminar = {
@@ -130,6 +136,7 @@ class ProduccionViewModel(
         }) { repository.completarEtapa(comanda) }
     }
 
+    /** Asocia el flujo estándar de etapas a una comanda recibida sin producción iniciada. */
     fun asociarFlujo(comanda: ComandaGestion) {
         operar("Flujo asociado a ${comanda.numero}.", alTerminar = {
             if (it != null) error = it
@@ -137,6 +144,7 @@ class ProduccionViewModel(
         }) { recepcion.asociarFlujo(comanda.id) }
     }
 
+    /** Reasigna la etapa activa de [comanda] a otro [operario] (uso exclusivo de administración). */
     fun reasignar(comanda: ComandaGestion, etapaId: String, operario: PersonaRef, motivo: String, alTerminar: (String?) -> Unit) {
         operar("${operario.nombre} quedó a cargo en ${comanda.numero}.", alTerminar = {
             alTerminar(it)
@@ -144,6 +152,7 @@ class ProduccionViewModel(
         }) { repository.reasignar(comanda.id, etapaId, operario.id, motivo) }
     }
 
+    /** Registra una incidencia sobre [comanda] para visibilidad de recepción y administración. */
     fun reportarIncidencia(comanda: ComandaGestion, motivo: String, descripcion: String, alTerminar: (String?) -> Unit) {
         operar("Incidencia registrada en ${comanda.numero}.", alTerminar = alTerminar) {
             repository.reportarIncidencia(comanda.id, motivo, descripcion)
@@ -173,6 +182,8 @@ class IncidenciasViewModel(
         private set
 
     val filtradas: List<IncidenciaGestion> get() = filtro?.let { f -> incidencias.filter { it.estado == f } } ?: incidencias
+
+    /** Cantidad de incidencias aún pendientes (abiertas o en revisión). */
     val abiertas: Int get() = incidencias.count { it.estado != EstadoIncidencia.RESUELTA }
 
     fun refrescar() = cargar { incidencias = repository.incidencias() }
@@ -181,6 +192,7 @@ class IncidenciasViewModel(
         filtro = estado
     }
 
+    /** Actualiza el estado de [incidencia]; ignora el envío si ya se encuentra en [estado]. */
     fun cambiarEstado(incidencia: IncidenciaGestion, estado: EstadoIncidencia) {
         if (incidencia.estado == estado) return
         operar("Incidencia de ${incidencia.numeroComanda}: ${estado.etiqueta.lowercase()}.", alTerminar = {
@@ -211,6 +223,7 @@ class CotizacionesViewModel(
 
     val hayMas: Boolean get() = solicitudes.size < total
 
+    /** Carga cotizaciones para el [filtro] vigente descartando respuestas si cambió en vuelo. */
     fun refrescar(mas: Boolean = false) {
         if (mas && !hayMas) return
         if (mas) limite += PAGINA_COMANDAS
@@ -225,12 +238,14 @@ class CotizacionesViewModel(
         }
     }
 
+    /** Cambia el filtro de estado, reinicia la paginación y recarga desde el servidor. */
     fun filtrar(estado: EstadoSolicitud?) {
         filtro = estado
         limite = PAGINA_COMANDAS
         refrescar()
     }
 
+    /** Actualiza el estado de atención de [solicitud] si difiere del actual. */
     fun cambiarEstado(solicitud: SolicitudContacto, estado: EstadoSolicitud) {
         if (solicitud.estado == estado) return
         operar("Solicitud de ${solicitud.nombre}: ${estado.etiqueta.lowercase()}.", alTerminar = {

@@ -72,7 +72,7 @@ private fun statusColors(light: Color, dark: Color): ChipColors {
     } else {
         ChipColors(
             container = light.copy(alpha = 0.14f),
-            content = lerp(light, Color.Black, 0.28f), // más oscuro => texto AA sobre el tint
+            content = lerp(light, Color.Black, 0.28f), // Oscurece el matiz para garantizar contraste AA sobre el tinte.
             accent = light,
         )
     }
@@ -95,6 +95,7 @@ fun tipoIcon(tipo: TipoComanda): ImageVector = when (tipo) {
     TipoComanda.DOMICILIO -> CobreIcons.LocalShipping
 }
 
+/** Ícono representativo de cada etapa del proceso productivo. */
 fun etapaIcon(etapa: EtapaProceso): ImageVector = when (etapa) {
     EtapaProceso.RETIRO -> CobreIcons.LocalShipping
     EtapaProceso.RECEPCION -> CobreIcons.Inbox
@@ -106,6 +107,7 @@ fun etapaIcon(etapa: EtapaProceso): ImageVector = when (etapa) {
     EtapaProceso.ENTREGA_DOMICILIO -> CobreIcons.LocalShipping
 }
 
+/** Colores semánticos por nivel de prioridad (alta = rojo, media = ámbar, baja = neutro). */
 @Composable
 fun prioridadColors(prioridad: Prioridad): ChipColors = when (prioridad) {
     Prioridad.ALTA -> statusColors(StatusRed, StatusRedDark)
@@ -131,12 +133,14 @@ fun alertaColor(tipo: TipoAlerta): Color {
     }
 }
 
+/** Ícono asociado a cada tipo de alerta operativa. */
 fun alertaIcon(tipo: TipoAlerta): ImageVector = when (tipo) {
     TipoAlerta.RETRASO -> CobreIcons.Schedule
     TipoAlerta.INCIDENCIA -> CobreIcons.Warning
     TipoAlerta.INSUMO_CRITICO -> CobreIcons.Inventory
 }
 
+/** Ícono asociado a cada tipo de evento en el historial de la comanda. */
 fun eventoIcon(tipo: TipoEvento): ImageVector = when (tipo) {
     TipoEvento.CAMBIO_ETAPA -> CobreIcons.CheckCircle
     TipoEvento.COMENTARIO -> CobreIcons.Comment
@@ -159,6 +163,7 @@ fun eventoColor(tipo: TipoEvento): Color {
 /** Tonos semánticos de los chips de estado de las vistas de gestión. */
 enum class Tono { NEUTRO, INFO, EXITO, ALERTA, PELIGRO, MARCA }
 
+/** Resuelve los colores del chip para un [Tono]; `MARCA` lee directamente los tokens de acento. */
 @Composable
 fun tonoColors(tono: Tono): ChipColors = when (tono) {
     Tono.NEUTRO -> statusColors(StatusSlate, StatusSlateDark)
@@ -173,7 +178,10 @@ fun tonoColors(tono: Tono): ChipColors = when (tono) {
     )
 }
 
-/** Pendiente en ámbar, en proceso en índigo, lista en cobre (hay que entregarla), entregada en verde. */
+/**
+ * Mapea el estado de una comanda a su tono visual: pendiente en ámbar, en proceso en índigo,
+ * finalizada en cobre (requiere entrega), entregada en verde y anulada en neutro.
+ */
 fun tonoEstadoComanda(estado: com.elcobre.lavanderiaelcobre.data.model.EstadoComanda): Tono = when (estado) {
     com.elcobre.lavanderiaelcobre.data.model.EstadoComanda.PENDIENTE -> Tono.ALERTA
     com.elcobre.lavanderiaelcobre.data.model.EstadoComanda.EN_PROCESO -> Tono.INFO

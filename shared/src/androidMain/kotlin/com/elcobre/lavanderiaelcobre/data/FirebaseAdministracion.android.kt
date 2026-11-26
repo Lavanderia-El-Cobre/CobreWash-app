@@ -37,8 +37,10 @@ import java.util.Date
 import java.util.UUID
 import kotlinx.coroutines.tasks.await
 
+/** Implementación Android de [AdministracionRepository] respaldada por Firebase Data Connect. */
 actual fun crearAdministracionRepository(): AdministracionRepository = FirebaseAdministracionRepository()
 
+/** Política de consulta sin caché local para reflejar siempre el estado vigente de planta. */
 private val SERVIDOR = QueryRef.FetchPolicy.SERVER_ONLY
 
 private fun GetPanelProduccionQuery.Data.ComandasItem.aGestion(): ComandaGestion = ComandaGestion(
@@ -270,6 +272,11 @@ private class FirebaseAdministracionRepository : AdministracionRepository {
     }
 }
 
+/**
+ * Implementación Android de [CuentaRepository] para cambiar la contraseña del usuario.
+ * Reautentica primero con la credencial actual, requisito de seguridad de Firebase Auth
+ * antes de permitir `updatePassword`.
+ */
 actual fun crearCuentaRepository(): CuentaRepository = CuentaRepository { actual, nueva ->
     val usuario = FirebaseAuth.getInstance().currentUser ?: throw OperacionComandaException("Inicia sesión nuevamente.")
     val correo = usuario.email ?: throw OperacionComandaException("La cuenta no tiene un correo asociado.")

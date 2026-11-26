@@ -18,15 +18,18 @@ private val PREFIJOS_SEGUIMIENTO = listOf(
 private val UUID_REGEX = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
 /**
- * Validar y extraer el UUID de un QR de la comanda.
- * Rechazar HTTP, dominios parecidos, credenciales, otra ruta, parámetro vacío o duplicado.
+ * Valida y extrae el UUID de un código QR de comanda.
+ * Rechaza HTTP, dominios ajenos, credenciales embebidas, rutas distintas y parámetros extra.
  */
 fun extraerCodigoQr(raw: String): String? {
     val prefix = PREFIJOS_SEGUIMIENTO.firstOrNull { raw.startsWith(it) } ?: return null
     return raw.substringAfter(prefix).trim().takeIf { UUID_REGEX.matches(it) }
 }
 
-/** Normaliza el UUID de catálogo, con o sin guiones; no acepta enlaces de comanda. */
+/**
+ * Normaliza un UUID de insumo en minúsculas (formato 8-4-4-4-12), aceptando cadenas de 32
+ * dígitos hexadecimales sin guiones; rechaza URLs de seguimiento de comandas.
+ */
 fun extraerQrInsumo(raw: String): String? {
     val codigo = raw.trim().lowercase()
     return when {

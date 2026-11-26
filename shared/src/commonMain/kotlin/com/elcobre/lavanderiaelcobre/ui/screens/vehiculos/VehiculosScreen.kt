@@ -119,12 +119,19 @@ import com.elcobre.lavanderiaelcobre.ui.theme.StatusRedDark
 import com.elcobre.lavanderiaelcobre.ui.theme.cobreIsDark
 import kotlinx.coroutines.delay
 
+/** Etiquetas sugeridas en orden secuencial al capturar fotografías de inspección. */
 private val ETIQUETAS_FOTOS = listOf("Frente", "Lateral derecho", "Lateral izquierdo", "Posterior", "Tablero / Odómetro")
 
 /**
- * Vista del rol Administrador conectada a Firebase Data Connect (`RF-VE01` a `RF-VE04`):
- * administra el catálogo de flota, registra salidas e inspecciones previas, recibe retornos
- * con validación de odómetro y consulta la bitácora histórica con evidencia fotográfica.
+ * Gestión de flota para el rol Administrador conectada a Firebase Data Connect
+ * (`RF-VE01` a `RF-VE04`).
+ *
+ * Flujos principales: alta de vehículos con validación de patente chilena, programación
+ * opcional de salidas para repartidores, registro de salida/retorno con condición técnica,
+ * odómetro y evidencia fotográfica, alternancia de mantención y consulta de bitácora.
+ *
+ * Controla en estado local la hoja modal abierta (alta, chequeo, historial o programación)
+ * e intercepta el botón Atrás para cerrarla solo cuando no hay una operación en curso.
  */
 @Composable
 fun VehiculosScreen(
@@ -272,6 +279,7 @@ fun VehiculosScreen(
     )
 }
 
+/** Cierra el modal de chequeo al confirmar el registro y limpia el aviso tras una pausa. */
 @Composable
 private fun CerrarChequeoAlConfirmar(mensaje: String?, limpiar: () -> Unit, cerrar: () -> Unit) {
     LaunchedEffect(mensaje) {
@@ -1111,7 +1119,12 @@ private fun ModalChequeoVehiculo(
     }
 }
 
-/** Formulario de salida o entrada con conductor, condición técnica, odómetro y evidencia fotográfica. */
+/**
+ * Formulario de salida o entrada con conductor, condición técnica, odómetro y fotos.
+ *
+ * Impide autorizar salidas si la condición es [EstadoCondicionVehiculo.NO_APTO] y bloquea
+ * la edición de datos cuando [movimientoConfirmado] indica que solo faltan fotos por subir.
+ */
 @Composable
 private fun ChequeoForm(
     accent: Color,
@@ -1292,6 +1305,11 @@ private fun SelectorConductorFlota(
     }
 }
 
+/**
+ * Selector de condición técnica del vehículo compartido con otros flujos de flota.
+ * Muestra una advertencia de bloqueo cuando se selecciona [EstadoCondicionVehiculo.NO_APTO]
+ * al despachar una salida.
+ */
 @Composable
 internal fun SelectorCondicionVehiculo(
     esEntrada: Boolean,
@@ -1340,6 +1358,10 @@ internal fun SelectorCondicionVehiculo(
     }
 }
 
+/**
+ * Selector y carrusel de evidencia fotográfica (hasta 20 capturas) etiquetadas en orden
+ * según [ETIQUETAS_FOTOS]. Tocar una miniatura la descarta mientras [enabled] sea true.
+ */
 @Composable
 internal fun SelectorFotos(accent: Color, fotos: MutableState<List<FotoChequeo>>, haptic: HapticFeedback, enabled: Boolean) {
     val abrirCamara = rememberCapturadorFoto { uriCapturada ->

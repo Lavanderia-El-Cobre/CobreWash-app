@@ -17,6 +17,7 @@ val PrendasHotel = listOf(
     "FUNDA SILLA", "FUNDA MESA", "SERVILLETA", "AVIÓN",
 )
 
+/** Devuelve la lista de prendas sugeridas según el tipo de cliente (hotel o particular). */
 fun prendasSugeridas(tipo: TipoClienteFicha): List<String> =
     if (tipo == TipoClienteFicha.HOTEL) PrendasHotel else PrendasParticular
 

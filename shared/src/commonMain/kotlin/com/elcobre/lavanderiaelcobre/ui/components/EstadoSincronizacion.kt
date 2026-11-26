@@ -34,12 +34,14 @@ import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
+// Flujo vacío de respaldo cuando la cola offline aún no se inicializa (previews o pruebas).
 private val SIN_COLA = MutableStateFlow(emptyList<AccionPendiente>())
 
 /**
- * Estado del modo sin conexión: "Sin conexión", acciones por enviar o que requieren
- * atención. Al tocarlo se abre la bandeja para enviarlas ahora, reintentar o descartar.
- * No se muestra cuando todo está enviado y hay conexión.
+ * Indicador del estado sin conexión: muestra "Sin conexión", acciones por enviar o que
+ * requieren atención filtradas por el usuario actual (`uid`). Usa `LiveRegionMode.Polite`
+ * para anunciar cambios de sincronización en lectores de pantalla y abre [BandejaPendientes]
+ * al tocarlo. Se oculta cuando hay conexión y no quedan acciones pendientes.
  */
 @Composable
 fun EstadoSincronizacion(modifier: Modifier = Modifier) {
@@ -82,6 +84,10 @@ fun EstadoSincronizacion(modifier: Modifier = Modifier) {
     if (abierta) BandejaPendientes(propias, conectado, onCerrar = { abierta = false })
 }
 
+/**
+ * Hoja modal con las acciones en cola del usuario: permite forzar el envío inmediato,
+ * reintentar acciones rechazadas o descartarlas previa confirmación destructiva.
+ */
 @Composable
 private fun BandejaPendientes(acciones: List<AccionPendiente>, conectado: Boolean, onCerrar: () -> Unit) {
     val scope = rememberCoroutineScope()
@@ -132,6 +138,11 @@ private fun BandejaPendientes(acciones: List<AccionPendiente>, conectado: Boolea
     }
 }
 
+/**
+ * Tarjeta de una acción offline: muestra hora local, fotos adjuntas (o "Fotos pendientes"
+ * cuando la mutación principal ya fue [AccionPendiente.aplicada]) y acciones de reintento
+ * o descarte si requiere atención.
+ */
 @Composable
 private fun FilaAccion(accion: AccionPendiente, onReintentar: () -> Unit, onDescartar: () -> Unit) {
     val colors = CobreTheme.colors

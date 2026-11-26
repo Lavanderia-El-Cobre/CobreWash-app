@@ -55,6 +55,7 @@ private val CobreLightColors = lightColorScheme(
     onErrorContainer = Color(0xFF7F1D1D),
 )
 
+// Contraparte oscura para Material 3: superficies Ink/Graphite y acentos luminosos con contraste AA.
 private val CobreDarkColors = darkColorScheme(
     primary = Brand500,
     onPrimary = Ink,
@@ -93,26 +94,28 @@ private val CobreDarkColors = darkColorScheme(
     onErrorContainer = Color(0xFFFFD9D6),
 )
 
-/** Preferencia de apariencia elegida en Configuración; espeja el picker Claro/Oscuro/Sistema de la web. */
+/** Preferencia de apariencia elegida en Configuración; replica el selector Claro/Oscuro/Sistema de la web. */
 enum class ModoTema(val etiqueta: String, val descripcion: String) {
     CLARO("Claro", "Fondo claro en toda la app"),
     OSCURO("Oscuro", "Fondo oscuro en toda la app"),
     SISTEMA("Sistema", "Sigue la preferencia de tu dispositivo"),
 }
 
-// Tema oscuro *resuelto* (tras aplicar la preferencia de Configuración), no el del
-// sistema operativo. El resto de la UI debe leer [cobreIsDark], no `isSystemInDarkTheme()`
-// directamente, o el picker Claro/Oscuro/Sistema queda sin efecto fuera de MaterialTheme.
+// Tema oscuro *resuelto* (tras aplicar la preferencia de Configuración), no el del sistema operativo.
+// El resto de la UI debe leer [cobreIsDark] y no `isSystemInDarkTheme()` directamente, para que el
+// selector Claro/Oscuro/Sistema afecte también a los tokens fuera de MaterialTheme.
 private val LocalCobreDarkTheme = compositionLocalOf { false }
 
-/** Punto único de verdad para "¿está en oscuro?" dentro de la app. */
+/** Punto único de verdad para consultar si la app está renderizando en modo oscuro. */
 @Composable
 fun cobreIsDark(): Boolean = LocalCobreDarkTheme.current
 
 /**
- * Tema de la app. Además del MaterialTheme publica los tokens propios ([CobreTheme.colors],
- * [CobreTheme.window], [CobreTheme.text], etc.) y mide la ventana una sola vez.
+ * Tema raíz de la aplicación. Publica los tokens propios ([CobreTheme.colors], [CobreTheme.window],
+ * [CobreTheme.text]) junto a `MaterialTheme` y mide la ventana una sola vez mediante
+ * `BoxWithConstraints` para derivar clases de tamaño y escala tipográfica responsiva.
  *
+ * @param darkTheme polaridad resuelta del tema (tras evaluar [ModoTema]).
  * @param reduceTransparency accesibilidad: reemplaza el vidrio desenfocado por superficies casi opacas.
  */
 @Composable
@@ -160,6 +163,7 @@ object CobreTheme {
     val reduceTransparency: Boolean
         @Composable @ReadOnlyComposable get() = LocalReduceTransparency.current
 
+    /** Resuelve el material de vidrio ([GlassMaterial]) para el [level] pedido y el tema activo. */
     @Composable
     @ReadOnlyComposable
     fun glass(level: GlassLevel = GlassLevel.Regular): GlassMaterial = glassMaterial(level, LocalCobreColors.current.isDark)

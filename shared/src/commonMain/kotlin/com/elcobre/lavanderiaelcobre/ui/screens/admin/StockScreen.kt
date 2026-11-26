@@ -75,7 +75,10 @@ private sealed interface HojaStock {
     data class Resolver(val conteo: ConteoGestion, val aprobar: Boolean) : HojaStock
 }
 
-/** Inventario de administración: stock, aprobación de conteos físicos y movimientos. */
+/**
+ * Inventario de administración (`/intranet/inventario`): organiza stock actual, aprobación
+ * de conteos físicos e historial de movimientos (cargado bajo demanda al abrir su pestaña).
+ */
 @Composable
 fun StockScreen(vm: StockViewModel, applySystemBarsInsets: Boolean = true) {
     var vista by rememberSaveable { mutableStateOf(VistaStock.STOCK) }
@@ -157,6 +160,10 @@ private fun LazyListScope.listaConteos(vm: StockViewModel, onResolver: (ConteoGe
     }
 }
 
+/**
+ * Tarjeta de conteo físico. Si [onResolver] es no nulo muestra acciones de resolución;
+ * cuando el stock cambió tras el conteo (`desactualizado`), deshabilita la aprobación.
+ */
 @Composable
 private fun ConteoCard(conteo: ConteoGestion, onResolver: ((ConteoGestion, Boolean) -> Unit)?, modifier: Modifier) {
     val colors = CobreTheme.colors
@@ -257,6 +264,7 @@ private fun MovimientoFila(mov: MovimientoInventario, modifier: Modifier) {
     }
 }
 
+/** Hoja de detalle y edición de un insumo: muestra su QR, accesos a movimientos y vigencia. */
 @Composable
 private fun FichaInsumoSheet(
     vm: StockViewModel,
@@ -320,6 +328,7 @@ private fun FichaInsumoSheet(
     }
 }
 
+/** Interruptor accesible de vigencia; desactivar oculta el insumo al equipo de planta. */
 @Composable
 private fun FilaActivo(activo: Boolean, onCambiar: (Boolean) -> Unit) {
     Row(
@@ -339,6 +348,7 @@ private fun FilaActivo(activo: Boolean, onCambiar: (Boolean) -> Unit) {
     }
 }
 
+/** Hoja de alta de un nuevo insumo; su código QR se asigna en el servidor al registrarlo. */
 @Composable
 private fun NuevoInsumoSheet(vm: StockViewModel, onCerrar: () -> Unit) {
     var nombre by remember { mutableStateOf("") }
@@ -389,6 +399,7 @@ private fun NuevoInsumoSheet(vm: StockViewModel, onCerrar: () -> Unit) {
     }
 }
 
+/** Hoja para registrar una entrada o salida manual de inventario con motivo opcional. */
 @Composable
 private fun MovimientoSheet(vm: StockViewModel, insumo: InsumoInventario, tipo: TipoMovimientoInventario, onCerrar: () -> Unit) {
     var cantidadTexto by remember { mutableStateOf("") }
@@ -427,6 +438,7 @@ private fun MovimientoSheet(vm: StockViewModel, insumo: InsumoInventario, tipo: 
     }
 }
 
+/** Hoja de confirmación con motivo obligatorio para aprobar o rechazar un conteo físico. */
 @Composable
 private fun ResolverConteoSheet(vm: StockViewModel, conteo: ConteoGestion, aprobar: Boolean, onCerrar: () -> Unit) {
     var motivo by remember { mutableStateOf("") }

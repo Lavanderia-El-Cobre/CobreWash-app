@@ -40,6 +40,7 @@ import com.elcobre.lavanderiaelcobre.ui.components.readableWidth
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreShapes
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 
+/** Devuelve el ícono vectorial asociado a cada sección secundaria del menú "Más". */
 fun iconoSeccion(seccion: SeccionMas): ImageVector = when (seccion) {
     SeccionMas.PRODUCCION -> CobreIcons.Timeline
     SeccionMas.INCIDENCIAS -> CobreIcons.Warning
@@ -53,9 +54,9 @@ fun iconoSeccion(seccion: SeccionMas): ImageVector = when (seccion) {
 }
 
 /**
- * Pestaña "Más": agrupa las secciones que no caben en la barra. En teléfono y tablet
- * vertical la sección reemplaza al menú (con botón de volver); en tablet horizontal el
- * menú queda a la izquierda y la sección a la derecha.
+ * Pestaña "Más": agrupa las secciones secundarias de cada rol que no caben en la barra
+ * principal. En teléfono y tablet vertical reemplaza el menú proveyendo [LocalNavegacionAtras]
+ * para volver; en tablet horizontal (`useListDetail`) mantiene menú y detalle lado a lado.
  */
 @Composable
 fun MasScreen(
@@ -119,6 +120,7 @@ private fun MenuMas(
     }
 }
 
+/** Fila de navegación del menú "Más" con semántica de selección e insignia numérica (hasta 99+). */
 @Composable
 private fun FilaSeccion(seccion: SeccionMas, seleccionada: Boolean, insignia: Int, onClick: () -> Unit, modifier: Modifier) {
     val colors = CobreTheme.colors

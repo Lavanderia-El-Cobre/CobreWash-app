@@ -18,6 +18,7 @@ import com.elcobre.lavanderiaelcobre.dataconnect.ref
 import com.google.firebase.dataconnect.QueryRef
 import java.util.UUID
 
+/** Implementación Android de [ProduccionRepository] sobre Data Connect y cola sin conexión. */
 actual fun crearProduccionRepository(): ProduccionRepository = FirebaseProduccionRepository()
 
 private fun GetSeguimientoProduccionQuery.Data.ComandasItem.aGestion(): ComandaGestion = ComandaGestion(
@@ -43,7 +44,11 @@ private fun GetSeguimientoProduccionQuery.Data.ComandasItem.aGestion(): ComandaG
     ),
 )
 
-/** Seguimiento de producción de toda la planta (`GetSeguimientoProduccion`), como `/intranet/seguimiento`. */
+/**
+ * Seguimiento de producción de toda la planta (`GetSeguimientoProduccion`), equivalente a
+ * `/intranet/seguimiento`. Completar etapas y reportar incidencias pasan por [AccionesSinConexion]
+ * para tolerar cortes de red en planta; consultas y reasignaciones van directo al servidor.
+ */
 private class FirebaseProduccionRepository : ProduccionRepository {
     private val dc get() = ExampleConnector.instance
 

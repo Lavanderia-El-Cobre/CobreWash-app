@@ -64,6 +64,7 @@ private fun leerAcotado(entrada: java.io.InputStream): String {
     return salida.toString(Charsets.UTF_8.name())
 }
 
+/** Parsea la respuesta JSON del endpoint de estimación hacia el modelo de dominio. */
 private fun leerEstimacion(json: JSONObject): EstimacionConsumo {
     val lista = json.getJSONArray("insumos")
     val insumos = (0 until lista.length()).map { i ->

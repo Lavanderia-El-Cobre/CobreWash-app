@@ -54,8 +54,9 @@ import com.elcobre.lavanderiaelcobre.ui.theme.CobreShapes
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 
 /**
- * Comandas de recepción y administración. En tablet horizontal el detalle queda al
- * lado de la lista; en teléfono y tablet vertical se abre en una hoja de vidrio.
+ * Pantalla de comandas para recepción y administración. En tablet horizontal muestra el
+ * detalle junto a la lista (`useListDetail`); en teléfono y vertical usa una hoja de vidrio.
+ * Activa [ProtegerCapturas] por contener datos personales y de facturación de clientes.
  */
 @Composable
 fun ComandasScreen(vm: ComandasViewModel, applySystemBarsInsets: Boolean = true) {
@@ -166,6 +167,7 @@ private fun FiltroEstados(vm: ComandasViewModel, modifier: Modifier = Modifier) 
     }
 }
 
+/** Tarjeta resumen de una comanda con estado, totales y avance de etapas cuando aplica. */
 @Composable
 internal fun ComandaCard(comanda: ComandaGestion, seleccionada: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val colors = CobreTheme.colors
@@ -216,6 +218,7 @@ private fun Dato(etiqueta: String, valor: String) {
     }
 }
 
+/** Barra de progreso de etapas de producción reutilizada en Comandas, Panel y Producción. */
 @Composable
 internal fun ProgresoEtapas(comanda: ComandaGestion) {
     val colors = CobreTheme.colors

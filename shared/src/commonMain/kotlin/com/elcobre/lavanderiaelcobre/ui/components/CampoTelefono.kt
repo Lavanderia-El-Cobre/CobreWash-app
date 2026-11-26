@@ -29,6 +29,7 @@ fun CampoTelefono(
     // El país elegido se conserva aunque el número esté vacío.
     var paisId by remember { mutableStateOf(Telefonos.detectar(valor).pais.id) }
     val detectado = Telefonos.detectar(valor)
+    // Sincroniza el selector si el valor cambia desde fuera con otro prefijo reconocido.
     if (valor.isNotBlank() && detectado.reconocido && detectado.pais.codigo != Telefonos.pais(paisId).codigo) {
         paisId = detectado.pais.id
     }
@@ -57,6 +58,7 @@ fun CampoTelefono(
             label = "$etiqueta · ${pais.prefijoVisible}",
             placeholder = pais.ejemplo,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+            // Solo marca error al alcanzar el largo mínimo para no alertar mientras se escribe.
             isError = nacional.length >= pais.largos.min() && error != null,
             supportingText = when {
                 nacional.isEmpty() -> null

@@ -41,6 +41,11 @@ import com.google.mlkit.vision.common.InputImage
 import java.util.concurrent.Executors
 import java.util.concurrent.ExecutionException
 
+/**
+ * Implementación Android del lector QR basado en CameraX y ML Kit.
+ * Solicita automáticamente el permiso `CAMERA` al entrar y ofrece un botón para reintentar
+ * si el usuario lo deniega.
+ */
 @Composable
 actual fun QrScannerView(modifier: Modifier, isActive: Boolean, onQrCodeScanned: (String) -> Unit) {
     val context = LocalContext.current
@@ -62,6 +67,11 @@ actual fun QrScannerView(modifier: Modifier, isActive: Boolean, onQrCodeScanned:
     }
 }
 
+/**
+ * Vincula la vista previa y el análisis de fotogramas de CameraX al ciclo de vida activo.
+ * Usa `STRATEGY_KEEP_ONLY_LATEST` y un ejecutor dedicado de un hilo para evitar acumulación
+ * de cuadros, y libera cámara, analizador, ML Kit y ejecutor en `onDispose`.
+ */
 @Composable
 private fun CamaraQr(modifier: Modifier, activo: Boolean, onCodigo: (String) -> Unit) {
     val context = LocalContext.current
@@ -120,6 +130,10 @@ private fun CamaraQr(modifier: Modifier, activo: Boolean, onCodigo: (String) -> 
     }
 }
 
+/**
+ * Procesa un fotograma de CameraX con ML Kit respetando su rotación.
+ * Cierra siempre [frame] al finalizar para evitar bloquear la cola de análisis de cámara.
+ */
 @androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
 private fun analizar(
     frame: ImageProxy, scanner: BarcodeScanner, activo: () -> Boolean,

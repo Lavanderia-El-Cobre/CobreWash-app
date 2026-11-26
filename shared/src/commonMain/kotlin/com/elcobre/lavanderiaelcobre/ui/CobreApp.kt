@@ -95,13 +95,14 @@ private fun esPestana(p: Pantalla): Boolean = p in TodasLasPestanas
 
 private fun claveDestino(p: Pantalla): Any = if (esPestana(p)) CLAVE_PESTANAS else p
 
-// Curvas "emphasized" de Material 3: arrancan rápido y frenan suave, como iOS.
+// Curvas enfatizadas de Material 3: arrancan rápido y frenan suave, con sensación similar a iOS.
 private val EntradaEnfatizada = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
 private val SalidaEnfatizada = CubicBezierEasing(0.3f, 0f, 0.8f, 0.15f)
 
 /**
- * Raíz de la aplicación: aplica el tema de marca y gestiona la navegación con
- * transiciones animadas. El estado vive en [CobreViewModel]; las pantallas son
+ * Raíz de la aplicación: aplica el tema de marca, orquesta los refrescos periódicos vinculados al
+ * ciclo de vida (vigilancia de cuenta, cola sin conexión y comandas activas), intercepta el botón
+ * atrás y gestiona la navegación animada. El estado vive en [CobreViewModel]; las pantallas son
  * sin estado de dominio, reciben datos y delegan acciones al ViewModel.
  */
 @Composable
@@ -121,6 +122,7 @@ fun CobreApp() {
             }
         }
     }
+    // Refresco periódico de comandas asignadas mientras la app es visible para operarios.
     LaunchedEffect(vm.sesion, lifecycle) {
         if (vm.operario != null) lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
@@ -413,11 +415,11 @@ private fun FlotaPestana(administrador: Administrador, vehiculosVm: VehiculosVie
 }
 
 /**
- * Navegación por pestañas, la misma en teléfono y tablet y para ambos roles:
- * - vertical: barra de pestañas flotante de vidrio, fija abajo; el contenido pasa por
- *   debajo y basta con desplazarse para verlo completo;
- * - horizontal: rail de vidrio permanente a la izquierda que ocupa su propio espacio,
- *   para no quitarle alto a las listas ni tapar contenido.
+ * Navegación por pestañas compartida en teléfono y tablet para todos los roles:
+ * - vertical: barra de pestañas flotante de vidrio fija abajo; el contenido pasa por debajo
+ *   usando [LocalShellPadding] para que el último elemento sea visible al desplazarse;
+ * - horizontal: rail de vidrio permanente a la izquierda que ocupa su propio espacio para no
+ *   quitarle alto a las listas ni tapar contenido.
  */
 @Composable
 internal fun PestanasScaffold(
@@ -466,6 +468,7 @@ internal fun PestanasScaffold(
     }
 }
 
+/** Banner superior que anuncia errores de operación usando `LiveRegionMode.Polite` para accesibilidad. */
 @Composable
 private fun AvisoErrorOperacion(vm: CobreViewModel) {
     val mensaje = vm.errorOperacion ?: return
@@ -483,6 +486,7 @@ private fun AvisoErrorOperacion(vm: CobreViewModel) {
     }
 }
 
+/** Sincroniza periódicamente avisos e inventario mientras la app está visible para un operario. */
 @Composable
 private fun ActualizarAvisosVisibles(vm: CobreViewModel) {
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -523,6 +527,10 @@ private fun LoginDestino(vm: CobreViewModel) {
     )
 }
 
+/**
+ * Retiene el último [Operario] no nulo mientras la transición de cierre de sesión termina de salir,
+ * evitando parpadeos cuando `vm.sesion` pasa a `null` antes de desmontar la pantalla.
+ */
 @Composable
 private fun recordarOperarioActivo(actual: Operario?): Operario {
     var ultimo by remember { mutableStateOf(actual) }
@@ -530,6 +538,7 @@ private fun recordarOperarioActivo(actual: Operario?): Operario {
     return ultimo ?: Operario(nombre = "Operario", rol = "Operario de planta")
 }
 
+/** Retiene el último [Administrador] no nulo durante la animación de salida al cerrar sesión. */
 @Composable
 private fun recordarAdministradorActivo(actual: Administrador?): Administrador {
     var ultimo by remember { mutableStateOf(actual) }
@@ -537,6 +546,10 @@ private fun recordarAdministradorActivo(actual: Administrador?): Administrador {
     return ultimo ?: Administrador(nombre = "Administrador")
 }
 
+/**
+ * Conecta [EscanerScreen] con [CobreViewModel]: despacha automáticamente un QR diferido antes
+ * del login (`vm.qrPendiente`) y enruta lecturas en vivo tanto de comandas como de insumos.
+ */
 @Composable
 private fun EscanerDestino(vm: CobreViewModel) {
     var pendingCallback by remember { mutableStateOf<((String?) -> Unit)?>(null) }
@@ -573,6 +586,7 @@ private fun EscanerDestino(vm: CobreViewModel) {
     )
 }
 
+/** Carga la comanda solicitada si aún no está en caché y muestra estados de carga o reintento. */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun DetalleDestino(

@@ -42,7 +42,15 @@ import com.elcobre.lavanderiaelcobre.ui.theme.CobreShapes
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 import com.elcobre.lavanderiaelcobre.ui.theme.ModoTema
 
-/** Ajustes de operario y administración: cuenta, apariencia (Claro/Oscuro/Sistema), accesibilidad y cierre de sesión. */
+/**
+ * Pantalla transversal de ajustes para todos los roles de personal (operario,
+ * administración, recepción y reparto).
+ *
+ * Agrupa información de cuenta, seguridad opcional ([onCambiarContrasena]), privacidad,
+ * apariencia (Claro/Oscuro/Sistema), accesibilidad (reducción de transparencia) y cierre
+ * de sesión con confirmación. Permite inyectar secciones específicas por rol mediante
+ * [extra] y mantiene localmente el estado de sus diálogos/hojas.
+ */
 @Composable
 fun ConfiguracionScreen(
     nombre: String,
@@ -179,6 +187,7 @@ private fun CuentaCard(nombre: String, rol: String) {
     }
 }
 
+/** Toda la tarjeta actúa como interruptor para ampliar el área táctil y la accesibilidad. */
 @Composable
 private fun ReducirTransparenciaFila(activo: Boolean, onCambiar: (Boolean) -> Unit) {
     val colors = CobreTheme.colors

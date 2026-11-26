@@ -78,6 +78,7 @@ internal suspend fun <T> conCuentaNueva(email: String, bloque: suspend (AltaAuth
     }
 }
 
+/** Traduce errores técnicos de Firebase Auth al dar de alta cuentas gestionadas. */
 private fun mensajeAlta(error: FirebaseAuthException): String = when (error.errorCode) {
     "ERROR_INVALID_EMAIL" -> "El correo no es válido."
     "ERROR_OPERATION_NOT_ALLOWED" -> "El registro con correo no está habilitado en Firebase."
@@ -85,10 +86,17 @@ private fun mensajeAlta(error: FirebaseAuthException): String = when (error.erro
     else -> "No se pudo crear la cuenta en Firebase Authentication."
 }
 
+/**
+ * Configura el enlace de retorno hacia la web (`/?login=1`) fuera de la app para que
+ * la persona defina su contraseña inicial en el navegador.
+ */
 private fun ajustesRetorno(): ActionCodeSettings =
     ActionCodeSettings.newBuilder().setUrl("$ORIGEN_WEB/?login=1").setHandleCodeInApp(false).build()
 
-/** Reenvío sin enlace de retorno; un choque con el límite de un envío por minuto significa que el primero salió. */
+/**
+ * Reenvío sin enlace de retorno; un choque con el límite de un envío por minuto indica
+ * que el primer correo ya salió.
+ */
 private suspend fun reenviarSinRetorno(auth: FirebaseAuth, email: String): Boolean = try {
     auth.sendPasswordResetEmail(email).await()
     true

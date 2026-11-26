@@ -70,6 +70,7 @@ class Sincronizador(
             var accion = cola.buscar(inicial.id) ?: continue
             if (accion.uid != uid) continue
             if (accion.estado == EstadoAccion.REQUIERE_ATENCION || accion.entidad in bloqueadas) {
+                // Mantiene estricto orden por entidad: las acciones posteriores esperan resolución.
                 bloqueadas += accion.entidad
                 continue
             }
@@ -78,6 +79,7 @@ class Sincronizador(
                 continue
             }
             if (!servidorConsultado) {
+                // La hora del servidor se consulta una sola vez por pasada y solo si hay algo listo.
                 servidor = ejecutor.horaServidorMs()
                 servidorConsultado = true
             }

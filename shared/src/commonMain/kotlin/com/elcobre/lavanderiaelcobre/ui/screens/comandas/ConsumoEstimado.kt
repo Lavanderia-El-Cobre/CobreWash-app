@@ -34,8 +34,9 @@ private fun tonoNivel(nivel: NivelStock): Tono = when (nivel) {
 }
 
 /**
- * Consumo de insumos estimado para la comanda, como `ConsumoEstimado` de la web. La
- * calcula el servidor; aquí solo se muestra. No impide guardar ni modifica el stock.
+ * Consumo de insumos estimado para la comanda, como `ConsumoEstimado` de la web. El
+ * servidor calcula las cantidades y alertas de stock faltante; este panel solo informa
+ * (anunciando cambios con `LiveRegionMode.Polite`), no impide guardar ni altera el stock.
  */
 @Composable
 internal fun ConsumoEstimadoPanel(estado: EstadoEstimacion, servicio: String) {

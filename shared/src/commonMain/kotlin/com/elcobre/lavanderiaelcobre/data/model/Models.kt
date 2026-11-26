@@ -24,6 +24,7 @@ enum class TipoComanda(val displayName: String, val corto: String) {
     EN_TIENDA("Retiro en tienda", "Tienda"),
     DOMICILIO("Envío a domicilio", "Domicilio");
 
+    /** Secuencia ordenada de etapas que debe recorrer una comanda de este tipo. */
     val flujo: List<EtapaProceso>
         get() = when (this) {
             EN_TIENDA -> listOf(
@@ -44,18 +45,21 @@ enum class TipoComanda(val displayName: String, val corto: String) {
         }
 }
 
+/** Nivel de urgencia operativa usado para priorizar y destacar pedidos en planta. */
 enum class Prioridad(val displayName: String) {
     ALTA("Alta"),
     MEDIA("Media"),
     BAJA("Baja"),
 }
 
+/** Categoría de incidencia que bloquea el avance de un [Pedido] hasta ser resuelta. */
 enum class TipoAlerta(val displayName: String, val descripcionCorta: String) {
     RETRASO("Retraso", "El pedido va con demora respecto al plazo"),
     INCIDENCIA("Incidencia", "Problema con una prenda o el proceso"),
     INSUMO_CRITICO("Insumo crítico", "Falta de detergente, agua o consumible"),
 }
 
+/** Tipo de registro en la línea de tiempo auditable de un [Pedido]. */
 enum class TipoEvento {
     CAMBIO_ETAPA,
     COMENTARIO,
@@ -63,6 +67,10 @@ enum class TipoEvento {
     ALERTA_RESUELTA,
 }
 
+/**
+ * Entrada inmutable del historial de un [Pedido]. Es `@Serializable` para persistir
+ * la caché local de lectura y los cambios encolados sin conexión.
+ */
 @Serializable
 data class EventoHistorial(
     val tipo: TipoEvento,
@@ -98,6 +106,7 @@ data class Pedido(
     val prendas: List<String> = emptyList(),
     val etapasDetalle: List<String> = emptyList(),
 ) {
+    /** `true` si existe una alerta sin resolver que impide avanzar de etapa. */
     val estaBloqueado: Boolean get() = alertaActiva != null
     val flujo: List<EtapaProceso> get() = tipo.flujo
 
@@ -105,9 +114,19 @@ data class Pedido(
     val indiceEtapa: Int get() = flujo.indexOf(etapaActual).coerceAtLeast(0)
     val totalEtapas: Int get() = flujo.size
     val siguienteEtapa: EtapaProceso? get() = flujo.getOrNull(indiceEtapa + 1)
+
+    /**
+     * Indica si la comanda terminó su ciclo. Con respaldo de Firebase manda [estadoComandaDb];
+     * en modo local se infiere por ausencia de [siguienteEtapa].
+     */
     val esFinal: Boolean get() = if (estadoComandaDb != null) {
         estadoComandaDb in setOf("ENTREGADA", "ANULADA")
     } else siguienteEtapa == null
+
+    /**
+     * Indica si la etapa actual puede completarse. En modo Firebase exige además contar con
+     * [etapaIdDb] y [ordenEtapaDb] para ejecutar la mutación remota con seguridad.
+     */
     val puedeCompletar: Boolean get() = if (estadoComandaDb != null) {
         !esFinal && etapaIdDb != null && ordenEtapaDb != null
     } else siguienteEtapa != null
@@ -131,12 +150,14 @@ data class Pedido(
         )
     }
 
+    /** Devuelve una copia con un comentario antepuesto al historial (más reciente primero). */
     fun agregarComentario(texto: String, hora: String, autor: String): Pedido = copy(
         historial = listOf(
             EventoHistorial(TipoEvento.COMENTARIO, "Comentario", texto, hora, autor),
         ) + historial,
     )
 
+    /** Activa una alerta bloqueante sobre el pedido y la registra al inicio del historial. */
     fun registrarAlerta(tipo: TipoAlerta, texto: String, hora: String, autor: String): Pedido = copy(
         alertaActiva = tipo,
         historial = listOf(
@@ -150,6 +171,7 @@ data class Pedido(
         ) + historial,
     )
 
+    /** Limpia [alertaActiva] para desbloquear el flujo; sin efecto si no hay alerta activa. */
     fun resolverAlerta(hora: String, autor: String): Pedido {
         val tipo = alertaActiva ?: return this
         return copy(
@@ -241,6 +263,7 @@ enum class Insumo(val displayName: String, val unidad: String) {
     PERCHAS("Perchas", "un"),
 }
 
+/** Nivel de urgencia al reportar la escasez de un [Insumo] desde planta. */
 enum class SeveridadStock(val displayName: String) {
     BAJO("Stock bajo"),
     AGOTADO("Agotado"),

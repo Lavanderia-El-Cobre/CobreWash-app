@@ -96,9 +96,16 @@ private val AltoBarraSuperior = 56.dp
 private val AltoBarraAccion = 92.dp
 
 /**
- * Detalle de un pedido. De borde a borde con dos capas de vidrio flotando encima: la
- * barra superior (volver + comanda al colapsar) y la barra de acción inferior (avanzar o
- * resolver). En pantallas o paneles anchos el contenido se divide en dos columnas.
+ * Detalle operativo de una comanda para el operario de planta (accesible desde el tablero
+ * o mediante escaneo QR).
+ *
+ * Presenta el flujo de producción, datos operativos de Firebase, notas de avance,
+ * generación/resolución de alertas bloqueantes e historial. Se renderiza de borde a borde
+ * con dos capas de vidrio flotantes (barra superior colapsable y barra de acción inferior)
+ * y se divide en dos columnas cuando el ancho alcanza [AnchoDosColumnas].
+ *
+ * Mantiene en estado local el borrador de comentario, el banner temporal de alerta y un
+ * bloqueo transitorio contra doble toque para uso con guantes en planta.
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -120,8 +127,8 @@ fun DetalleScreen(
 
     AutoDescartarAlerta(alertaActiva) { alertaActiva = null }
 
-    // Protege avanzar/resolver/generar alerta de un doble-tap (frecuente con
-    // guantes en planta): se deshabilita al primer tap y se reactiva recién
+    // Protege avanzar/resolver/generar alerta de un doble toque (frecuente con
+    // guantes en planta): se deshabilita al primer toque y se reactiva recién
     // cuando el pedido recompuesto refleja el cambio real.
     var accionEnCurso by remember { mutableStateOf(false) }
     LaunchedEffect(pedido.etapaActual, pedido.estaBloqueado, pedido.historial.size, operacionPendiente, errorOperacion) {
@@ -512,6 +519,7 @@ private fun AlertaBanner(
         exit = slideOutVertically(tween(300)) { -it } + fadeOut(tween(300)),
         modifier = modifier,
     ) {
+        // Respaldo mientras corre la animación de salida y `alerta` ya pasó a null.
         val tipo = alerta ?: TipoAlerta.RETRASO
         val color = alertaColor(tipo)
         val colors = CobreTheme.colors

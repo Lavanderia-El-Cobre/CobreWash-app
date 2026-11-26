@@ -45,7 +45,10 @@ import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 /** Hoja abierta: ficha nueva ([cliente] nulo) o edición de una existente. */
 private data class EdicionFicha(val cliente: ClienteFicha?)
 
-/** Fichas de clientes con historial resumido, alta y edición (`/intranet/clientes`). */
+/**
+ * Fichas de clientes para recepción y administración (`/intranet/clientes`), con búsqueda,
+ * métricas acumuladas, alta y edición. Protege capturas de pantalla por datos personales.
+ */
 @Composable
 fun ClientesScreen(vm: ClientesViewModel, applySystemBarsInsets: Boolean = true) {
     ProtegerCapturas()
@@ -121,6 +124,7 @@ private fun Resumen(etiqueta: String, valor: String) {
     }
 }
 
+/** Hoja de alta ([cliente] nulo) o edición de ficha reutilizando [CamposCliente]. */
 @Composable
 private fun FichaClienteSheet(vm: ClientesViewModel, cliente: ClienteFicha?, onCerrar: () -> Unit) {
     var datos by remember {

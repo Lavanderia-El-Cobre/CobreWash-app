@@ -16,6 +16,10 @@ private const val CANAL_PLANTA_NOMBRE = "Avisos y Comandas de Planta"
 private var appContext: Context? = null
 private val idSecuencia = AtomicInteger(1000)
 
+/**
+ * Registra el canal de notificaciones operativas de planta en Android 8+ (API 26+)
+ * y conserva el contexto de aplicación para emitir alertas desde lógica compartida.
+ */
 fun inicializarNotificadorPlanta(context: Context) {
     val application = context.applicationContext
     appContext = application
@@ -32,6 +36,11 @@ fun inicializarNotificadorPlanta(context: Context) {
     }
 }
 
+/**
+ * Muestra una notificación local para eventos de planta (avisos o comandas asignadas).
+ * Verifica el permiso en tiempo de ejecución `POST_NOTIFICATIONS` en Android 13+ (API 33+)
+ * y usa IDs incrementales para no sobrescribir alertas simultáneas.
+ */
 internal actual fun notificarEventoPlanta(titulo: String, mensaje: String) {
     val context = appContext ?: return
     runCatching {

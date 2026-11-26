@@ -9,6 +9,8 @@ plugins {
 }
 
 kotlin {
+    // Targets iOS (dispositivo físico y simulador Apple Silicon) exportados como framework
+    // estático `Shared`, importado directamente por el proyecto SwiftUI en `iosApp/`.
     listOf(
         iosArm64(),
         iosSimulatorArm64()
@@ -19,6 +21,7 @@ kotlin {
         }
     }
 
+    // Target librería Android KMP con soporte de recursos propios y pruebas locales en JVM.
     androidLibrary {
        namespace = "com.elcobre.lavanderiaelcobre.shared"
        compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -39,6 +42,7 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.activity.compose)
+            // Autenticación y persistencia remota mediante Firebase Auth y Data Connect (gRPC).
             implementation(project.dependencies.platform(libs.firebase.bom))
             implementation(libs.firebase.auth)
             implementation(libs.firebase.dataconnect)
@@ -48,7 +52,7 @@ kotlin {
             // Envío en segundo plano de las acciones hechas sin conexión.
             implementation(libs.androidx.work.runtime)
 
-            // CameraX y ML Kit para el escáner QR
+            // CameraX y ML Kit para el escáner QR.
             implementation(libs.camerax.camera2)
             implementation(libs.camerax.lifecycle)
             implementation(libs.camerax.view)
@@ -84,5 +88,6 @@ kotlin {
 }
 
 dependencies {
+    // Herramientas de preview solo en tiempo de ejecución para Android Studio.
     androidRuntimeClasspath(libs.compose.uiTooling)
 }

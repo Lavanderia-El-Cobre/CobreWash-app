@@ -173,6 +173,7 @@ private fun TarjetaFlotante(
     }
 }
 
+/** Cabecera de [GlassSheet]: marca el título como `heading` para accesibilidad y añade botón cerrar. */
 @Composable
 private fun CabeceraHoja(
     title: String,
@@ -203,6 +204,7 @@ private fun CabeceraHoja(
     }
 }
 
+/** Asa visual dibujada dentro de [TarjetaFlotante] porque `ModalBottomSheet` recibe `dragHandle = null`. */
 @Composable
 private fun AsaHoja() {
     Box(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 10.dp), contentAlignment = Alignment.Center) {

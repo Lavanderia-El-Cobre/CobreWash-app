@@ -8,6 +8,10 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
+/**
+ * Sincroniza el contraste de los íconos de las barras de estado y navegación de Android
+ * según [temaOscuro]. Se omite en modo edición para no fallar en vistas previas de IDE.
+ */
 @Composable
 actual fun BarrasDelSistema(temaOscuro: Boolean) {
     val view = LocalView.current
@@ -21,6 +25,7 @@ actual fun BarrasDelSistema(temaOscuro: Boolean) {
     }
 }
 
+/** Desenvuelve recursivamente los [ContextWrapper] hasta encontrar la [Activity] anfitriona. */
 private tailrec fun Context.buscarActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.buscarActivity()

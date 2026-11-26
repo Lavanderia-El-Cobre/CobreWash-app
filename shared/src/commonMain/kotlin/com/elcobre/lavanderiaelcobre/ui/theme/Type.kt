@@ -19,8 +19,8 @@ import lavanderiaelcobre.shared.generated.resources.open_sans_regular
 import lavanderiaelcobre.shared.generated.resources.open_sans_semibold
 import org.jetbrains.compose.resources.Font
 
-// Tipografía de DESIGN.md: display = Inter, cuerpo = Open Sans, etiquetas = Inconsolata.
-// Solo se incluyen los pesos que usa la escala (licencias OFL en docs/licenses/).
+// Tipografía de DESIGN.md: títulos y etiquetas = Inter, cuerpo = Open Sans,
+// monoespaciado = Inconsolata. Solo se empaquetan los pesos usados (licencias OFL en docs/licenses/).
 
 @Composable
 private fun interFamily() = FontFamily(
@@ -42,14 +42,17 @@ private fun monoFamily() = FontFamily(
     Font(Res.font.inconsolata_bold, FontWeight.Bold),
 )
 
-/** Estilos fuera de la escala de Material 3. */
+/** Estilos complementarios fuera de la escala estándar de Material 3. */
 @Immutable
 data class CobreTextStyles(
-    /** Título grande de pantalla estilo iOS, que se colapsa al hacer scroll. */
+    /** Título grande de pantalla estilo iOS, pensado para colapsar al hacer desplazamiento. */
     val largeTitle: TextStyle,
-    /** Etiquetas cortas (encabezados de sección, códigos, metadatos): Inter seminegrita, sin mayúsculas forzadas ni tracking. */
+    /**
+     * Etiquetas cortas (encabezados de sección, códigos y metadatos): Inter seminegrita, sin
+     * mayúsculas forzadas ni espaciado adicional.
+     */
     val label: TextStyle,
-    /** Cifras y códigos que deben alinearse (monoespaciado). */
+    /** Cifras y códigos que deben alinearse verticalmente (tipografía monoespaciada). */
     val mono: TextStyle,
 )
 
@@ -94,6 +97,7 @@ fun rememberCobreTypography(compact: Boolean): Typography {
     )
 }
 
+/** Construye los estilos complementarios adaptando [CobreTextStyles.largeTitle] al ancho de pantalla. */
 @Composable
 internal fun rememberCobreTextStyles(compact: Boolean): CobreTextStyles {
     val display = interFamily()

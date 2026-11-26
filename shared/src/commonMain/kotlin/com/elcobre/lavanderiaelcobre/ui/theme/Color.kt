@@ -9,9 +9,9 @@ import androidx.compose.ui.graphics.Color
 // conserva para los acentos importantes (CTA, QR, pestaña activa, foco).
 
 // ── DESIGN.md ────────────────────────────────────────────────────────────────
-val Ink = Color(0xFF0C0C09)      // primary / text
-val Paper = Color(0xFFF4F4F1)    // surface / neutral
-val Indigo = Color(0xFF312C85)   // secondary
+val Ink = Color(0xFF0C0C09)      // Primario / texto principal
+val Paper = Color(0xFFF4F4F1)    // Superficie / fondo neutro
+val Indigo = Color(0xFF312C85)   // Secundario (estados en proceso e información)
 val Success = Color(0xFF16A34A)
 val Warning = Color(0xFFD97706)
 val Danger = Color(0xFFDC2626)
@@ -41,7 +41,7 @@ val GraphiteFaint = Color(0xFF77776F) // bordes de campos en oscuro
 val PaperSoft = Color(0xFFA8A8A0)     // texto secundario en oscuro (8.2:1 sobre Ink)
 
 // ── Identidad de la organización: cobre ──────────────────────────────────────
-// brand — Copper Orange
+// Marca — naranja cobre
 val Brand50 = Color(0xFFFFF7ED)
 val Brand100 = Color(0xFFFFEDD5)
 val Brand200 = Color(0xFFFED7AA)
@@ -53,7 +53,7 @@ val Brand700 = Color(0xFFC2410C)
 val Brand800 = Color(0xFF9A3412)
 val Brand900 = Color(0xFF7C2D12)
 
-// copper — Pure Copper
+// Cobre puro (acentos e identidad de marca)
 val Copper50 = Color(0xFFFDF8F5)
 val Copper100 = Color(0xFFFBEEE6)
 val Copper200 = Color(0xFFF6D8C6)

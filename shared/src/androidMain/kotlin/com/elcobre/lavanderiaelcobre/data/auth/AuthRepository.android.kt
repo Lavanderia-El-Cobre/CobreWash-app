@@ -67,9 +67,15 @@ private fun mapAuthError(error: Throwable): String = when (error) {
     else -> "Ocurrió un error inesperado. Intenta nuevamente."
 }
 
+/**
+ * Implementación Android de [AuthRepository] sobre Firebase Authentication.
+ * Centraliza autenticación por correo, verificación, recuperación de contraseña y limpieza
+ * de datos locales al cerrar sesión.
+ */
 actual class AuthRepository actual constructor() {
     private val auth: FirebaseAuth get() = FirebaseAuth.getInstance()
 
+    /** Autentica en Firebase Auth y clasifica el error para la política de bloqueo por intentos. */
     actual suspend fun iniciarSesion(correo: String, password: String): AuthResultado = try {
         val credential = auth.signInWithEmailAndPassword(correo, password).await()
         val user = credential.user
@@ -90,6 +96,10 @@ actual class AuthRepository actual constructor() {
         AuthResultado.Error(mapAuthError(error))
     }
 
+    /**
+     * Cierra la sesión en Firebase Auth y purga capturas temporales y caché local de lectura
+     * para evitar exposición de datos de clientes en equipos compartidos.
+     */
     actual fun cerrarSesion() {
         auth.signOut()
         com.elcobre.lavanderiaelcobre.data.eliminarCapturasAlSalir()
@@ -97,6 +107,7 @@ actual class AuthRepository actual constructor() {
         com.elcobre.lavanderiaelcobre.data.offline.CacheLectura.limpiar()
     }
 
+    /** Recarga el usuario en el servidor y evalúa si la cuenta aún exige verificar correo. */
     actual suspend fun correoPorVerificar(): Boolean {
         val user = auth.currentUser ?: return false
         // Lee el estado actual del servidor: la persona pudo verificar en otro dispositivo.
@@ -105,6 +116,7 @@ actual class AuthRepository actual constructor() {
         return requiereVerificacion(actual.isEmailVerified, actual.metadata?.creationTimestamp)
     }
 
+    /** Reenvía el correo de verificación con enlace de retorno a la web y respaldo sin él. */
     actual suspend fun enviarVerificacion(): String? {
         val user = auth.currentUser ?: return "Inicia sesión nuevamente."
         return try {
@@ -121,6 +133,10 @@ actual class AuthRepository actual constructor() {
         }
     }
 
+    /**
+     * Envía el correo de restablecimiento de contraseña.
+     * Omite el error `ERROR_USER_NOT_FOUND` para evitar enumeración de cuentas registradas.
+     */
     actual suspend fun recuperarContrasena(correo: String): String? = try {
         conRetorno { ajustes ->
             if (ajustes != null) auth.sendPasswordResetEmail(correo, ajustes).await() else auth.sendPasswordResetEmail(correo).await()

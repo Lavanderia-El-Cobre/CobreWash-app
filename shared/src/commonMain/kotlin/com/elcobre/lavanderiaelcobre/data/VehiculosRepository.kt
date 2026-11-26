@@ -52,7 +52,12 @@ data class RetornoFlotaInput(
     val fotos: List<FotoChequeo> = emptyList(),
 )
 
+/**
+ * Contrato de gestión de flota vehicular para administración y operación: catálogo de vehículos,
+ * programación de salidas y registro de inspecciones de salida/retorno con evidencia fotográfica.
+ */
 interface VehiculosRepository {
+    /** Limpia estados locales de reintento de salidas/retornos cuando el usuario abandona el formulario. */
     fun descartarReintentos() = Unit
     suspend fun consultarFlota(): EstadoFlotaRemota
     suspend fun registrarVehiculo(input: NuevoVehiculoInput): String
@@ -64,6 +69,7 @@ interface VehiculosRepository {
     suspend fun programarSalida(vehiculoId: String, repartidorId: String, observaciones: String?): Unit = noDisponible()
 }
 
+/** Implementación de [VehiculosRepository] respaldada por las operaciones Firebase de cada plataforma. */
 class FirebaseVehiculosRepository : VehiculosRepository {
     override fun descartarReintentos() = descartarReintentosFlotaFirebase()
     override suspend fun consultarFlota(): EstadoFlotaRemota = consultarFlotaFirebase()
@@ -75,6 +81,7 @@ class FirebaseVehiculosRepository : VehiculosRepository {
         programarSalidaFirebase(vehiculoId, repartidorId, observaciones)
 }
 
+/** Puentes `expect`/`actual` por plataforma para consultas y mutaciones de flota en Firebase. */
 internal expect suspend fun programarSalidaFirebase(vehiculoId: String, repartidorId: String, observaciones: String?)
 
 internal expect suspend fun consultarFlotaFirebase(): EstadoFlotaRemota

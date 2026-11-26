@@ -47,7 +47,11 @@ import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 
 private enum class OrigenCliente(val etiqueta: String) { EXISTENTE("Cliente registrado"), NUEVO("Cliente nuevo") }
 
-/** Formulario de vidrio para crear una comanda o editar una pendiente. */
+/**
+ * Hoja de formulario para crear una comanda o editar una en estado pendiente. En edición
+ * el cliente queda bloqueado; en modalidad por kg las líneas de prendas pasan a ser
+ * opcionales y el panel de consumo estimado es solo informativo.
+ */
 @Composable
 internal fun ComandaFormularioSheet(vm: ComandasViewModel, formulario: FormularioComanda) {
     val edicion = vm.edicion
@@ -110,6 +114,7 @@ internal fun ComandaFormularioSheet(vm: ComandasViewModel, formulario: Formulari
     }
 }
 
+/** Alterna entre elegir un cliente existente del catálogo o dar de alta uno nuevo al guardar. */
 @Composable
 private fun SeccionCliente(vm: ComandasViewModel, formulario: FormularioComanda) {
     val origen = if (formulario.nuevoCliente) OrigenCliente.NUEVO else OrigenCliente.EXISTENTE
@@ -322,6 +327,10 @@ private fun LineaEditor(
     }
 }
 
+/**
+ * Controles de cantidad y precio de una línea. Para clientes tipo `HOTEL` habilita el conteo
+ * separado de `Entregado` y `Recibido` (acotado al entregado); por kg oculta el precio unitario.
+ */
 @Composable
 private fun CantidadesYPrecio(linea: LineaFormulario, tipo: TipoClienteFicha, porKg: Boolean, onCambiar: (LineaFormulario) -> Unit) {
     var precioTexto by remember(linea.servicio) { mutableStateOf(linea.precioUnitario.toLong().toString()) }
@@ -354,6 +363,7 @@ private fun CantidadesYPrecio(linea: LineaFormulario, tipo: TipoClienteFicha, po
     )
 }
 
+/** Resumen del total calculado, anuncio accesible de errores (`LiveRegionMode.Polite`) y envío. */
 @Composable
 private fun PieFormulario(vm: ComandasViewModel, formulario: FormularioComanda) {
     val colors = CobreTheme.colors

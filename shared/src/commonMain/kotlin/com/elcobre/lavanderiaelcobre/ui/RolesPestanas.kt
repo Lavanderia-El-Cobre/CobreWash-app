@@ -222,6 +222,10 @@ private class ModelosAdmin(
     val todos: List<GestionViewModel>
         get() = listOf(panel, comandas, stock, produccion, incidencias, clientes, cotizaciones, avisos, usuarios, reportes, etapas)
 
+    /**
+     * Refresca la sección activa dentro de "Más". Si [seccion] es `null` (inicio del panel
+     * maestro-detalle), refresca producción por defecto; ajustes es puramente local.
+     */
     fun refrescarSeccion(seccion: SeccionMas?) {
         when (seccion) {
             SeccionMas.PRODUCCION, null -> produccion.refrescar()
@@ -237,6 +241,10 @@ private class ModelosAdmin(
     }
 }
 
+/**
+ * Obtiene los ViewModels del rol administración usando claves explícitas en los tipos
+ * compartidos con otros roles para evitar colisiones en el `ViewModelStore`.
+ */
 @Composable
 private fun rememberModelosAdmin(): ModelosAdmin = ModelosAdmin(
     panel = viewModel { PanelViewModel() },
@@ -298,6 +306,10 @@ internal fun AdminPestanas(tab: Pantalla, vm: CobreViewModel, flota: @Composable
     if (publicando) PublicarAvisoSheet(m.avisos, onCerrar = { publicando = false })
 }
 
+/**
+ * Despacha la sección elegida dentro del menú "Más" de administración. En producción
+ * habilita permisos completos (`completar`, `reasignar` y `asociarFlujo`).
+ */
 @Composable
 private fun SeccionAdmin(
     seccion: SeccionMas,

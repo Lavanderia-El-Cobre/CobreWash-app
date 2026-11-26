@@ -39,8 +39,12 @@ import com.elcobre.lavanderiaelcobre.ui.theme.CobreShapes
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 
 /**
- * Feed de solo lectura de avisos de administración; destino de navegación propio del
- * operario. Título grande que se colapsa y tarjetas con ancho de lectura en tablet.
+ * Listado de avisos y comunicados publicados por administración, con título grande
+ * colapsable y tarjetas limitadas al ancho de lectura en tablet.
+ *
+ * Roles: vista de solo lectura para operarios de planta; cuando se provee [onNuevo]
+ * (flujo de administración), habilita además la publicación de nuevos comunicados.
+ * Refleja estados de carga, error con reintento, refresco manual y paginación incremental.
  */
 @Composable
 fun AvisosScreen(

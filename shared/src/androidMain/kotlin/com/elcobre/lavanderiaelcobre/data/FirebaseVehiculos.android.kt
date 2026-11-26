@@ -27,7 +27,11 @@ import java.util.UUID
 import kotlin.math.roundToInt
 
 private const val MAX_FOTOS_INSPECCION = 20
-// Los reintentos de salidas y regresos viven en la cola sin conexión (persistente), no en memoria.
+
+/**
+ * Sin estado en memoria que descartar en Android: los reintentos de salidas y regresos
+ * viven en la cola sin conexión persistente en disco.
+ */
 internal actual fun descartarReintentosFlotaFirebase() = Unit
 
 private fun mapearCondicionADataConnect(estado: EstadoCondicionVehiculo): EstadoVehiculo = when (estado) {
@@ -83,6 +87,11 @@ private fun mapearSalidaAChequeo(
     )
 }
 
+/**
+ * Consulta vehículos, conductores y salidas de flota paginando de a 200 registros (`SERVER_ONLY`).
+ * Excluye salidas canceladas y calcula el odómetro actual de cada vehículo a partir del
+ * mayor kilometraje registrado en sus inspecciones vigentes.
+ */
 internal actual suspend fun consultarFlotaFirebase(): EstadoFlotaRemota = solicitud {
     var data: GetFlotaVehiculosQuery.Data? = null
     val salidas = mutableListOf<GetFlotaVehiculosQuery.Data.SalidasItem>()
@@ -142,6 +151,7 @@ internal actual suspend fun consultarFlotaFirebase(): EstadoFlotaRemota = solici
     )
 }
 
+/** Normaliza patente chilena, marca y modelo antes de registrar un vehículo en Data Connect. */
 internal actual suspend fun registrarVehiculoFirebase(input: NuevoVehiculoInput): String = solicitud {
     val patente = normalizarPatenteChilena(input.patente)
     val (marca, modelo) = extraerMarcaYModelo(input.marca, input.modelo)
@@ -156,6 +166,7 @@ internal actual suspend fun registrarVehiculoFirebase(input: NuevoVehiculoInput)
     resultado.data.vehiculo_insert.id.toString()
 }
 
+/** Actualiza los datos normalizados y el estado activo de un vehículo existente en Data Connect. */
 internal actual suspend fun editarVehiculoFirebase(input: EditarVehiculoInput): Unit = solicitud {
     val patente = normalizarPatenteChilena(input.patente)
     val (marca, modelo) = extraerMarcaYModelo(input.marca, input.modelo)

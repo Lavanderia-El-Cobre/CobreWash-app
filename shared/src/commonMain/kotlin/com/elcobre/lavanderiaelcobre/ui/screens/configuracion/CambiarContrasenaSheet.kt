@@ -21,7 +21,10 @@ import com.elcobre.lavanderiaelcobre.ui.components.CobreTextField
 import com.elcobre.lavanderiaelcobre.ui.components.GlassSheet
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 
-/** `null` si el cambio de contraseña puede enviarse; si no, el motivo. */
+/**
+ * Valida las reglas locales del cambio de contraseña (campos obligatorios, política mínima,
+ * coincidencia con confirmación y diferencia respecto a la actual). Devuelve `null` si es válido.
+ */
 internal fun problemaCambioContrasena(actual: String, nueva: String, confirmacion: String): String? = when {
     actual.isBlank() || nueva.isBlank() || confirmacion.isBlank() -> "Completa los tres campos."
     Validaciones.problemaContrasena(nueva) != null -> Validaciones.problemaContrasena(nueva)
@@ -30,7 +33,10 @@ internal fun problemaCambioContrasena(actual: String, nueva: String, confirmacio
     else -> null
 }
 
-/** Cambio de contraseña con reautenticación, como `CambiarContrasena.tsx` de la web. */
+/**
+ * Hoja de cambio de contraseña con reautenticación, equivalente a `CambiarContrasena.tsx`.
+ * Bloquea el cierre mientras guarda y anuncia errores o éxito mediante `LiveRegionMode.Polite`.
+ */
 @Composable
 internal fun CambiarContrasenaSheet(
     onCambiar: (actual: String, nueva: String, resultado: (String?) -> Unit) -> Unit,

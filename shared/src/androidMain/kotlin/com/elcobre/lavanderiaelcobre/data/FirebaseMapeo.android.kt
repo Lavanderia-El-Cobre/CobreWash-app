@@ -10,25 +10,32 @@ import java.util.TimeZone
 private val ZonaPlanta: TimeZone = TimeZone.getTimeZone("America/Santiago")
 private val LocalePlanta: Locale = Locale.forLanguageTag("es-CL")
 
-/** Fecha corta en la zona de la lavandería, aunque el equipo esté en otra zona. */
+/** Fecha corta (`dd/MM/yyyy`) en la zona de la lavandería, aunque el equipo esté en otra zona. */
 internal fun fechaCorta(ts: Timestamp?): String = ts?.let {
     SimpleDateFormat("dd/MM/yyyy", LocalePlanta).apply { timeZone = ZonaPlanta }.format(it.toDate())
 } ?: ""
 
+/** Fecha y hora (`dd/MM/yyyy HH:mm`) formateadas en la zona horaria oficial de la planta. */
 internal fun fechaHora(ts: Timestamp?): String = ts?.let {
     SimpleDateFormat("dd/MM/yyyy HH:mm", LocalePlanta).apply { timeZone = ZonaPlanta }.format(it.toDate())
 } ?: ""
 
+/** Convierte un [Timestamp] de Firebase a milisegundos desde época sin perder precisión de ms. */
 internal fun Timestamp.millis(): Long = seconds * 1000 + nanoseconds / 1_000_000
 
-/** La versión de una fila (`actualizadoEn`) viaja como texto exacto para la edición optimista. */
+/**
+ * Codifica `actualizadoEn` con precisión exacta de segundos y nanosegundos para control
+ * de concurrencia optimista al editar comandas.
+ */
 internal fun versionDe(ts: Timestamp): String = "${ts.seconds}.${ts.nanoseconds}"
 
+/** Reconstruye el [Timestamp] exacto a partir de la versión producida por [versionDe]. */
 internal fun timestampDeVersion(version: String): Timestamp {
     val (segundos, nanos) = version.split('.').let { (it.getOrNull(0)?.toLongOrNull() ?: 0L) to (it.getOrNull(1)?.toIntOrNull() ?: 0) }
     return Timestamp(segundos, nanos)
 }
 
+/** Une nombre y apellido omitiendo nulos o espacios sobrantes. */
 internal fun nombreCompleto(nombre: String?, apellido: String?): String =
     listOfNotNull(nombre, apellido).joinToString(" ").trim()
 

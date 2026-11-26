@@ -6,12 +6,19 @@ import com.elcobre.lavanderiaelcobre.data.offline.TipoAccion
 import com.elcobre.lavanderiaelcobre.data.offline.CacheLectura
 import kotlinx.serialization.builtins.ListSerializer
 
+/** Excepción de operación de dominio con un mensaje legible listo para mostrar en pantalla. */
 open class OperacionComandaException(message: String, cause: Throwable? = null) : Exception(message, cause)
 
+/**
+ * Contrato operativo de planta para el rol operario: consulta de comandas asignadas,
+ * búsqueda por número o QR, avance de etapas, comentarios y registro/resolución de incidencias.
+ */
 interface ComandasRepository {
     suspend fun asignadas(): List<Pedido>
     suspend fun detalle(id: String): Pedido?
     suspend fun buscarNumero(numero: String): Pedido?
+
+    /** Busca la comanda por código QR, la autoasigna al operario actual y devuelve su detalle. */
     suspend fun escanear(codigo: String): Pedido?
     suspend fun avanzar(pedido: Pedido)
     suspend fun comentar(id: String, texto: String)
@@ -20,6 +27,12 @@ interface ComandasRepository {
     fun cerrarSesion()
 }
 
+/**
+ * Implementación sobre Firebase con soporte parcial sin conexión:
+ * - [asignadas] recurre a [CacheLectura] cuando no hay red.
+ * - [avanzar] y [alertar] pasan por [AccionesSinConexion] para encolarse sin perder la hora.
+ * - [escanear], [comentar] y [resolver] requieren conexión directa con el servidor.
+ */
 class FirebaseComandasRepository : ComandasRepository {
     // Sin conexión, el operario sigue viendo sus últimas comandas asignadas.
     override suspend fun asignadas() =
@@ -54,6 +67,10 @@ class FirebaseComandasRepository : ComandasRepository {
     override suspend fun resolver(pedido: Pedido) = resolverComandaFirebase(pedido.id)
 }
 
+/**
+ * Estado global al que transita la comanda al completar la etapa de [orden]:
+ * etapas 1..3 mantienen `EN_PROCESO`, la etapa 4 deja la comanda `FINALIZADA` y la 5 `ENTREGADA`.
+ */
 fun estadoTrasCompletar(orden: Int): String = when (orden) {
     in 1..3 -> "EN_PROCESO"
     4 -> "FINALIZADA"

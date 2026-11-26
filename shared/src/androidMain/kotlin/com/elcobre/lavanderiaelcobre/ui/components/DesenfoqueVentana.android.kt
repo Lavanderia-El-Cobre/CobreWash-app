@@ -14,6 +14,11 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.window.DialogWindowProvider
 
+/**
+ * Activa el desenfoque real detrás de ventanas de diálogo en Android 12+ (API 31+) cuando
+ * el dispositivo soporta cross-window blur. Devuelve `true` si se aplicó para que la UI
+ * reduzca la opacidad del fondo, o `false` para recurrir al velo sólido estándar.
+ */
 @Composable
 internal actual fun desenfocarDetrasDeVentana(radio: Dp): Boolean {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return false

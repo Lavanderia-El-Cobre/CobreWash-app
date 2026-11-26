@@ -57,7 +57,8 @@ private val AltoBoton = 52.dp
 
 /**
  * Botón en cápsula de la app. Reemplaza los `Button` con degradado y los `Row`
- * clicables armados a mano en cada pantalla.
+ * clicables armados a mano en cada pantalla. Usa `pressableScale` en lugar de ripple
+ * y bloquea toques mientras [loading] está activo para evitar envíos duplicados.
  */
 @Composable
 fun CobreButton(
@@ -140,6 +141,9 @@ private fun BotonContenido(text: String, icon: ImageVector?, color: Color, loadi
 /**
  * Botón circular de vidrio: volver, cerrar, acciones de barra. Con [accent] es vidrio
  * teñido de cobre, para la acción insignia (escanear QR).
+ *
+ * @param contentDescription Obligatorio para accesibilidad al ser un botón solo con ícono.
+ * @param size Diámetro del botón; el ícono escala proporcionalmente al 46 % del diámetro.
  */
 @Composable
 fun GlassIconButton(

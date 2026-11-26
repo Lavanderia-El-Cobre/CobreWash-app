@@ -1,8 +1,15 @@
 package com.elcobre.lavanderiaelcobre.ui
 
-/** Destinos de navegación. Detalle navega por id. */
+/**
+ * Destinos de navegación de la aplicación.
+ *
+ * Incluye la pantalla de autenticación ([Login]), las pestañas raíz de cada rol y los destinos
+ * apilables ([Escaner] y [Detalle], que navega por identificador de comanda).
+ */
 sealed interface Pantalla {
     data object Login : Pantalla
+
+    // Operario de planta y destinos compartidos.
     data object Dashboard : Pantalla
     data object Avisos : Pantalla
     data object Escaner : Pantalla
@@ -24,7 +31,10 @@ sealed interface Pantalla {
     data object Entregas : Pantalla
 }
 
-/** Orden relativo de cada destino, usado para decidir la dirección del slide de [CobreApp]. */
+/**
+ * Orden jerárquico de cada destino (0 = Login, 1 = pestañas raíz, 2 = Escáner, 3 = Detalle),
+ * usado por [CobreApp] para decidir la dirección del deslizamiento horizontal.
+ */
 internal fun orden(p: Pantalla): Int = when (p) {
     Pantalla.Login -> 0
     Pantalla.Escaner -> 2
@@ -33,8 +43,9 @@ internal fun orden(p: Pantalla): Int = when (p) {
 }
 
 /**
- * Secciones agrupadas en la pestaña "Más" cuando un rol tiene más de cinco destinos,
- * como la pestaña "Más" de iOS. [roles] indica quién la ve (igual que `NAV_POR_ROL` de la web).
+ * Secciones agrupadas dentro de la pestaña "Más" cuando un rol supera cinco destinos raíz,
+ * siguiendo el patrón de navegación de iOS. La visibilidad por rol se define en [MasRecepcion]
+ * y [MasAdmin] (equivalente a `NAV_POR_ROL` en la web).
  */
 enum class SeccionMas(val titulo: String, val descripcion: String) {
     PRODUCCION("Producción", "Etapas de cada comanda en planta"),

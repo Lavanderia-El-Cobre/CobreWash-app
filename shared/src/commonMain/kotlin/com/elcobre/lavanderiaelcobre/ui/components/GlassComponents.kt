@@ -62,7 +62,10 @@ import com.elcobre.lavanderiaelcobre.ui.theme.StatusGreen
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusGreenDark
 import com.elcobre.lavanderiaelcobre.ui.theme.cobreIsDark
 
-/** Escala sutil al presionar; usa el mismo InteractionSource que el clickable del elemento. */
+/**
+ * Aplica una contracción elástica sutil al presionar usando `graphicsLayer` (sin relayout).
+ * Debe compartir el mismo [interactionSource] que el modificador clickable/selectable del control.
+ */
 @Composable
 fun Modifier.pressableScale(
     interactionSource: MutableInteractionSource,
@@ -192,6 +195,10 @@ fun ContentCard(
     )
 }
 
+/**
+ * Aplica el acabado común de tarjetas de contenido: superficie sólida, franja lateral opcional
+ * de 4 dp para indicar estado/prioridad y borde fino (1 dp en oscuro para mantener contraste).
+ */
 @Composable
 private fun Modifier.superficieContenido(shape: Shape, stripe: Color?): Modifier {
     val colors = CobreTheme.colors
@@ -208,7 +215,10 @@ private fun Modifier.superficieContenido(shape: Shape, stripe: Color?): Modifier
         .border(width = if (colors.isDark) 1.dp else 0.5.dp, color = colors.hairline, shape = shape)
 }
 
-/** Encabezado de sección de las listas agrupadas, en texto normal (sin mayúsculas forzadas). */
+/**
+ * Encabezado de sección de listas agrupadas, en texto normal (sin mayúsculas forzadas).
+ * Se expone como encabezado semántico (`heading`) para lectores de pantalla.
+ */
 @Composable
 fun SectionLabel(text: String, modifier: Modifier = Modifier) {
     Text(
@@ -247,7 +257,10 @@ fun cobreFieldColors(): TextFieldColors {
     )
 }
 
-/** Marca un elemento como compartido entre pantallas para la transición animada; no-op si no hay scopes disponibles. */
+/**
+ * Marca un elemento como compartido entre pantallas para animar su transición; no tiene efecto
+ * cuando no se proveen ambos scopes (por ejemplo en vistas aisladas o pruebas).
+ */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun Modifier.sharedTag(
@@ -309,7 +322,10 @@ fun EtapasTimeline(flujo: List<EtapaProceso>, indiceActual: Int, modifier: Modif
     }
 }
 
-/** Color del nodo por estado (no por tipo de etapa), igual que el timeline de la web: completada = verde, activa = marca. */
+/**
+ * Color del nodo por estado (no por tipo de etapa), igual que la línea de tiempo de la web:
+ * completada = verde, activa = información (índigo), pendiente = neutro (`null`).
+ */
 @Composable
 private fun etapaEstadoAccent(completada: Boolean, activa: Boolean): Color? {
     val isDark = cobreIsDark()

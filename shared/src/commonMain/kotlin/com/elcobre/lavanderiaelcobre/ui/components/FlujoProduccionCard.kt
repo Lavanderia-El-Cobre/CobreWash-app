@@ -29,8 +29,11 @@ import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 
 /**
  * Componente interactivo que reproduce `FlujoProduccion.tsx` de la versión web:
- * porcentaje global de avance, etapas segmentadas con números o checks y acciones
- * directas (avanzar en cobre, resolver o reportar incidencia).
+ * porcentaje global de avance (suma la última etapa solo cuando [Pedido.esFinal]),
+ * etapas segmentadas con números o checks y acciones directas (avanzar en cobre,
+ * resolver o reportar incidencia).
+ *
+ * @param habilitado Permite deshabilitar los botones de acción mientras corre una mutación.
  */
 @Composable
 fun FlujoProduccionCard(
@@ -165,6 +168,10 @@ private fun EtapaCadenaChip(etapaNombre: String, numero: Int, estado: EstadoChip
     }
 }
 
+/**
+ * Botonera del flujo: si el pedido está bloqueado por incidencia, la acción principal pasa
+ * a resolverla y se oculta el botón de reportar otra incidencia hasta desbloquearlo.
+ */
 @Composable
 private fun FlujoAccionesRow(
     pedido: Pedido,

@@ -29,7 +29,9 @@ interface RepartoRepository {
     suspend fun entregar(comandaId: String, detalle: String?): Unit = noDisponible()
     suspend fun reportarProblema(comandaId: String, motivo: String, detalle: String?): Unit = noDisponible()
 
+    /** Descarta estados de reintento locales de salidas/inspecciones al cancelar o reiniciar el flujo. */
     fun descartarReintentos() = Unit
 }
 
+/** Fábrica por plataforma de [RepartoRepository] (Firebase Data Connect en Android; stub en iOS). */
 expect fun crearRepartoRepository(): RepartoRepository

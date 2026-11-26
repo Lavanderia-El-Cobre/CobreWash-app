@@ -88,7 +88,10 @@ fun LargeTitle(
     }
 }
 
-/** Limita un bloque al ancho de lectura de la ventana (`CobreTheme.window.contentMaxWidth`) para que no se estire en tablet. */
+/**
+ * Limita un bloque al ancho de lectura de la ventana (`CobreTheme.window.contentMaxWidth`)
+ * para evitar líneas excesivamente largas en tablet.
+ */
 @Composable
 fun Modifier.readableWidth(): Modifier = this.widthIn(max = CobreTheme.window.contentMaxWidth).fillMaxWidth()
 
@@ -146,7 +149,10 @@ fun LargeTitleScreen(
     )
 }
 
-/** `true` cuando el primer ítem (el [LargeTitle]) ya salió de vista. */
+/**
+ * Devuelve `true` cuando el primer ítem (el [LargeTitle]) superó [UmbralColapso].
+ * Usa `derivedStateOf` para recomponer solo al cruzar el umbral y no en cada píxel de scroll.
+ */
 @Composable
 fun rememberTitleCollapsed(listState: LazyListState): State<Boolean> {
     val umbral = with(LocalDensity.current) { UmbralColapso.roundToPx() }

@@ -52,7 +52,11 @@ import com.elcobre.lavanderiaelcobre.ui.screens.escaner.urlSeguimientoComanda
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreShapes
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 
-/** Ficha completa de una comanda con sus acciones según el estado, como `ComandaDetalle.tsx`. */
+/**
+ * Ficha completa de una comanda con sus acciones disponibles según estado, como
+ * `ComandaDetalle.tsx`. Oculta el QR de seguimiento si la comanda está anulada y solicita
+ * confirmación explícita para entregar o anular.
+ */
 @Composable
 internal fun ComandaDetalleContenido(comanda: ComandaGestion, vm: ComandasViewModel) {
     var anulando by remember(comanda.id) { mutableStateOf(false) }
@@ -107,6 +111,7 @@ internal fun ComandaDetalleContenido(comanda: ComandaGestion, vm: ComandasViewMo
     }
 }
 
+/** Barra de acciones contextuales de la comanda habilitadas según sus banderas de estado. */
 @Composable
 private fun AccionesComanda(comanda: ComandaGestion, vm: ComandasViewModel, onAnular: () -> Unit, onEntregar: () -> Unit) {
     val hayAcciones = comanda.puedeEditar || comanda.puedeEntregar || comanda.puedeAnular || comanda.necesitaFlujo
@@ -167,6 +172,7 @@ private fun Texto(texto: String) {
     Text(texto, style = MaterialTheme.typography.bodyMedium, color = CobreTheme.colors.textPrimary)
 }
 
+/** Detalle de prendas, modalidad de cobro, peso y precio por kg (cuando aplica) con total. */
 @Composable
 private fun LineasDetalle(comanda: ComandaGestion) {
     val colors = CobreTheme.colors
@@ -192,6 +198,7 @@ private fun LineasDetalle(comanda: ComandaGestion) {
     }
 }
 
+/** Fila de una etapa de producción con indicador de orden/estado, responsable y marca horaria. */
 @Composable
 internal fun EtapaFila(etapa: EtapaComanda) {
     val colors = CobreTheme.colors

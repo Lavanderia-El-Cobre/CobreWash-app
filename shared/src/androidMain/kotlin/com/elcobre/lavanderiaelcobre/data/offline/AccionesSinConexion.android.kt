@@ -62,6 +62,10 @@ private class AlmacenArchivo(private val archivo: File) : AlmacenCola {
     }
 }
 
+/**
+ * Fuente de tiempo del dispositivo que combina reloj de pared, reloj monotónico y contador
+ * de arranque (`BOOT_COUNT`) para reconstruir la hora real y detectar relojes alterados.
+ */
 private class RelojAndroid(private val context: Context) : RelojDispositivo {
     override fun ahoraMs(): Long = System.currentTimeMillis()
     override fun monotonicoMs(): Long = SystemClock.elapsedRealtime()
@@ -116,6 +120,7 @@ private fun uuid(texto: String?): UUID? = texto?.let(UUID::fromString)
 private class EjecutorAndroid : EjecutorAcciones {
     private val dc get() = ExampleConnector.instance
 
+    /** Obtiene la hora del servidor mediante cabecera `Date` de un `HEAD` sin redirecciones. */
     override suspend fun horaServidorMs(): Long? = withContext(Dispatchers.IO) {
         val conexion = URL(ORIGEN_WEB).openConnection() as HttpURLConnection
         try {
@@ -193,6 +198,10 @@ private class EjecutorAndroid : EjecutorAcciones {
         }
     }
 
+    /**
+     * Sube las fotos asociadas a una inspección ya sincronizada y clasifica el código HTTP
+     * en reintento transitorio (`SinRed`), renovación de sesión (`401`) o rechazo definitivo.
+     */
     @Suppress("TooGenericExceptionCaught")
     override suspend fun subirFotos(accion: AccionPendiente): ResultadoEnvio {
         val inspeccionId = accion.datos["inspeccionId"] ?: return ResultadoEnvio.Aplicada

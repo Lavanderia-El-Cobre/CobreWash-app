@@ -19,6 +19,7 @@ enum class TipoAccion(val etiqueta: String) {
     CONTEO("Conteo de inventario"),
 }
 
+/** Ciclo de vida local de una [AccionPendiente] dentro de la cola sin conexión. */
 @Serializable
 enum class EstadoAccion {
     /** En cola: se enviará en cuanto haya conexión. */

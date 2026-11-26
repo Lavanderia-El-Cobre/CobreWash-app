@@ -50,6 +50,8 @@ class ComandasViewModel(
         private set
     private var limite = PAGINA_COMANDAS
     private var busquedaJob: Job? = null
+
+    // Número de consulta monotónico para descartar respuestas que lleguen fuera de orden.
     private var consulta = 0
 
     val hayMas: Boolean get() = comandas.size < total
@@ -69,6 +71,8 @@ class ComandasViewModel(
         private set
     var errorFormulario by mutableStateOf<String?>(null)
         private set
+
+    // Identidad reutilizada en reintentos de alta para evitar duplicar la comanda en red inestable.
     private var identidad: IdentidadComanda? = null
 
     /** Consumo de insumos estimado por la web para el servicio y el peso del formulario. */
@@ -77,6 +81,7 @@ class ComandasViewModel(
     private var estimacionJob: Job? = null
     private var claveEstimacion: Pair<String, Double>? = null
 
+    /** Consulta la página de comandas según [filtro]; con [mas] amplía el límite en una página. */
     fun refrescar(mas: Boolean = false) {
         if (mas && !hayMas) return
         if (mas) limite += PAGINA_COMANDAS
@@ -93,6 +98,7 @@ class ComandasViewModel(
         }
     }
 
+    /** Activa o desactiva un [estado] en la selección múltiple del filtro y reinicia la paginación. */
     fun alternarEstado(estado: EstadoComanda) {
         val estados = if (estado in filtro.estados) filtro.estados - estado else filtro.estados + estado
         filtro = filtro.copy(estados = estados)
@@ -100,6 +106,7 @@ class ComandasViewModel(
         refrescar()
     }
 
+    /** Limpia todos los filtros de estado seleccionados y vuelve a la primera página. */
     fun limpiarEstados() {
         filtro = filtro.copy(estados = emptySet())
         limite = PAGINA_COMANDAS
@@ -117,6 +124,7 @@ class ComandasViewModel(
         }
     }
 
+    /** Muestra de inmediato la versión en caché del listado y solicita el detalle completo al servidor. */
     fun abrirDetalle(id: String) {
         detalle = comandas.firstOrNull { it.id == id }
         cargandoDetalle = true
@@ -148,6 +156,7 @@ class ComandasViewModel(
         }
     }
 
+    /** Abre el formulario vacío para crear una nueva comanda y refresca los catálogos. */
     fun abrirNueva() {
         identidad = null
         edicion = null
@@ -156,6 +165,7 @@ class ComandasViewModel(
         cargarCatalogos()
     }
 
+    /** Abre la edición solo si la comanda sigue editable (estado pendiente). */
     fun abrirEdicion(comanda: ComandaGestion) {
         if (!comanda.puedeEditar) return
         edicion = comanda
@@ -271,6 +281,10 @@ class ComandasViewModel(
             .firstOrNull { Validaciones.normalizarCatalogo(it.nombre) == Validaciones.normalizarCatalogo(servicio) }
             ?.precioBase
 
+    /**
+     * Valida y persiste el formulario actual. En edición envía `actualizadoEn` para detectar
+     * conflictos de concurrencia; en creación puede dar de alta primero al cliente nuevo.
+     */
     fun guardar() {
         val f = formulario ?: return
         f.validar()?.let {
@@ -327,6 +341,7 @@ class ComandasViewModel(
         detalle = repository.detalle(creada)
     }
 
+    /** Anula [comanda] dejando registro del [motivo] obligatorio, si su estado lo permite. */
     fun anular(comanda: ComandaGestion, motivo: String, alTerminar: (String?) -> Unit = {}) {
         if (!comanda.puedeAnular) return
         operar("Comanda ${comanda.numero} anulada correctamente.", alTerminar = {
@@ -338,6 +353,7 @@ class ComandasViewModel(
         }
     }
 
+    /** Marca como entregada una comanda finalizada y actualiza su detalle e historial. */
     fun entregar(comanda: ComandaGestion, alTerminar: (String?) -> Unit = {}) {
         if (!comanda.puedeEntregar) return
         operar("Comanda ${comanda.numero} entregada. Se registró la fecha y el historial.", alTerminar = {
@@ -349,6 +365,7 @@ class ComandasViewModel(
         }
     }
 
+    /** Asocia el flujo de etapas de producción a una comanda que todavía no tiene etapas. */
     fun asociarFlujo(comanda: ComandaGestion) {
         if (!comanda.necesitaFlujo) return
         operar("Flujo asociado correctamente.", alTerminar = { if (it == null) refrescar() else error = it }) {

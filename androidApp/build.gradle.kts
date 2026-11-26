@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.googleServices)
 }
 
+// Valida que `google-services.json` pertenezca al proyecto real de Firebase antes de compilar.
 // La configuración demo solo sirve para compilar en CI; no autentica cuentas reales.
 val validateFirebaseConfiguration = tasks.register("validateFirebaseConfiguration") {
     val configFile = layout.projectDirectory.file("google-services.json")
@@ -31,10 +32,12 @@ val validateFirebaseConfiguration = tasks.register("validateFirebaseConfiguratio
     }
 }
 
+// Quality gate de configuración: detiene la compilación temprano si falta Firebase real.
 tasks.named("preBuild") {
     dependsOn(validateFirebaseConfiguration)
 }
 
+// Alineado con JVM 11 en `:shared` para mantener compatibilidad entre bytecode Kotlin y Java.
 kotlin {
     compilerOptions {
         jvmTarget = JvmTarget.JVM_11
@@ -62,14 +65,17 @@ android {
     }
     packaging {
         jniLibs {
+            // Empaquetado moderno sin comprimir librerías nativas para reducir uso de disco.
             useLegacyPackaging = false
         }
         resources {
+            // Evita colisiones de archivos de licencia empaquetados por distintas librerías.
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
     buildTypes {
         getByName("release") {
+            // Activa R8 en release para reducir tamaño del APK y ofuscar el bytecode.
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

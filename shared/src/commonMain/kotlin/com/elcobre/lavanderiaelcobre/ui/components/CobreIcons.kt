@@ -6,7 +6,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.unit.dp
 
-/** Iconos construidos desde path data de Material Symbols para evitar la dependencia `material-icons-extended`. */
+/**
+ * Construye un [ImageVector] de 24×24 dp a partir de `pathData` de Material Symbols para evitar
+ * incluir la dependencia pesada `material-icons-extended` en el módulo KMP compartido.
+ */
 private fun cobreIcon(name: String, pathData: String): ImageVector =
     ImageVector.Builder(
         name = name,
@@ -16,9 +19,13 @@ private fun cobreIcon(name: String, pathData: String): ImageVector =
         viewportHeight = 24f,
     ).addPath(
         pathData = PathParser().parsePathString(pathData).toNodes(),
-        fill = SolidColor(Color.Black), // el tint del composable Icon lo sobrescribe
+        fill = SolidColor(Color.Black), // El parámetro `tint` del composable Icon sobrescribe este relleno.
     ).build()
 
+/**
+ * Catálogo centralizado de íconos vectoriales de la aplicación. Agrupa glifos generales de
+ * interfaz, etapas del proceso productivo y vistas de gestión por rol.
+ */
 object CobreIcons {
 
     val Person: ImageVector = cobreIcon(
@@ -174,7 +181,7 @@ object CobreIcons {
             "22h5v-2H4v-3H2v5zM2 2v5h2V4h3V2H2z",
     )
 
-    // ---- Iconos por etapa del proceso ----
+    // Iconos por etapa del proceso productivo.
 
     val Inbox: ImageVector = cobreIcon(
         "inbox",
@@ -256,7 +263,7 @@ object CobreIcons {
         "M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z",
     )
 
-    // ---- Gestión (recepción, administración y reparto) ----
+    // Iconos de gestión (recepción, administración y reparto).
 
     val Assignment: ImageVector = cobreIcon(
         "assignment",

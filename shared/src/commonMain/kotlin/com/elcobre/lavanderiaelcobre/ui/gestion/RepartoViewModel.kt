@@ -24,7 +24,7 @@ import com.elcobre.lavanderiaelcobre.data.model.validarMovimiento
 import com.elcobre.lavanderiaelcobre.data.model.validarProblemaEntrega
 import kotlinx.coroutines.CoroutineScope
 
-/** Datos del formulario de salida o regreso del repartidor. */
+/** Datos capturados en el formulario de salida o regreso de vehículo del repartidor. */
 data class MovimientoInput(
     val kilometraje: Int?,
     val estado: EstadoCondicionVehiculo,
@@ -61,6 +61,10 @@ class RepartoViewModel(
         return maxOf(delVehiculo, enSalidas)
     }
 
+    /**
+     * Registra la salida de un vehículo disponible. Impide abrir una nueva salida mientras
+     * el repartidor mantenga otra en curso y valida que el odómetro no retroceda.
+     */
     fun registrarSalida(vehiculo: VehiculoReparto, input: MovimientoInput, alTerminar: (String?) -> Unit) {
         val problema = when {
             salidaEnCurso != null -> "Ya tienes una salida en curso. Registra su regreso antes de sacar otro vehículo."
@@ -87,6 +91,7 @@ class RepartoViewModel(
         }
     }
 
+    /** Registra el retorno de [salida] exigiendo un kilometraje mayor o igual al de salida. */
     fun registrarRetorno(salida: SalidaReparto, input: MovimientoInput, alTerminar: (String?) -> Unit) {
         val minimo = salida.antes?.kilometraje ?: 0
         validarMovimiento(input.kilometraje, minimo, input.estado, false, input.observaciones)?.let {
@@ -109,6 +114,7 @@ class RepartoViewModel(
         }
     }
 
+    /** Valida la inspección previa e inicia una salida previamente programada por administración. */
     fun iniciarProgramada(salida: SalidaReparto, input: InspeccionInput, alTerminar: (String?) -> Unit) {
         validarInspeccion(input.kilometraje, kilometrajeMinimo(salida), input.estado, esSalida = true, input.observaciones.orEmpty())
             ?.let {
@@ -121,6 +127,7 @@ class RepartoViewModel(
         }) { repository.iniciarProgramada(salida, input) }
     }
 
+    /** Limpia el estado del panel y descarta reintentos en memoria asociados a la sesión previa. */
     override fun reiniciar() {
         super.reiniciar()
         repository.descartarReintentos()
@@ -150,6 +157,7 @@ class EntregasViewModel(
         busqueda = texto
     }
 
+    /** Confirma la entrega de [comanda] con un detalle opcional y recarga la bandeja. */
     fun entregar(comanda: ComandaEntrega, detalle: String, alTerminar: (String?) -> Unit) {
         validarEntrega(detalle)?.let {
             alTerminar(it)
@@ -161,6 +169,7 @@ class EntregasViewModel(
         }) { repository.entregar(comanda.id, normalizarDetalleEntrega(detalle)) }
     }
 
+    /** Reporta un problema de reparto sin cerrar [comanda]; queda visible en incidencias. */
     fun reportarProblema(comanda: ComandaEntrega, motivo: String, detalle: String, alTerminar: (String?) -> Unit) {
         validarProblemaEntrega(motivo, detalle)?.let {
             alTerminar(it)
@@ -181,12 +190,13 @@ class EntregasViewModel(
     }
 }
 
-/** Traduce los rechazos del servidor como `mapearErrorEntrega` de la web. */
+// Patrón para detectar rechazos por cambios de estado previos en entregas concurrentes.
 private val YA_NO_PENDIENTE = Regex(
     "Solo se puede entregar una comanda finalizada|ya fue registrada|no está listo para entregar|Solo se pueden reportar problemas",
     RegexOption.IGNORE_CASE,
 )
 
+/** Traduce los rechazos del servidor a mensajes accionables, igual que `mapearErrorEntrega` web. */
 internal fun mensajeEntrega(error: String): String = when {
     YA_NO_PENDIENTE.containsMatchIn(error) -> "Esta comanda ya no está pendiente de entrega. Actualiza la lista."
     Regex("inactiva", RegexOption.IGNORE_CASE).containsMatchIn(error) -> "Tu cuenta está inactiva. Contacta a administración."

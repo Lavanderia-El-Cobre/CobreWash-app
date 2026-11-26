@@ -18,6 +18,9 @@ expect fun rememberCapturadorFoto(
 /**
  * Renderiza la miniatura de una fotografía de inspección si [uri] corresponde a un archivo
  * local accesible en el dispositivo, o un ícono de cámara en caso contrario.
+ *
+ * @param descripcion Texto accesible (`contentDescription`) para lectores de pantalla.
+ * @param tint Color aplicado al ícono de respaldo cuando la imagen local no está disponible.
  */
 @Composable
 expect fun MiniaturaFotoChequeo(

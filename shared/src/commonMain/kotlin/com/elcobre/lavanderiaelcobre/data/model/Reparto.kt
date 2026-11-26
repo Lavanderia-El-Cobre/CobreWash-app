@@ -174,6 +174,7 @@ data class ComandaEntrega(
 @Serializable
 data class EntregaRegistrada(val id: String, val fecha: String, val detalle: String?, val numero: String, val cliente: String)
 
+/** Comandas pendientes de entrega y el historial de entregas propias del repartidor. */
 @Serializable
 data class EntregasReparto(
     val comandas: List<ComandaEntrega> = emptyList(),
@@ -183,6 +184,7 @@ data class EntregasReparto(
 /** Recorta espacios y convierte en `null` un detalle vacío, como `normalizarDetalle` de la web. */
 fun normalizarDetalleEntrega(texto: String): String? = texto.replace(Regex("\\s+"), " ").trim().ifEmpty { null }
 
+/** Valida el detalle opcional al confirmar una entrega; devuelve el error o `null`. */
 fun validarEntrega(detalle: String): String? {
     val limpio = normalizarDetalleEntrega(detalle)
     return if (limpio != null && limpio.length > DETALLE_ENTREGA_MAXIMO) {
@@ -192,6 +194,7 @@ fun validarEntrega(detalle: String): String? {
     }
 }
 
+/** Valida motivo y detalle de un problema de entrega; exige descripción cuando el motivo es "Otro". */
 fun validarProblemaEntrega(motivo: String, detalle: String): String? {
     val limpio = normalizarDetalleEntrega(detalle)
     return when {

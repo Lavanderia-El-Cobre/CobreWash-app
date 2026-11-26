@@ -6,10 +6,11 @@ import com.elcobre.lavanderiaelcobre.dataconnect.instance
 import com.elcobre.lavanderiaelcobre.dataconnect.ref
 import com.google.firebase.dataconnect.QueryRef
 
+/** Implementación Android que consulta avisos internos para el equipo operativo por defecto. */
 internal actual suspend fun consultarAvisosFirebase(offset: Int, limit: Int): PaginaAvisos =
     avisosEquipoFirebase("operario", offset, limit)
 
-/** Etiqueta del destinatario, como `etiquetaDestinatario` de la web. */
+/** Traduce el código de rol destinatario a su etiqueta visible, equivalente a la web. */
 internal fun etiquetaDestinatario(rol: String?): String = when (rol) {
     null -> "Todos los equipos"
     "operario" -> "Operarios"
@@ -17,7 +18,10 @@ internal fun etiquetaDestinatario(rol: String?): String = when (rol) {
     else -> rol
 }
 
-/** Avisos visibles para el equipo del rol (operario o recepcionista), del más reciente al más antiguo. */
+/**
+ * Consulta en Data Connect (`SERVER_ONLY`) los avisos visibles para [rol], ordenados
+ * del más reciente al más antiguo y acompañados del total para paginación.
+ */
 internal suspend fun avisosEquipoFirebase(rol: String, offset: Int, limit: Int): PaginaAvisos = solicitud {
     val data = ExampleConnector.instance.getAvisosParaEquipo.ref(rol) {
         this.offset = offset

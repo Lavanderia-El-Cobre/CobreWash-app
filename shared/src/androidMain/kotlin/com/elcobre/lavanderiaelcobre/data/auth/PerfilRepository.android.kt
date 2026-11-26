@@ -13,6 +13,7 @@ import kotlin.coroutines.cancellation.CancellationException
 
 private const val PERFIL_TAG = "PerfilRepository"
 
+/** Traduce errores de Data Connect al cargar el perfil en mensajes orientados al usuario. */
 private fun mensajePerfil(error: DataConnectException): String {
     val detalle = error.message.orEmpty().lowercase()
     return when {
@@ -24,7 +25,13 @@ private fun mensajePerfil(error: DataConnectException): String {
     }
 }
 
+/** Implementación Android de [PerfilRepository] respaldada por la consulta `GetMiPerfil`. */
 actual class PerfilRepository actual constructor() {
+    /**
+     * Consulta el perfil del usuario autenticado directo al servidor (`SERVER_ONLY`).
+     * Marca `definitivo = true` cuando la cuenta no tiene perfil o está inactiva para
+     * forzar el cierre de sesión, y propaga [CancellationException] sin interceptarla.
+     */
     actual suspend fun obtenerMiPerfil(): PerfilResultado = try {
         val usuario = ExampleConnector.instance.getMiPerfil
             .ref()

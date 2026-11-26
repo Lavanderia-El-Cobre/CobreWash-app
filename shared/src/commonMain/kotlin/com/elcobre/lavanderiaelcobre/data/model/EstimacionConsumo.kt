@@ -23,6 +23,7 @@ enum class NivelStock(val etiqueta: String) {
     }
 }
 
+/** Rango estimado de consumo de un insumo específico y su disponibilidad frente al stock. */
 data class InsumoEstimado(
     val nombre: String,
     val unidad: String,
@@ -33,12 +34,14 @@ data class InsumoEstimado(
     val stockActual: Double? = null,
 )
 
+/** Respuesta del cálculo de consumo esperado para el servicio y peso de una comanda. */
 data class EstimacionConsumo(
     val insumos: List<InsumoEstimado>,
     val alerta: Boolean,
     /** El servicio aún no tiene tasas de consumo en el Módulo IA. */
     val sinTasas: Boolean,
 ) {
+    /** Insumos cuyo stock actual no cubre el consumo estimado de la comanda. */
     val faltantes: List<InsumoEstimado> get() = insumos.filter { it.nivel == NivelStock.INSUFICIENTE }
 }
 

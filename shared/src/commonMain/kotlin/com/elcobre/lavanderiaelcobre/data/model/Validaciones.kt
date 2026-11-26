@@ -18,6 +18,7 @@ object Validaciones {
 
     private val CORREO = Regex("^\\S+@\\S+\\.\\S+$")
 
+    /** Conserva solo dígitos y la letra `K` en mayúscula para validar o formatear un RUT. */
     fun limpiarRut(valor: String): String = valor.filter { it.isDigit() || it == 'k' || it == 'K' }.uppercase()
 
     private fun digitoVerificador(cuerpo: String): String {
@@ -44,6 +45,7 @@ object Validaciones {
         return "$agrupado-$dv"
     }
 
+    /** Verifica el dígito verificador del RUT chileno mediante el algoritmo módulo 11. */
     fun rutValido(valor: String): Boolean {
         val limpio = limpiarRut(valor)
         val cuerpo = limpio.dropLast(1)
@@ -71,8 +73,10 @@ object Validaciones {
         }
     }
 
+    /** Indica si [valor] corresponde a un número chileno válido (celular o fijo). */
     fun telefonoValido(valor: String): Boolean = tipoTelefono(valor) != null
 
+    /** Formatea un número chileno con prefijo `+56` y agrupación según código de área. */
     fun formatearTelefono(valor: String): String {
         val d = limpiarTelefono(valor)
         if (d.isEmpty()) return ""
@@ -82,6 +86,7 @@ object Validaciones {
             .joinToString(" ")
     }
 
+    /** Validación básica de formato de correo electrónico (sin espacios y con dominio). */
     fun correoValido(valor: String): Boolean = CORREO.matches(valor.trim())
 
     /** `null` si la contraseña cumple las reglas de la web; si no, el motivo. */

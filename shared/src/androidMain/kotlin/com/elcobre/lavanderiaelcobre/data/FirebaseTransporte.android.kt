@@ -7,6 +7,7 @@ import io.grpc.StatusException
 import io.grpc.StatusRuntimeException
 import kotlin.coroutines.cancellation.CancellationException
 
+/** Traduce códigos de estado gRPC del transporte de Data Connect a mensajes legibles. */
 private fun mensajeTransporte(status: Status): String = when (status.code) {
     Status.Code.NOT_FOUND -> "El servicio de datos aún no está actualizado. Intenta nuevamente más tarde."
     Status.Code.UNAUTHENTICATED -> "No se pudo validar tu sesión. Vuelve a ingresar."
@@ -14,6 +15,11 @@ private fun mensajeTransporte(status: Status): String = when (status.code) {
     else -> "No se pudo conectar con Firebase. Verifica tu conexión e intenta nuevamente."
 }
 
+/**
+ * Envuelve operaciones contra Firebase Data Connect para unificar el manejo de errores en
+ * [OperacionComandaException]. Propaga [CancellationException] sin interceptarla y notifica
+ * a [VigilanciaCuenta] cuando el servidor rechaza por cuenta inactiva o sin perfil.
+ */
 internal suspend fun <T> solicitud(block: suspend () -> T): T = try {
     block()
 } catch (error: CancellationException) {
