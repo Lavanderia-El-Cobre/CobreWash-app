@@ -51,14 +51,14 @@ abstract class GestionViewModel(private val scopeOverride: CoroutineScope? = nul
     }
 
     /** Lectura: muestra el progreso y, si falla, el mensaje del servidor. */
-    protected fun cargar(accion: suspend () -> Unit) {
+    protected fun cargar(limpiarError: Boolean = true, accion: suspend () -> Unit) {
         val inicio = generacion
         lecturas++
         cargando = true
         scope.launch {
             try {
                 accion()
-                if (inicio == generacion) error = null
+                if (inicio == generacion && limpiarError) error = null
             } catch (fallo: OperacionComandaException) {
                 if (inicio == generacion) error = fallo.message ?: "No se pudieron cargar los datos."
             } finally {

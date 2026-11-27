@@ -3,6 +3,7 @@ package com.elcobre.lavanderiaelcobre.data
 import com.elcobre.lavanderiaelcobre.data.model.FotoChequeo
 import com.google.firebase.auth.FirebaseAuth
 import java.io.File
+import java.io.FileNotFoundException
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -66,18 +67,32 @@ internal suspend fun subirFotoInspeccion(inspeccionId: String, foto: FotoChequeo
             conexion.doOutput = true
             conexion.setRequestProperty("Authorization", "Bearer $token")
             conexion.setRequestProperty("Content-Type", "image/jpeg")
-            val file = File(foto.uri.removePrefix("file://"))
-            // Streaming de longitud fija para evitar cargar el archivo completo en memoria.
-            conexion.setFixedLengthStreamingMode(file.length())
-            file.inputStream().use { input -> conexion.outputStream.use { output -> input.copyTo(output) } }
-            val codigo = conexion.responseCode
+            val file = resolverArchivoFoto(foto.uri)
+            val codigo = enviarArchivoFoto(conexion, file)
             if (codigo !in 200..299) {
                 throw FalloSubidaFoto("No se pudo confirmar la fotografía en el servidor ($codigo).", codigo)
             }
-        } catch (error: IOException) {
-            throw FalloSubidaFoto("No se pudo subir la fotografía. Revisa tu conexión y reintenta.", null, error)
         } finally { conexion.disconnect() }
     }
+}
+
+private fun resolverArchivoFoto(uri: String): File {
+    val file = File(uri.removePrefix("file://"))
+    if (!file.isFile) {
+        throw FalloSubidaFoto("La fotografía local ya no está disponible en el dispositivo.", 404)
+    }
+    return file
+}
+
+private fun enviarArchivoFoto(conexion: HttpURLConnection, file: File): Int = try {
+    // Streaming de longitud fija para evitar cargar el archivo completo en memoria.
+    conexion.setFixedLengthStreamingMode(file.length())
+    file.inputStream().use { input -> conexion.outputStream.use { output -> input.copyTo(output) } }
+    conexion.responseCode
+} catch (error: FileNotFoundException) {
+    throw FalloSubidaFoto("La fotografía local ya no está disponible en el dispositivo.", 404, error)
+} catch (error: IOException) {
+    throw FalloSubidaFoto("No se pudo subir la fotografía. Revisa tu conexión y reintenta.", null, error)
 }
 
 /**

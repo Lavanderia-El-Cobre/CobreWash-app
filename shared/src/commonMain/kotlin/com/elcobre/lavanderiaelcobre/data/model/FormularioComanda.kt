@@ -21,6 +21,9 @@ val PrendasHotel = listOf(
 fun prendasSugeridas(tipo: TipoClienteFicha): List<String> =
     if (tipo == TipoClienteFicha.HOTEL) PrendasHotel else PrendasParticular
 
+private var contadorUidLinea = 0L
+private fun siguienteUidLinea(): String = "linea-${++contadorUidLinea}"
+
 /** Línea editable del formulario. En hoteles se registra además cuántas prendas se recibieron. */
 data class LineaFormulario(
     val prenda: String = "",
@@ -29,6 +32,8 @@ data class LineaFormulario(
     val precioUnitario: Double = 0.0,
     val recibido: Int = 0,
     val detalle: String = "",
+    /** Clave estable para Compose (`key(linea.uid)`) al agregar o eliminar líneas. */
+    val uid: String = siguienteUidLinea(),
 ) {
     val subtotal: Double get() = cantidad * precioUnitario
 }

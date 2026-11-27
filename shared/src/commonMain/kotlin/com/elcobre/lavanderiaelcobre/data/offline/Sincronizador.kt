@@ -18,6 +18,7 @@ class Sincronizador(
     private val ejecutor: EjecutorAcciones,
     private val reloj: RelojDispositivo,
     private val uidActual: () -> String?,
+    private val hayRed: () -> Boolean = { true },
 ) {
     private val mutex = Mutex()
 
@@ -37,6 +38,9 @@ class Sincronizador(
         arranque = reloj.arranque(),
     )
 
+    private fun tieneComentarioPendiente(accion: AccionPendiente): Boolean =
+        !accion.comentarioAplicado && !accion.datos["comentario"].isNullOrBlank()
+
     /**
      * Guarda la acción en la cola y la envía junto con las anteriores. Si se aplicó, la
      * pantalla sigue como siempre; si el servidor la rechaza en este primer intento, se
@@ -51,6 +55,10 @@ class Sincronizador(
                 cola.quitar(accion.id)
                 ResultadoRegistro.Rechazada(estado.ultimoError ?: "El servidor rechazó la acción.")
             }
+            estado.estado == EstadoAccion.REQUIERE_ATENCION ->
+                ResultadoRegistro.EnCola(estado.ultimoError ?: "La acción requiere atención.")
+            estado.aplicada && tieneComentarioPendiente(estado) ->
+                ResultadoRegistro.EnCola("La etapa se guardó; el comentario se enviará al recuperar la conexión.")
             estado.aplicada -> ResultadoRegistro.EnCola("La acción se guardó; las fotografías se enviarán al recuperar la conexión.")
             resumen.pausada != null -> ResultadoRegistro.EnCola(resumen.pausada)
             else -> ResultadoRegistro.EnCola(AccionEnColaException.MENSAJE_EN_COLA)
@@ -58,7 +66,7 @@ class Sincronizador(
     }
 
     /** Envía lo pendiente de la sesión actual. [forzar] ignora la espera entre reintentos. */
-    @Suppress("CyclomaticComplexMethod", "LoopWithTooManyJumpStatements", "NestedBlockDepth")
+    @Suppress("CyclomaticComplexMethod", "LongMethod", "LoopWithTooManyJumpStatements", "NestedBlockDepth")
     suspend fun sincronizar(forzar: Boolean = false): ResumenSincronizacion = mutex.withLock {
         val uid = uidActual()
         var enviadas = 0
@@ -78,21 +86,22 @@ class Sincronizador(
                 bloqueadas += accion.entidad
                 continue
             }
-            if (!servidorConsultado) {
-                // La hora del servidor se consulta una sola vez por pasada y solo si hay algo listo.
-                servidor = ejecutor.horaServidorMs()
-                servidorConsultado = true
-            }
-            if (servidor == null) {
+            if (!hayRed()) {
                 reintentarDespues(accion, "Sin conexión.")
                 break
+            }
+            if (!servidorConsultado) {
+                // La hora del servidor se consulta una sola vez por pasada y solo si hay algo listo.
+                // Si falla el HEAD pero hay red validada, se continúa con `relojDudoso = true`.
+                servidor = ejecutor.horaServidorMs()
+                servidorConsultado = true
             }
             if (!accion.aplicada) {
                 val hora = RelojAcciones.horaOriginal(accion, servidor, reloj.ahoraMs(), reloj.monotonicoMs(), reloj.arranque())
                 when (val r = ejecutor.aplicar(accion, hora)) {
                     ResultadoEnvio.Aplicada -> {
                         accion = accion.copy(aplicada = true, ultimoError = null)
-                        if (accion.fotos.isEmpty()) {
+                        if (!tieneComentarioPendiente(accion) && accion.fotos.isEmpty()) {
                             cola.quitar(accion.id)
                             enviadas++
                             continue
@@ -109,6 +118,32 @@ class Sincronizador(
                     }
                     is ResultadoEnvio.Rechazada -> {
                         marcarRechazada(accion, r.mensaje)
+                        bloqueadas += accion.entidad
+                        continue
+                    }
+                }
+            }
+            if (tieneComentarioPendiente(accion)) {
+                when (val r = ejecutor.enviarComentario(accion)) {
+                    ResultadoEnvio.Aplicada -> {
+                        accion = accion.copy(comentarioAplicado = true, ultimoError = null)
+                        if (accion.fotos.isEmpty()) {
+                            cola.quitar(accion.id)
+                            enviadas++
+                            continue
+                        }
+                        cola.actualizar(accion)
+                    }
+                    ResultadoEnvio.SinRed -> {
+                        reintentarDespues(accion, "Comentario pendiente: sin conexión.")
+                        break
+                    }
+                    is ResultadoEnvio.Sesion -> {
+                        pausada = r.mensaje
+                        break
+                    }
+                    is ResultadoEnvio.Rechazada -> {
+                        marcarRechazada(accion, "La etapa se completó, pero el comentario fue rechazado: ${r.mensaje}")
                         bloqueadas += accion.entidad
                         continue
                     }
@@ -154,14 +189,14 @@ class Sincronizador(
     }
 
     /** Vuelve a poner en cola una acción que requería atención (por ejemplo, tras corregir algo en la web). */
-    suspend fun reintentar(id: String) {
-        val accion = cola.buscar(id) ?: return
+    suspend fun reintentar(id: String) = mutex.withLock {
+        val accion = cola.buscar(id) ?: return@withLock
         cola.actualizar(accion.copy(estado = EstadoAccion.PENDIENTE, proximoIntentoMs = 0))
     }
 
     /** Descarta una acción por decisión de la persona; sus fotos se borran del teléfono. */
-    suspend fun descartar(id: String) {
-        val accion = cola.buscar(id) ?: return
+    suspend fun descartar(id: String) = mutex.withLock {
+        val accion = cola.buscar(id) ?: return@withLock
         ejecutor.fotosConfirmadas(accion)
         cola.quitar(id)
     }

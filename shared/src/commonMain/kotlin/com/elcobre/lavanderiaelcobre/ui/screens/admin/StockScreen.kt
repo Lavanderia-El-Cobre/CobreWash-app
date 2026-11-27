@@ -57,8 +57,14 @@ import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 
 private enum class VistaStock(val etiqueta: String) { STOCK("Stock"), CONTEOS("Conteos"), MOVIMIENTOS("Movimientos") }
 
-private fun cantidad(valor: Double): String =
-    if (valor % 1.0 == 0.0) valor.toLong().toString() else ((valor * 100).toLong() / 100.0).toString()
+private fun cantidad(valor: Double): String {
+    val redondeado = kotlin.math.round(valor * 100.0).toLong() / 100.0
+    return if (redondeado % 1.0 == 0.0) redondeado.toLong().toString() else redondeado.toString()
+}
+
+private fun filtrarDecimal(texto: String): String = texto.filter { it.isDigit() || it == '.' || it == ',' }
+
+private fun leerDecimal(texto: String): Double? = texto.trim().replace(',', '.').toDoubleOrNull()
 
 private fun tonoInsumo(insumo: InsumoInventario): Tono = when (insumo.estado) {
     "Crítico" -> Tono.PELIGRO
@@ -239,6 +245,7 @@ private fun LazyListScope.listaMovimientos(vm: StockViewModel) {
                 { vm.refrescarMovimientos(mas = true) },
                 Modifier.readableWidth(),
                 variant = ButtonVariant.Tonal,
+                enabled = !vm.cargando,
                 fillWidth = true,
             )
         }
@@ -303,7 +310,7 @@ private fun FichaInsumoSheet(
         CobreTextField(unidad, { if (it.length <= 20) unidad = it }, label = "Unidad de medida")
         CobreTextField(
             minimo,
-            { minimo = it.filter { c -> c.isDigit() || c == '.' } },
+            { minimo = filtrarDecimal(it) },
             label = "Stock mínimo",
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         )
@@ -315,7 +322,7 @@ private fun FichaInsumoSheet(
             loading = vm.guardando,
             fillWidth = true,
             onClick = {
-                val min = minimo.toDoubleOrNull()
+                val min = leerDecimal(minimo)
                 if (min == null) {
                     error = "Ingresa un stock mínimo válido."
                 } else {
@@ -367,14 +374,14 @@ private fun NuevoInsumoSheet(vm: StockViewModel, onCerrar: () -> Unit) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             CobreTextField(
                 inicial,
-                { inicial = it.filter { c -> c.isDigit() || c == '.' } },
+                { inicial = filtrarDecimal(it) },
                 Modifier.weight(1f),
                 label = "Stock inicial",
                 keyboardOptions = decimal,
             )
             CobreTextField(
                 minimo,
-                { minimo = it.filter { c -> c.isDigit() || c == '.' } },
+                { minimo = filtrarDecimal(it) },
                 Modifier.weight(1f),
                 label = "Stock mínimo",
                 keyboardOptions = decimal,
@@ -387,8 +394,8 @@ private fun NuevoInsumoSheet(vm: StockViewModel, onCerrar: () -> Unit) {
             loading = vm.guardando,
             fillWidth = true,
             onClick = {
-                val ini = inicial.toDoubleOrNull()
-                val min = minimo.toDoubleOrNull()
+                val ini = leerDecimal(inicial)
+                val min = leerDecimal(minimo)
                 if (ini == null || min == null) {
                     error = "Revisa las cantidades."
                 } else {
@@ -412,7 +419,7 @@ private fun MovimientoSheet(vm: StockViewModel, insumo: InsumoInventario, tipo: 
     ) {
         CobreTextField(
             cantidadTexto,
-            { cantidadTexto = it.filter { c -> c.isDigit() || c == '.' } },
+            { cantidadTexto = filtrarDecimal(it) },
             label = "Cantidad (${insumo.unidad})",
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         )
@@ -431,7 +438,7 @@ private fun MovimientoSheet(vm: StockViewModel, insumo: InsumoInventario, tipo: 
             onClick = { vm.registrarMovimiento(
                 insumo,
                 tipo,
-                cantidadTexto.toDoubleOrNull(),
+                leerDecimal(cantidadTexto),
                 motivo,
             ) { p -> if (p == null) onCerrar() else error = p } },
         )
@@ -452,7 +459,14 @@ private fun ResolverConteoSheet(vm: StockViewModel, conteo: ConteoGestion, aprob
             "El stock de ${conteo.insumo} no cambia."
         },
     ) {
-        CobreTextField(motivo, { if (it.length <= 200) motivo = it }, label = "Motivo", singleLine = false, minLines = 2)
+        CobreTextField(
+            motivo,
+            { if (it.length <= 160) motivo = it },
+            label = "Motivo",
+            singleLine = false,
+            minLines = 2,
+            supportingText = "${motivo.length}/160",
+        )
         ErrorHoja(error)
         CobreButton(
             text = if (aprobar) "Aprobar y ajustar stock" else "Rechazar conteo",

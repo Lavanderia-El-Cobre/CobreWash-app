@@ -2,12 +2,14 @@ package com.elcobre.lavanderiaelcobre.data.model
 
 import kotlin.math.floor
 import kotlin.math.round
+import kotlinx.serialization.Serializable
 
 /**
  * Cobro de comandas por prendas o por peso, portado de `lib/comandas/cobro.ts` y de
  * `leerPesoKg`/`repartirPeso` de `lib/ia/comanda.ts`. Los `@check` de
  * `CrearComandaConFlujo` y `EditarComandaConDetalles` validan lo mismo en el servidor.
  */
+@Serializable
 enum class ModalidadCobro(val etiqueta: String) {
     PRENDA("Por prendas"),
     KILO("Por kg"),
@@ -75,17 +77,35 @@ object Cobro {
     }
 
     /**
-     * Reparte el peso total entre las líneas según la cantidad de prendas. La suma es
-     * exacta (la última línea absorbe el redondeo).
+     * Reparte el peso total entre las líneas según la cantidad de prendas usando el método
+     * del resto mayor en centésimas con piso de 0,01 kg por línea (sin ceros ni negativos).
      */
     fun repartirPeso(totalKg: Double, cantidades: List<Int>): List<Double> {
         if (totalKg <= 0 || cantidades.isEmpty()) return cantidades.map { 0.0 }
         val unidades = cantidades.map { maxOf(1, it) }
         val suma = unidades.sum().toDouble()
-        val partes = unidades.map { centesimas(totalKg * it / suma) }.toMutableList()
-        val resto = centesimas(totalKg - partes.sum())
-        partes[partes.lastIndex] = centesimas(partes.last() + resto)
-        return partes
+        val totalCent = redondear(totalKg * 100).toInt()
+        if (totalCent < unidades.size) return repartirMicroPeso(totalKg, unidades, suma)
+        val exactos = unidades.map { totalCent * it / suma }
+        val base = exactos.map { maxOf(1, floor(it).toInt()) }.toMutableList()
+        var resto = totalCent - base.sum()
+        if (resto > 0) {
+            val orden = exactos.indices.sortedWith(
+                compareByDescending<Int> { exactos[it] - base[it] }.thenByDescending { it },
+            )
+            for (k in 0 until resto) base[orden[k % orden.size]] += 1
+        } else if (resto < 0) {
+            val orden = base.indices.sortedWith(
+                compareByDescending<Int> { base[it] - exactos[it] }.thenBy { it },
+            )
+            for (i in orden) {
+                while (resto < 0 && base[i] > 1) {
+                    base[i] -= 1
+                    resto += 1
+                }
+            }
+        }
+        return base.map { it / 100.0 }
     }
 
     /** Nombre de una prenda escrita a mano: sin espacios de más y en mayúsculas. */
@@ -101,4 +121,14 @@ object Cobro {
     /** Precio por kg sin decimales, para precargar el campo. */
     fun formatearPrecio(precio: Double?): String =
         precio?.takeIf { it > 0 }?.let { round(it).toLong().toString() }.orEmpty()
+}
+
+private fun repartirMicroPeso(totalKg: Double, unidades: List<Int>, suma: Double): List<Double> {
+    val partes = unidades.map { maxOf(0.0001, round(totalKg * it / suma * 10_000) / 10_000) }.toMutableList()
+    val diff = round((totalKg - partes.sum()) * 10_000) / 10_000
+    val idxMax = partes.indices.maxByOrNull { partes[it] } ?: 0
+    if (partes[idxMax] + diff > 0) {
+        partes[idxMax] = round((partes[idxMax] + diff) * 10_000) / 10_000
+    }
+    return partes
 }

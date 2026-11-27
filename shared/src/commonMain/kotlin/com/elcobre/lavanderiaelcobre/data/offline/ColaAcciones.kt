@@ -122,6 +122,10 @@ interface EjecutorAcciones {
     /** Hora actual del servidor en ms, o `null` si no se pudo obtener (sin conexión). */
     suspend fun horaServidorMs(): Long?
     suspend fun aplicar(accion: AccionPendiente, hora: HoraOriginal): ResultadoEnvio
+
+    /** Envía el comentario opcional adjunto al completar una etapa; por defecto no hace nada. */
+    suspend fun enviarComentario(accion: AccionPendiente): ResultadoEnvio = ResultadoEnvio.Aplicada
+
     suspend fun subirFotos(accion: AccionPendiente): ResultadoEnvio
     /** Borra del dispositivo las fotos ya subidas. */
     fun fotosConfirmadas(accion: AccionPendiente) = Unit

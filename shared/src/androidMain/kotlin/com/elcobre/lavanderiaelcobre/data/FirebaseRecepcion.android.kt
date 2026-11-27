@@ -327,6 +327,7 @@ private class FirebaseRecepcionRepository : RecepcionRepository {
                     direccion = opcional(input.direccion)
                 }.data.cliente_insert.id.toString()
             }
+            alta.confirmarPersistencia()
             ResultadoClienteConCuenta(id, cuentaCreada = true, invitacionEnviada = enviarInvitacion(alta.auth, email))
         }
     }

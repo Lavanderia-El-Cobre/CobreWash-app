@@ -94,6 +94,7 @@ class FirebaseInventarioRepository : InventarioRepository {
     override suspend fun porQr(codigo: String): InsumoInventario? = try {
         insumoPorQrFirebase(codigo)
     } catch (error: OperacionComandaException) {
+        if (!CacheLectura.esErrorSinConexion(error)) throw error
         CacheLectura.guardado("insumos", ListSerializer(InsumoInventario.serializer()))
             ?.firstOrNull { it.codigoQr.equals(codigo.trim(), ignoreCase = true) } ?: throw error
     }

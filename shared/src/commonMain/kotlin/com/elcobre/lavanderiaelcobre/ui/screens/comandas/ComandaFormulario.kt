@@ -9,6 +9,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -85,15 +86,19 @@ internal fun ComandaFormularioSheet(vm: ComandasViewModel, formulario: Formulari
         ConsumoEstimadoPanel(vm.estimacion, formulario.servicio)
         SectionLabel(if (formulario.porKg) "Prendas (opcional por kg)" else "Prendas")
         formulario.lineas.forEachIndexed { indice, linea ->
-            LineaEditor(
-                vm = vm,
-                linea = linea,
-                tipo = formulario.tipoCliente,
-                porKg = formulario.porKg,
-                puedeQuitar = formulario.lineas.size > 1 || formulario.porKg,
-                onCambiar = { nueva -> cambiar(formulario.copy(lineas = formulario.lineas.toMutableList().also { it[indice] = nueva })) },
-                onQuitar = { cambiar(formulario.copy(lineas = formulario.lineas.filterIndexed { i, _ -> i != indice })) },
-            )
+            key(linea.uid) {
+                LineaEditor(
+                    vm = vm,
+                    linea = linea,
+                    tipo = formulario.tipoCliente,
+                    porKg = formulario.porKg,
+                    puedeQuitar = formulario.lineas.size > 1 || formulario.porKg,
+                    onCambiar = { nueva ->
+                        cambiar(formulario.copy(lineas = formulario.lineas.toMutableList().also { it[indice] = nueva }))
+                    },
+                    onQuitar = { cambiar(formulario.copy(lineas = formulario.lineas.filterIndexed { i, _ -> i != indice })) },
+                )
+            }
         }
         CobreButton(
             text = "Agregar prenda",
@@ -333,7 +338,7 @@ private fun LineaEditor(
  */
 @Composable
 private fun CantidadesYPrecio(linea: LineaFormulario, tipo: TipoClienteFicha, porKg: Boolean, onCambiar: (LineaFormulario) -> Unit) {
-    var precioTexto by remember(linea.servicio) { mutableStateOf(linea.precioUnitario.toLong().toString()) }
+    var precioTexto by remember(linea.uid, linea.servicio) { mutableStateOf(linea.precioUnitario.toLong().toString()) }
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {
         CampoCantidad(
             valor = linea.cantidad,

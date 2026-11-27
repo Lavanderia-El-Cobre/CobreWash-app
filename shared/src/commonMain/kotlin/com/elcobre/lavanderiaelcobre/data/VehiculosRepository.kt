@@ -5,8 +5,10 @@ import com.elcobre.lavanderiaelcobre.data.model.ConductorFlota
 import com.elcobre.lavanderiaelcobre.data.model.EstadoCondicionVehiculo
 import com.elcobre.lavanderiaelcobre.data.model.FotoChequeo
 import com.elcobre.lavanderiaelcobre.data.model.Vehiculo
+import kotlinx.serialization.Serializable
 
 /** Fotografía instantánea del estado de la flota devuelto por `GetFlotaVehiculos`. */
+@Serializable
 data class EstadoFlotaRemota(
     val vehiculos: List<Vehiculo>,
     val conductores: List<ConductorFlota>,

@@ -85,6 +85,7 @@ class VehiculosViewModel(
         private set
 
     private var generacion = 0
+    private var revision = 0
     private var habilitado = repository == null
     private var chequeoContador = _chequeosVehiculo.size
     private var vehiculoContador = _vehiculos.size
@@ -119,6 +120,7 @@ class VehiculosViewModel(
      */
     fun cambiarSesion(activo: Boolean) {
         generacion++
+        revision++
         salidasConFotosPendientes.clear()
         retornosConFotosPendientes.clear()
         repository?.descartarReintentos()
@@ -165,12 +167,13 @@ class VehiculosViewModel(
         val repo = repository ?: return
         if (!habilitado || cargando) return
         val inicio = generacion
+        val revInicio = revision
         cargando = true
         error = null
         scope.launch {
             try {
                 val remota = repo.consultarFlota()
-                if (inicio == generacion) {
+                if (inicio == generacion && revInicio == revision) {
                     aplicarFlotaRemota(remota.vehiculos, remota.conductores, remota.chequeos)
                 }
             } catch (causa: OperacionComandaException) {
@@ -460,6 +463,7 @@ class VehiculosViewModel(
         val repo = repository ?: return
         if (!habilitado || operacionEnCurso) return
         val inicio = generacion
+        revision++
         operacionEnCurso = true
         error = null
         mensajeExito = null

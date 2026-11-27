@@ -10,11 +10,14 @@ import com.elcobre.lavanderiaelcobre.data.crearRepartoRepository
 import com.elcobre.lavanderiaelcobre.data.model.ComandaEntrega
 import com.elcobre.lavanderiaelcobre.data.model.EntregasReparto
 import com.elcobre.lavanderiaelcobre.data.model.EstadoCondicionVehiculo
+import com.elcobre.lavanderiaelcobre.data.model.EstadoSalida
 import com.elcobre.lavanderiaelcobre.data.model.FotoChequeo
 import com.elcobre.lavanderiaelcobre.data.model.InspeccionInput
+import com.elcobre.lavanderiaelcobre.data.model.InspeccionReparto
 import com.elcobre.lavanderiaelcobre.data.model.PanelReparto
 import com.elcobre.lavanderiaelcobre.data.model.SalidaReparto
 import com.elcobre.lavanderiaelcobre.data.model.VehiculoReparto
+import com.elcobre.lavanderiaelcobre.data.model.fechaHoraLocal
 import com.elcobre.lavanderiaelcobre.data.model.filtrarComandasEntrega
 import com.elcobre.lavanderiaelcobre.data.model.motivoVisibleEntrega
 import com.elcobre.lavanderiaelcobre.data.model.normalizarDetalleEntrega
@@ -22,6 +25,9 @@ import com.elcobre.lavanderiaelcobre.data.model.validarEntrega
 import com.elcobre.lavanderiaelcobre.data.model.validarInspeccion
 import com.elcobre.lavanderiaelcobre.data.model.validarMovimiento
 import com.elcobre.lavanderiaelcobre.data.model.validarProblemaEntrega
+import com.elcobre.lavanderiaelcobre.data.offline.AccionPendiente
+import com.elcobre.lavanderiaelcobre.data.offline.AccionesSinConexion
+import com.elcobre.lavanderiaelcobre.data.offline.TipoAccion
 import kotlinx.coroutines.CoroutineScope
 
 /** Datos capturados en el formulario de salida o regreso de vehículo del repartidor. */
@@ -116,6 +122,10 @@ class RepartoViewModel(
 
     /** Valida la inspección previa e inicia una salida previamente programada por administración. */
     fun iniciarProgramada(salida: SalidaReparto, input: InspeccionInput, alTerminar: (String?) -> Unit) {
+        if (!AccionesSinConexion.conectado.value) {
+            alTerminar("Iniciar una salida programada requiere conexión. Reintenta al recuperar señal.")
+            return
+        }
         validarInspeccion(input.kilometraje, kilometrajeMinimo(salida), input.estado, esSalida = true, input.observaciones.orEmpty())
             ?.let {
                 alTerminar(it)
@@ -195,6 +205,38 @@ private val YA_NO_PENDIENTE = Regex(
     "Solo se puede entregar una comanda finalizada|ya fue registrada|no está listo para entregar|Solo se pueden reportar problemas",
     RegexOption.IGNORE_CASE,
 )
+
+/**
+ * Proyecta una [SalidaReparto] en curso a partir de una acción `SALIDA_FLOTA` todavía en cola,
+ * permitiendo registrar el `RETORNO_FLOTA` sobre el mismo `salidaId` antes de recuperar la red.
+ */
+internal fun salidaPendienteDesdeCola(acciones: List<AccionPendiente>, panel: PanelReparto): SalidaReparto? {
+    val salida = acciones.lastOrNull { it.tipo == TipoAccion.SALIDA_FLOTA } ?: return null
+    val vehiculoId = salida.datos["vehiculoId"] ?: return null
+    val vehiculo = panel.vehiculos.firstOrNull { it.id == vehiculoId }
+    val km = salida.datos["kilometraje"]?.toDoubleOrNull()?.toInt() ?: vehiculo?.kilometrajeActual ?: 0
+    val fecha = fechaHoraLocal(salida.ocurridoEnMs)
+    return SalidaReparto(
+        id = salida.entidad,
+        estado = EstadoSalida.EN_SERVICIO,
+        vehiculoId = vehiculoId,
+        patente = vehiculo?.patente ?: "Vehículo",
+        vehiculo = vehiculo?.vehiculo ?: "Salida guardada sin conexión",
+        creadoEn = fecha,
+        fechaSalida = fecha,
+        fechaRetorno = null,
+        observaciones = salida.datos["observaciones"],
+        antes = InspeccionReparto(
+            id = salida.datos["inspeccionId"].orEmpty(),
+            estado = EstadoCondicionVehiculo.desdeCodigo(salida.datos["estadoVehiculo"]),
+            kilometraje = km,
+            observaciones = salida.datos["observacionesInspeccion"],
+            registradoEn = fecha,
+            fotos = salida.fotos.size,
+        ),
+        despues = null,
+    )
+}
 
 /** Traduce los rechazos del servidor a mensajes accionables, igual que `mapearErrorEntrega` web. */
 internal fun mensajeEntrega(error: String): String = when {

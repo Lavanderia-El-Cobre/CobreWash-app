@@ -1,5 +1,7 @@
 package com.elcobre.lavanderiaelcobre.data.model
 
+import kotlinx.serialization.Serializable
+
 // Patrones chilenos soportados: moderna (AAAA-00), antigua (AA-0000) y moto (AAA-000).
 private val PATENTE_MODERNA_REGEX = Regex("^[A-Z]{4}\\d{2}$")
 private val PATENTE_ANTIGUA_REGEX = Regex("^[A-Z]{2}\\d{4}$")
@@ -7,6 +9,7 @@ private val PATENTE_MOTO_REGEX = Regex("^[A-Z]{3}\\d{3}$")
 private val PATENTE_CHILENA_REGEX = Regex("^([A-Z]{4}-?\\d{2}|[A-Z]{2}-?\\d{4}|[A-Z]{3}-?\\d{3})$")
 
 /** Condición técnica registrada durante la inspección de salida o retorno (`RF-VE02` / `RF-VE03`). */
+@Serializable
 enum class EstadoCondicionVehiculo(val codigo: String, val etiqueta: String) {
     APTO("APTO", "Apto"),
     CON_OBSERVACIONES("CON_OBSERVACIONES", "Con observaciones"),
@@ -33,6 +36,7 @@ enum class FiltroFlota(val etiqueta: String) {
 private val ROLES_CONDUCTOR_PERMITIDOS = setOf("conductor", "repartidor")
 
 /** Integrante del equipo interno habilitado como conductor de reparto (`conductor` o `repartidor`). */
+@Serializable
 data class ConductorFlota(
     val id: String,
     val nombreCompleto: String,
@@ -53,6 +57,7 @@ data class KpisFlota(
 )
 
 /** Vehículo de la flota de reparto ([TipoComanda.DOMICILIO]); check-in/checkout diario en [ChequeoVehiculo]. */
+@Serializable
 data class Vehiculo(
     val id: String,
     val patente: String,
@@ -79,6 +84,7 @@ data class Vehiculo(
 }
 
 /** Foto adjunta a una inspección de vehículo (`FotoInspeccionVehiculo` en Data Connect). */
+@Serializable
 data class FotoChequeo(
     val id: String,
     val uri: String,
@@ -90,6 +96,7 @@ data class FotoChequeo(
  * Registro de salida/entrada diaria de un [Vehiculo]: nace al dar la salida
  * (`kmSalida` no nulo) y se cierra al registrar la entrada (`kmEntrada` no nulo).
  */
+@Serializable
 data class ChequeoVehiculo(
     val id: String,
     val vehiculoId: String,

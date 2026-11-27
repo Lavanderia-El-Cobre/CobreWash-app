@@ -73,6 +73,7 @@ import com.elcobre.lavanderiaelcobre.ui.components.CompactTitleBar
 import com.elcobre.lavanderiaelcobre.ui.components.ContentCard
 import com.elcobre.lavanderiaelcobre.ui.components.EtapasTimeline
 import com.elcobre.lavanderiaelcobre.ui.components.FlujoProduccionCard
+import com.elcobre.lavanderiaelcobre.ui.components.GlassAlert
 import com.elcobre.lavanderiaelcobre.ui.components.GlassCard
 import com.elcobre.lavanderiaelcobre.ui.components.GlassIconButton
 import com.elcobre.lavanderiaelcobre.ui.components.GlassSearchField
@@ -134,6 +135,11 @@ fun DashboardScreen(
     var busqueda by remember { mutableStateOf("") }
     var expandidoId by remember { mutableStateOf<String?>(null) }
     var pedidoSeleccionadoId by remember { mutableStateOf<String?>(pedidos.firstOrNull()?.id) }
+    var confirmandoSalida by remember { mutableStateOf(false) }
+    val pendientes = rememberAccionesPendientes()
+    val solicitarSalida = {
+        if (pendientes.isNotEmpty()) confirmandoSalida = true else onCerrarSesion()
+    }
 
     // derivedStateOf y no remember(pedidos): la lista del ViewModel es la misma instancia
     // observable aunque cambie su contenido, así que como clave de remember nunca invalidaba
@@ -190,7 +196,7 @@ fun DashboardScreen(
                         onToggleExpand = { expandidoId = if (expandidoId == it) null else it },
                         onAvanzarEtapa = onAvanzarEtapa,
                         onAbrirPedido = onAbrirPedido,
-                        onCerrarSesion = onCerrarSesion,
+                        onCerrarSesion = solicitarSalida,
                         mostrarTopBar = mostrarTopBar,
                         sharedScope = sharedScope,
                         animatedScope = animatedScope,
@@ -198,6 +204,22 @@ fun DashboardScreen(
                 }
             }
         }
+    }
+    if (confirmandoSalida) {
+        val cant = pendientes.size
+        val texto = if (cant == 1) "1 acción guardada sin enviar" else "$cant acciones guardadas sin enviar"
+        GlassAlert(
+            title = "¿Cerrar sesión?",
+            message = "Tienes $texto. Si cierras sesión quedarán retenidas en este teléfono hasta que vuelvas " +
+                "a ingresar con tu cuenta (máximo 72 h antes de vencer).",
+            confirmText = "Cerrar sesión",
+            onConfirm = {
+                confirmandoSalida = false
+                onCerrarSesion()
+            },
+            onDismiss = { confirmandoSalida = false },
+            destructive = true,
+        )
     }
 }
 
@@ -710,14 +732,21 @@ private fun PedidoCard(
             .combinedClickable(
                 interactionSource = interaction,
                 indication = null,
-                onClick = { if (seleccionado) onToggleExpand() else onVerDetalle() },
+                onClick = onVerDetalle,
                 onDoubleClick = { onDoubleClick?.invoke() },
             ),
         contentPadding = PaddingValues(16.dp),
         stripe = prioridad.accent,
     ) {
         Column {
-            PedidoCardHeader(pedido, etapa, expandido, sharedScope, animatedScope)
+            PedidoCardHeader(
+                pedido = pedido,
+                etapa = etapa,
+                expandido = expandido,
+                onToggleExpand = if (seleccionado) null else onToggleExpand,
+                sharedScope = sharedScope,
+                animatedScope = animatedScope,
+            )
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TipoPill(pedido.tipo)
@@ -750,6 +779,7 @@ private fun PedidoCardHeader(
     pedido: Pedido,
     etapa: ChipColors,
     expandido: Boolean,
+    onToggleExpand: (() -> Unit)?,
     sharedScope: SharedTransitionScope?,
     animatedScope: AnimatedVisibilityScope?,
 ) {
@@ -771,12 +801,23 @@ private fun PedidoCardHeader(
             Text(pedido.comanda, style = CobreTheme.text.label, color = colors.textSecondary)
             Text(pedido.cliente, style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
         }
-        Icon(
-            CobreIcons.ArrowForward,
-            contentDescription = if (expandido) "Contraer" else "Expandir",
-            tint = colors.textSecondary,
-            modifier = Modifier.size(20.dp).graphicsLayer { rotationZ = rotacion },
-        )
+        if (onToggleExpand != null) {
+            IconButton(onClick = onToggleExpand) {
+                Icon(
+                    CobreIcons.ArrowForward,
+                    contentDescription = if (expandido) "Contraer" else "Expandir",
+                    tint = colors.textSecondary,
+                    modifier = Modifier.size(20.dp).graphicsLayer { rotationZ = rotacion },
+                )
+            }
+        } else {
+            Icon(
+                CobreIcons.ArrowForward,
+                contentDescription = null,
+                tint = colors.textSecondary,
+                modifier = Modifier.size(20.dp).graphicsLayer { rotationZ = rotacion },
+            )
+        }
     }
 }
 
@@ -835,10 +876,11 @@ private fun PedidoCardExpandido(pedido: Pedido, onAvanzar: () -> Unit, onVerDeta
                 text = when {
                     pedido.estaBloqueado -> "Resuelve la alerta"
                     siguiente != null -> "Avanzar a ${siguiente.corto}"
+                    pedido.puedeCompletar -> "Marcar entregada"
                     else -> "Completado"
                 },
                 onClick = onAvanzar,
-                enabled = !pedido.esFinal && !pedido.estaBloqueado,
+                enabled = pedido.puedeCompletar && !pedido.estaBloqueado,
                 modifier = Modifier.weight(1f),
             )
             CobreButton(text = "Detalle", onClick = onVerDetalle, variant = ButtonVariant.Tonal)

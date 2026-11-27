@@ -13,6 +13,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,11 +52,13 @@ import com.elcobre.lavanderiaelcobre.ui.components.Tono
 import com.elcobre.lavanderiaelcobre.ui.components.readableWidth
 import com.elcobre.lavanderiaelcobre.ui.gestion.MovimientoInput
 import com.elcobre.lavanderiaelcobre.ui.gestion.RepartoViewModel
+import com.elcobre.lavanderiaelcobre.ui.gestion.salidaPendienteDesdeCola
 import com.elcobre.lavanderiaelcobre.ui.screens.produccion.ErrorHoja
 import com.elcobre.lavanderiaelcobre.ui.screens.vehiculos.SelectorCondicionVehiculo
 import com.elcobre.lavanderiaelcobre.ui.screens.vehiculos.SelectorFotos
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 import com.elcobre.lavanderiaelcobre.ui.components.rememberAccionesPendientes
+import com.elcobre.lavanderiaelcobre.data.offline.AccionesSinConexion
 import com.elcobre.lavanderiaelcobre.data.offline.TipoAccion
 
 private fun tonoSalida(estado: EstadoSalida): Tono = when (estado) {
@@ -88,9 +91,13 @@ private sealed interface Movimiento {
 @Composable
 fun RepartoScreen(vm: RepartoViewModel, nombre: String, applySystemBarsInsets: Boolean = true) {
     var movimiento by remember { mutableStateOf<Movimiento?>(null) }
+    val conectado by AccionesSinConexion.conectado.collectAsState()
     val pendientes = rememberAccionesPendientes()
-    val salidaSinEnviar = pendientes.any { it.tipo == TipoAccion.SALIDA_FLOTA }
     val regresosSinEnviar = pendientes.filter { it.tipo == TipoAccion.RETORNO_FLOTA }.map { it.entidad }.toSet()
+    val salidaPendiente = if (vm.salidaEnCurso == null) salidaPendienteDesdeCola(pendientes, vm.panel) else null
+    val salidaEnCurso = vm.salidaEnCurso ?: salidaPendiente
+    val salidaSinEnviar = salidaPendiente != null && salidaPendiente.id !in regresosSinEnviar
+    val salidaYRegresoSinEnviar = salidaPendiente != null && salidaPendiente.id in regresosSinEnviar
     LargeTitleScreen(
         title = "Mi vehículo",
         subtitle = "Salidas y regresos de ${nombre.substringBefore(' ')}",
@@ -105,7 +112,8 @@ fun RepartoScreen(vm: RepartoViewModel, nombre: String, applySystemBarsInsets: B
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                KpiTile(if (vm.salidaEnCurso != null) "1" else "0", "En ruta", Tono.INFO)
+                val enRuta = salidaEnCurso != null && salidaEnCurso.id !in regresosSinEnviar
+                KpiTile(if (enRuta) "1" else "0", "En ruta", Tono.INFO)
                 val disponibles = vm.panel.vehiculos.count { it.disponibilidad == DisponibilidadVehiculo.DISPONIBLE }
                 KpiTile(disponibles.toString(), "Disponibles", Tono.EXITO)
                 KpiTile(vm.historial.size.toString(), "Finalizadas", Tono.MARCA)
@@ -118,62 +126,40 @@ fun RepartoScreen(vm: RepartoViewModel, nombre: String, applySystemBarsInsets: B
                 EstadoCarga(vm.cargando, vm.error)
             }
         }
-        if (salidaSinEnviar) {
-            item(key = "salida-sin-enviar") {
+        if (salidaYRegresoSinEnviar) {
+            item(key = "salida-regreso-sin-enviar") {
                 EstadoVacio(
                     CobreIcons.Schedule,
-                    "Tu salida quedó guardada en el teléfono y se enviará al recuperar la conexión.",
+                    "Tu salida y regreso quedaron guardados en el teléfono y se enviarán en orden al recuperar la conexión.",
                     modifier = Modifier.readableWidth(),
                 )
             }
         }
-        vm.salidaEnCurso?.let { salida ->
-            item(key = "t-en-curso") { TituloGrupo("En ruta", Modifier.readableWidth()) }
-            item(key = salida.id) {
-                SalidaCard(salida, Modifier.readableWidth()) {
-                    CobreButton(
-                        text = if (salida.id in regresosSinEnviar) "Regreso sin enviar" else "Registrar regreso",
-                        onClick = { movimiento = Movimiento.Regreso(salida) },
-                        icon = CobreIcons.CheckCircle,
-                        fillWidth = true,
-                        enabled = salida.id !in regresosSinEnviar,
-                    )
-                }
-            }
-        }
-        if (vm.programadas.isNotEmpty()) {
-            item(key = "t-programadas") { TituloGrupo("Programadas por administración", Modifier.readableWidth()) }
-            items(vm.programadas, key = { it.id }) { salida ->
-                SalidaCard(salida, Modifier.readableWidth()) {
-                    CobreButton(
-                        text = if (salida.antes == null) "Inspeccionar e iniciar" else "Iniciar recorrido",
-                        onClick = { movimiento = Movimiento.Programada(salida) },
-                        icon = CobreIcons.LocalShipping,
-                        variant = ButtonVariant.Tonal,
-                        fillWidth = true,
-                        enabled = vm.salidaEnCurso == null,
-                    )
-                }
-            }
-        }
+        seccionEnRuta(salidaEnCurso, salidaPendiente != null, regresosSinEnviar) { movimiento = Movimiento.Regreso(it) }
+        seccionProgramadas(vm.programadas, conectado, salidaEnCurso == null) { movimiento = Movimiento.Programada(it) }
         listaVehiculos(vm, salidaSinEnviar) { movimiento = Movimiento.Salida(it) }
         if (vm.historial.isNotEmpty()) {
             item(key = "t-historial") { TituloGrupo("Historial", Modifier.readableWidth()) }
             items(vm.historial, key = { it.id }) { SalidaCard(it, Modifier.readableWidth()) }
         }
     }
+    HojaMovimiento(vm, movimiento, onCerrar = { movimiento = null })
+}
+
+@Composable
+private fun HojaMovimiento(vm: RepartoViewModel, movimiento: Movimiento?, onCerrar: () -> Unit) {
     when (val m = movimiento) {
         is Movimiento.Salida -> MovimientoSheet(
             vm, titulo = "Salida · ${m.vehiculo.patente}", detalle = m.vehiculo.vehiculo, esSalida = true,
-            minimo = m.vehiculo.kilometrajeActual, onCerrar = { movimiento = null },
+            minimo = m.vehiculo.kilometrajeActual, onCerrar = onCerrar,
         ) { input, fin -> vm.registrarSalida(m.vehiculo, input, fin) }
         is Movimiento.Regreso -> MovimientoSheet(
             vm, titulo = "Regreso · ${m.salida.patente}", detalle = m.salida.vehiculo, esSalida = false,
-            minimo = m.salida.antes?.kilometraje ?: 0, onCerrar = { movimiento = null },
+            minimo = m.salida.antes?.kilometraje ?: 0, onCerrar = onCerrar,
         ) { input, fin -> vm.registrarRetorno(m.salida, input, fin) }
         is Movimiento.Programada -> MovimientoSheet(
             vm, titulo = "Iniciar · ${m.salida.patente}", detalle = m.salida.vehiculo, esSalida = true,
-            minimo = vm.kilometrajeMinimo(m.salida), onCerrar = { movimiento = null }, yaInspeccionada = m.salida.antes,
+            minimo = vm.kilometrajeMinimo(m.salida), onCerrar = onCerrar, yaInspeccionada = m.salida.antes,
         ) { input, fin ->
             vm.iniciarProgramada(
                 m.salida,
@@ -184,6 +170,54 @@ fun RepartoScreen(vm: RepartoViewModel, nombre: String, applySystemBarsInsets: B
             )
         }
         null -> Unit
+    }
+}
+
+private fun LazyListScope.seccionEnRuta(
+    salidaEnCurso: SalidaReparto?,
+    esPendiente: Boolean,
+    regresosSinEnviar: Set<String>,
+    onRegreso: (SalidaReparto) -> Unit,
+) {
+    val salida = salidaEnCurso ?: return
+    val tituloEnRuta = if (esPendiente) "En ruta (sin enviar)" else "En ruta"
+    item(key = "t-en-curso") { TituloGrupo(tituloEnRuta, Modifier.readableWidth()) }
+    item(key = salida.id) {
+        SalidaCard(salida, Modifier.readableWidth()) {
+            CobreButton(
+                text = if (salida.id in regresosSinEnviar) "Regreso sin enviar" else "Registrar regreso",
+                onClick = { onRegreso(salida) },
+                icon = CobreIcons.CheckCircle,
+                fillWidth = true,
+                enabled = salida.id !in regresosSinEnviar,
+            )
+        }
+    }
+}
+
+private fun LazyListScope.seccionProgramadas(
+    programadas: List<SalidaReparto>,
+    conectado: Boolean,
+    sinSalidaEnCurso: Boolean,
+    onIniciar: (SalidaReparto) -> Unit,
+) {
+    if (programadas.isEmpty()) return
+    item(key = "t-programadas") { TituloGrupo("Programadas por administración", Modifier.readableWidth()) }
+    items(programadas, key = { it.id }) { salida ->
+        SalidaCard(salida, Modifier.readableWidth()) {
+            CobreButton(
+                text = when {
+                    !conectado -> "Requiere conexión"
+                    salida.antes == null -> "Inspeccionar e iniciar"
+                    else -> "Iniciar recorrido"
+                },
+                onClick = { onIniciar(salida) },
+                icon = CobreIcons.LocalShipping,
+                variant = ButtonVariant.Tonal,
+                fillWidth = true,
+                enabled = conectado && sinSalidaEnCurso,
+            )
+        }
     }
 }
 

@@ -116,6 +116,7 @@ fun ProduccionScreen(
                     text = "Cargar más",
                     onClick = { vm.refrescar(mas = true) },
                     variant = ButtonVariant.Tonal,
+                    enabled = !vm.cargando,
                     fillWidth = true,
                     modifier = Modifier.readableWidth(),
                 )

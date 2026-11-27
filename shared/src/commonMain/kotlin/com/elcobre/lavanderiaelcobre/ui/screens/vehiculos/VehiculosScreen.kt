@@ -108,6 +108,7 @@ import com.elcobre.lavanderiaelcobre.ui.components.brandHeadingColor
 import com.elcobre.lavanderiaelcobre.ui.components.brandMutedColor
 import com.elcobre.lavanderiaelcobre.ui.components.pressableScale
 import com.elcobre.lavanderiaelcobre.ui.components.rememberCapturadorFoto
+import com.elcobre.lavanderiaelcobre.ui.components.siguienteGuiaFoto
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreShapes
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusAmber
@@ -118,9 +119,6 @@ import com.elcobre.lavanderiaelcobre.ui.theme.StatusRed
 import com.elcobre.lavanderiaelcobre.ui.theme.StatusRedDark
 import com.elcobre.lavanderiaelcobre.ui.theme.cobreIsDark
 import kotlinx.coroutines.delay
-
-/** Etiquetas sugeridas en orden secuencial al capturar fotografías de inspección. */
-private val ETIQUETAS_FOTOS = listOf("Frente", "Lateral derecho", "Lateral izquierdo", "Posterior", "Tablero / Odómetro")
 
 /**
  * Gestión de flota para el rol Administrador conectada a Firebase Data Connect
@@ -176,6 +174,7 @@ fun VehiculosScreen(
         observaciones: String?,
     ) -> Unit = { id, km, _, fotos, obs -> onRegistrarEntrada(id, km, fotos, obs) },
     onProgramarSalida: ((vehiculoId: String, repartidorId: String, observaciones: String?) -> Unit)? = null,
+    todosLosVehiculos: List<Vehiculo> = vehiculos,
 ) {
     var vehiculoChequeoModal by remember { mutableStateOf<Vehiculo?>(null) }
     var vehiculoHistorialModal by remember { mutableStateOf<Vehiculo?>(null) }
@@ -217,7 +216,10 @@ fun VehiculosScreen(
                 onLimpiarMensajes = onLimpiarMensajes,
                 onCambiarBusqueda = onCambiarBusqueda,
                 onSeleccionarFiltro = onSeleccionarFiltro,
-                onAbrirChequeo = { vehiculoChequeoModal = it },
+                onAbrirChequeo = {
+                    onLimpiarMensajes()
+                    vehiculoChequeoModal = it
+                },
                 onAbrirHistorial = { vehiculoHistorialModal = it },
                 onCambiarEstadoVehiculo = onCambiarEstadoVehiculo,
             )
@@ -229,7 +231,7 @@ fun VehiculosScreen(
 
     if (mostrandoAltaModal) {
         ModalAgregarVehiculo(
-            patentesExistentes = vehiculos.map { it.patente },
+            patentesExistentes = todosLosVehiculos.map { it.patente },
             onDismiss = { mostrandoAltaModal = false },
             onAgregar = { patente, marca, modelo, anio, km ->
                 onRegistrarVehiculoDetallado(patente, marca, modelo, anio, km)
@@ -270,7 +272,7 @@ fun VehiculosScreen(
 
     HojaProgramarSalida(
         abierta = programando,
-        vehiculos = vehiculos,
+        vehiculos = todosLosVehiculos,
         conductores = conductores,
         chequeoEnRuta = chequeoEnRuta,
         guardando = operacionEnCurso,
@@ -1146,7 +1148,7 @@ private fun ChequeoForm(
     ) -> Unit,
 ) {
     CobreBackHandler(enabled = true, onBack = onDismiss)
-    val conductoresHabilitados = remember(conductores) {
+    val conductoresHabilitados = remember(conductores.toList()) {
         conductores.filter { esRolConductorORepartidor(it.rol) }
     }
     var kmTexto by remember { mutableStateOf(kmMinimo.toString()) }
@@ -1359,18 +1361,18 @@ internal fun SelectorCondicionVehiculo(
 }
 
 /**
- * Selector y carrusel de evidencia fotográfica (hasta 20 capturas) etiquetadas en orden
- * según [ETIQUETAS_FOTOS]. Tocar una miniatura la descarta mientras [enabled] sea true.
+ * Selector y carrusel de evidencia fotográfica (hasta 20 capturas) guiadas por parte del vehículo
+ * (frente, laterales, posterior y tablero). Tocar una miniatura la descarta mientras [enabled] sea true.
  */
 @Composable
 internal fun SelectorFotos(accent: Color, fotos: MutableState<List<FotoChequeo>>, haptic: HapticFeedback, enabled: Boolean) {
-    val abrirCamara = rememberCapturadorFoto { uriCapturada ->
+    val siguienteGuia = siguienteGuiaFoto(fotos.value)
+    val abrirCamara = rememberCapturadorFoto { uriCapturada, guia ->
         val orden = fotos.value.size + 1
-        val etiqueta = ETIQUETAS_FOTOS.getOrElse(orden - 1) { "Evidencia $orden" }
         fotos.value = fotos.value + FotoChequeo(
             id = "F-$orden-${uriCapturada.hashCode()}",
             uri = uriCapturada,
-            descripcion = etiqueta,
+            descripcion = guia.etiqueta,
             orden = orden,
         )
     }
@@ -1379,16 +1381,27 @@ internal fun SelectorFotos(accent: Color, fotos: MutableState<List<FotoChequeo>>
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            "Evidencia fotográfica (${fotos.value.size})",
-            style = MaterialTheme.typography.titleSmall,
-            color = brandHeadingColor(),
-        )
+        Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+            Text(
+                "Evidencia fotográfica (${fotos.value.size})",
+                style = MaterialTheme.typography.titleSmall,
+                color = brandHeadingColor(),
+            )
+            Text(
+                if (siguienteGuia.paso != null) {
+                    "Siguiente: ${siguienteGuia.tituloCamara}"
+                } else {
+                    "Vistas sugeridas completas · Puedes tomar fotos extra"
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = brandMutedColor(),
+            )
+        }
         CobreButton(
             text = "Tomar foto",
             onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                abrirCamara()
+                abrirCamara(siguienteGuia)
             },
             variant = ButtonVariant.Tonal,
             icon = CobreIcons.PhotoCamera,
@@ -1423,35 +1436,53 @@ internal fun SelectorFotos(accent: Color, fotos: MutableState<List<FotoChequeo>>
             }
         }
         item {
-            val interaction = remember { MutableInteractionSource() }
-            Box(
-                modifier = Modifier
-                    .size(72.dp)
-                    .pressableScale(interaction)
-                    .clip(CobreShapes.md)
-                    .background(CobreTheme.colors.accentContainer)
-                    .clickable(enabled = enabled && fotos.value.size < 20, interactionSource = interaction, indication = null) {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        abrirCamara()
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        CobreIcons.PhotoCamera,
-                        contentDescription = "Tomar foto",
-                        tint = CobreTheme.colors.accent,
-                        modifier = Modifier.size(22.dp),
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        "Cámara",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = CobreTheme.colors.accentText,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-            }
+            TarjetaCamaraSiguiente(
+                etiqueta = siguienteGuia.etiqueta,
+                tituloCamara = siguienteGuia.tituloCamara,
+                enabled = enabled && fotos.value.size < 20,
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    abrirCamara(siguienteGuia)
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun TarjetaCamaraSiguiente(
+    etiqueta: String,
+    tituloCamara: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    Box(
+        modifier = Modifier
+            .height(72.dp)
+            .pressableScale(interaction)
+            .clip(CobreShapes.md)
+            .background(CobreTheme.colors.accentContainer)
+            .clickable(enabled = enabled, interactionSource = interaction, indication = null, onClick = onClick)
+            .padding(horizontal = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                CobreIcons.PhotoCamera,
+                contentDescription = "Tomar foto: $tituloCamara",
+                tint = CobreTheme.colors.accent,
+                modifier = Modifier.size(22.dp),
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                etiqueta,
+                style = MaterialTheme.typography.labelSmall,
+                color = CobreTheme.colors.accentText,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

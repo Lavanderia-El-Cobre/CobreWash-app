@@ -68,8 +68,19 @@ class CobreViewModel(
     var errorOperacion by mutableStateOf<String?>(null)
         private set
 
+    /** Descarta el error operativo visible en pantalla. */
+    fun limpiarError() { errorOperacion = null }
+
     /** Aviso informativo (por ejemplo, una acción guardada sin conexión). */
     var avisoOperacion by mutableStateOf<String?>(null)
+
+    /** Descarta el aviso informativo visible en pantalla. */
+    fun limpiarAviso() { avisoOperacion = null }
+
+    /** Contador monotónico que incrementa al finalizar cada operación de comanda. */
+    var operacionSeq by mutableStateOf(0)
+        private set
+
     var cargando by mutableStateOf(false)
         private set
     // Contadores de concurrencia: `generacion` descarta trabajos de sesiones anteriores;
@@ -326,6 +337,11 @@ class CobreViewModel(
         errorOperacion = motivo
     }
 
+    /** Invalida una restauración automática en vuelo cuando el usuario inicia login manual. */
+    fun cancelarRestauracion() {
+        if (sesion == null) generacion++
+    }
+
     /**
      * Activa una nueva sesión: incrementa [generacion], cancela corrutinas previas, reinicia el
      * estado operativo y reemplaza la pila con la pestaña inicial del rol. Si quedó un
@@ -340,6 +356,8 @@ class CobreViewModel(
         comandasInicializadas = false
         sesion = s
         seccionMas = null
+        errorOperacion = null
+        avisoOperacion = null
         limpiarAvisos()
         inventario.cambiarSesion(s is Sesion.DeOperario)
 
@@ -412,6 +430,7 @@ class CobreViewModel(
         limpiarAvisos()
         inventario.cambiarSesion(false)
         errorOperacion = null
+        avisoOperacion = null
         cargando = false
         qrPendiente = null
         sesion = null
@@ -435,14 +454,10 @@ class CobreViewModel(
         if (pedido.estaBloqueado) return
         ejecutar("avance:$id") {
             revision++
-            repository.avanzar(pedido)
+            repository.avanzar(pedido, comentario)
             val actualizado = repository.detalle(id)
                 ?: throw OperacionComandaException("El avance se guardó, pero no se pudo cargar el detalle.")
             actualizarPedido(actualizado)
-            if (comentario.isNotBlank()) {
-                repository.comentar(id, comentario)
-                repository.detalle(id)?.let(::actualizarPedido)
-            }
         }
     }
 
@@ -508,6 +523,7 @@ class CobreViewModel(
                 if (inicio == generacion) {
                     operaciones.remove(clave)
                     cargando = operaciones.isNotEmpty()
+                    operacionSeq++
                 }
             }
         }

@@ -44,7 +44,7 @@ fun CampoTelefono(
             texto = { "${it.etiqueta} (${it.prefijoVisible})" },
             onSeleccionar = {
                 paisId = it.id
-                onCambiar(Telefonos.formatear(it.id, Telefonos.extraerNacional(it, valor)))
+                onCambiar(Telefonos.formatear(it.id, nacional))
             },
             enabled = enabled,
         )

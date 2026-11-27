@@ -38,8 +38,9 @@ import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
-import java.util.concurrent.Executors
 import java.util.concurrent.ExecutionException
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Implementación Android del lector QR basado en CameraX y ML Kit.
@@ -79,24 +80,24 @@ private fun CamaraQr(modifier: Modifier, activo: Boolean, onCodigo: (String) -> 
     val activoActual by rememberUpdatedState(activo)
     val callback by rememberUpdatedState(onCodigo)
     val previewView = remember(context) { PreviewView(context) }
-    val executor = remember { Executors.newSingleThreadExecutor() }
-    val scanner = remember {
-        BarcodeScanning.getClient(BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build())
-    }
     var error by remember { mutableStateOf<String?>(null) }
     DisposableEffect(owner, previewView) {
-        var disposed = false
+        val disposed = AtomicBoolean(false)
+        val executor = Executors.newSingleThreadExecutor()
+        val scanner = BarcodeScanning.getClient(
+            BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build(),
+        )
         var provider: ProcessCameraProvider? = null
         val preview = Preview.Builder().build().also { it.setSurfaceProvider(previewView.surfaceProvider) }
         val analysis = ImageAnalysis.Builder().setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).build()
         analysis.setAnalyzer(executor) { frame ->
-            analizar(frame, scanner, { !disposed && activoActual }, { callback(it) }) {
+            analizar(frame, scanner, { !disposed.get() && activoActual }, { callback(it) }) {
                 error = "No se pudo leer el QR. Vuelve a intentar."
             }
         }
         val future = ProcessCameraProvider.getInstance(context)
         future.addListener({
-            if (!disposed) {
+            if (!disposed.get()) {
                 try {
                     provider = future.get()
                     provider?.bindToLifecycle(owner, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
@@ -117,7 +118,7 @@ private fun CamaraQr(modifier: Modifier, activo: Boolean, onCodigo: (String) -> 
             }
         }, ContextCompat.getMainExecutor(context))
         onDispose {
-            disposed = true
+            disposed.set(true)
             analysis.clearAnalyzer()
             provider?.unbind(preview, analysis)
             scanner.close()
@@ -135,6 +136,7 @@ private fun CamaraQr(modifier: Modifier, activo: Boolean, onCodigo: (String) -> 
  * Cierra siempre [frame] al finalizar para evitar bloquear la cola de análisis de cámara.
  */
 @androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
+@Suppress("TooGenericExceptionCaught")
 private fun analizar(
     frame: ImageProxy, scanner: BarcodeScanner, activo: () -> Boolean,
     onCodigo: (String) -> Unit, onError: () -> Unit,
@@ -144,13 +146,20 @@ private fun analizar(
         frame.close()
         return
     }
-    scanner.process(InputImage.fromMediaImage(media, frame.imageInfo.rotationDegrees))
-        .addOnSuccessListener { resultados ->
-            if (activo()) resultados.firstNotNullOfOrNull { it.rawValue }?.let(onCodigo)
-        }
-        .addOnFailureListener { cause ->
-            Log.w("QrScanner", "Error al analizar un fotograma", cause)
-            if (activo()) onError()
-        }
-        .addOnCompleteListener { frame.close() }
+    try {
+        val imagen = InputImage.fromMediaImage(media, frame.imageInfo.rotationDegrees)
+        scanner.process(imagen)
+            .addOnSuccessListener { resultados ->
+                if (activo()) resultados.firstNotNullOfOrNull { it.rawValue }?.let(onCodigo)
+            }
+            .addOnFailureListener { cause ->
+                Log.w("QrScanner", "Error al analizar un fotograma", cause)
+                if (activo()) onError()
+            }
+            .addOnCompleteListener { frame.close() }
+    } catch (cause: Exception) {
+        Log.w("QrScanner", "Error síncrono al preparar fotograma QR", cause)
+        frame.close()
+        if (activo()) onError()
+    }
 }

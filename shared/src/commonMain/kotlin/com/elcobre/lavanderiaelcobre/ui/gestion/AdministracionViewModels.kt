@@ -45,6 +45,7 @@ class AvisosEquipoViewModel(
     var total by mutableStateOf(0)
         private set
     private var limite = PAGINA_COMANDAS
+    private var consulta = 0
 
     // Identificadores marcados como leídos en la sesión actual para la insignia local.
     private var vistos by mutableStateOf<Set<String>>(emptySet())
@@ -56,8 +57,9 @@ class AvisosEquipoViewModel(
 
     /** Recarga los avisos; si [mas] es `true`, amplía el límite en una página adicional. */
     fun refrescar(mas: Boolean = false) {
-        if (mas && !hayMas) return
+        if (mas && (cargando || !hayMas)) return
         if (mas) limite += PAGINA_COMANDAS
+        val solicitud = ++consulta
         val limiteActual = limite
         cargar {
             val pagina = if (rolEquipo == null) {
@@ -65,8 +67,10 @@ class AvisosEquipoViewModel(
             } else {
                 repository.avisosEquipo(rolEquipo, 0, limiteActual)
             }
-            avisos = pagina.avisos
-            total = pagina.total
+            if (solicitud == consulta) {
+                avisos = pagina.avisos
+                total = pagina.total
+            }
         }
     }
 
@@ -93,6 +97,7 @@ class AvisosEquipoViewModel(
 
     override fun reiniciar() {
         super.reiniciar()
+        consulta++
         avisos = emptyList()
         total = 0
         limite = PAGINA_COMANDAS
@@ -142,7 +147,7 @@ class UsuariosViewModel(
         }
 
     /** Carga el catálogo de roles disponibles y el listado completo de cuentas. */
-    fun refrescar() = cargar {
+    fun refrescar(limpiarError: Boolean = true) = cargar(limpiarError = limpiarError) {
         roles = repository.roles()
         usuarios = repository.usuarios()
     }
@@ -196,7 +201,7 @@ class UsuariosViewModel(
         val confirmacion = if (usuario.activo) "${usuario.nombreCompleto} quedó inactivo." else "${usuario.nombreCompleto} quedó activo."
         operar(confirmacion, alTerminar = {
             if (it != null) error = it
-            refrescar()
+            refrescar(limpiarError = it == null)
         }) { repository.actualizarUsuario(input) }
     }
 
@@ -228,6 +233,7 @@ class StockViewModel(
     var busqueda by mutableStateOf("")
         private set
     private var limiteMovimientos = PAGINA_COMANDAS
+    private var consultaMovimientos = 0
 
     val filtrados: List<InsumoInventario>
         get() = busqueda.trim().lowercase().let { q -> if (q.isEmpty()) insumos else insumos.filter { it.nombre.lowercase().contains(q) } }
@@ -245,13 +251,16 @@ class StockViewModel(
 
     /** Carga el historial de movimientos de inventario; con [mas] amplía una página más. */
     fun refrescarMovimientos(mas: Boolean = false) {
-        if (mas && !hayMasMovimientos) return
+        if (mas && (cargando || !hayMasMovimientos)) return
         if (mas) limiteMovimientos += PAGINA_COMANDAS
+        val solicitud = ++consultaMovimientos
         val limite = limiteMovimientos
         cargar {
             val pagina = repository.historial(null, 0, limite)
-            movimientos = pagina.movimientos
-            totalMovimientos = pagina.total
+            if (solicitud == consultaMovimientos) {
+                movimientos = pagina.movimientos
+                totalMovimientos = pagina.total
+            }
         }
     }
 
@@ -328,6 +337,7 @@ class StockViewModel(
 
     override fun reiniciar() {
         super.reiniciar()
+        consultaMovimientos++
         insumos = emptyList()
         conteosPendientes = emptyList()
         conteosResueltos = emptyList()

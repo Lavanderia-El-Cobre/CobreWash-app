@@ -41,43 +41,70 @@ import kotlinx.coroutines.withContext
 
 /**
  * Implementación Android del capturador fotográfico de evidencias.
- * Gestiona el permiso `CAMERA`, conserva la ruta temporal en `rememberSaveable` para sobrevivir
- * recreaciones de actividad durante el uso de la cámara y normaliza la imagen en `Dispatchers.IO`.
+ * Gestiona el permiso `CAMERA`, abre el visor guiado [CamaraEvidenciaDialog] indicando la parte
+ * del vehículo a capturar y mantiene [ActivityResultContracts.TakePicture] como respaldo del sistema.
  */
 @Composable
-actual fun rememberCapturadorFoto(onFotoCapturada: (uri: String) -> Unit): () -> Unit {
+actual fun rememberCapturadorFoto(
+    onFotoCapturada: (uri: String, guia: GuiaFotoVehiculo) -> Unit,
+): (GuiaFotoVehiculo) -> Unit {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val callback by rememberUpdatedState(onFotoCapturada)
-    var pendiente by rememberSaveable { mutableStateOf<String?>(null) }
-    val camara = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
-        val archivo = pendiente?.let(::File)
-        pendiente = null
+    var pendienteArchivo by rememberSaveable { mutableStateOf<String?>(null) }
+    var guiaPendiente by remember { mutableStateOf<GuiaFotoVehiculo?>(null) }
+    var guiaEnCamara by remember { mutableStateOf<GuiaFotoVehiculo?>(null) }
+    val camaraSistema = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
+        val archivo = pendienteArchivo?.let(::File)
+        val guia = guiaPendiente ?: GUIAS_FOTOS_VEHICULO.first()
+        pendienteArchivo = null
+        guiaPendiente = null
         if (ok && archivo != null) scope.launch {
             val valido = withContext(Dispatchers.IO) { prepararCaptura(archivo) }
-            if (valido) callback(archivo.absolutePath)
+            if (valido) callback(archivo.absolutePath, guia)
             else {
                 archivo.delete()
                 avisar(context, "No se pudo preparar la fotografía. Captúrala nuevamente.")
             }
         } else archivo?.delete()
     }
-    val abrirCamara = {
+    val abrirCamaraSistema = { guia: GuiaFotoVehiculo ->
         val archivo = crearArchivo(context)
         if (archivo == null) avisar(context, "No se pudo crear el archivo de fotografía.")
         else {
-            pendiente = archivo.absolutePath
-            lanzarCamara(context, archivo, camara)
+            pendienteArchivo = archivo.absolutePath
+            guiaPendiente = guia
+            lanzarCamara(context, archivo, camaraSistema)
         }
     }
     val permiso = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { concedido ->
-        if (concedido) abrirCamara() else avisar(context, "Permite el acceso a la cámara para capturar evidencia.")
+        val guia = guiaPendiente
+        guiaPendiente = null
+        if (concedido && guia != null) guiaEnCamara = guia
+        else avisar(context, "Permite el acceso a la cámara para capturar evidencia.")
     }
-    return remember(context, camara, permiso) {
-        {
+    guiaEnCamara?.let { guiaActiva ->
+        CamaraEvidenciaDialog(
+            guia = guiaActiva,
+            onCapturada = { archivo ->
+                guiaEnCamara = null
+                callback(archivo.absolutePath, guiaActiva)
+            },
+            onUsarCamaraSistema = {
+                guiaEnCamara = null
+                abrirCamaraSistema(guiaActiva)
+            },
+            onCerrar = { guiaEnCamara = null },
+        )
+    }
+    return remember(context, permiso) {
+        { guia ->
             val concedido = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
-            if (concedido) abrirCamara()
-            else permiso.launch(Manifest.permission.CAMERA)
+            if (concedido) guiaEnCamara = guia
+            else {
+                guiaPendiente = guia
+                permiso.launch(Manifest.permission.CAMERA)
+            }
         }
     }
 }
@@ -85,7 +112,7 @@ actual fun rememberCapturadorFoto(onFotoCapturada: (uri: String) -> Unit): () ->
 private fun avisar(context: Context, mensaje: String) = Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show()
 
 /** Crea un JPEG temporal (`captura-*.jpg`) en la carpeta privada limpiada por `ArchivosEvidencia`. */
-private fun crearArchivo(context: Context): File? = try {
+internal fun crearArchivo(context: Context): File? = try {
     val carpeta = File(context.filesDir, "evidencias_flota")
     if (!carpeta.exists() && !carpeta.mkdirs()) null else File.createTempFile("captura-", ".jpg", carpeta)
 } catch (_: IOException) { null }
@@ -108,7 +135,7 @@ private fun lanzarCamara(context: Context, archivo: File, lanzador: ActivityResu
  * Reduce resolución (<= 2200 px de lado mayor) mediante submuestreo, corrige orientación EXIF
  * y recomprime a JPEG 85% validando que el resultado no supere el límite de 3 MB.
  */
-private fun prepararCaptura(archivo: File): Boolean = try {
+internal fun prepararCaptura(archivo: File): Boolean = try {
     val limites = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     BitmapFactory.decodeFile(archivo.absolutePath, limites)
     val opciones = BitmapFactory.Options()
@@ -139,6 +166,32 @@ private fun matrizOrientacion(orientacion: Int): Matrix = Matrix().apply {
     }
 }
 
+private const val MAX_LADO_MINIATURA = 320
+
+private fun calcularSampleSize(ancho: Int, alto: Int, maxLado: Int): Int {
+    var factor = 1
+    while (maxOf(ancho, alto) / factor > maxLado) factor *= 2
+    return factor
+}
+
+private fun decodificarMiniaturaBytes(bytes: ByteArray): Bitmap? {
+    val limites = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, limites)
+    val opciones = BitmapFactory.Options().apply {
+        inSampleSize = calcularSampleSize(limites.outWidth, limites.outHeight, MAX_LADO_MINIATURA)
+    }
+    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opciones)
+}
+
+private fun decodificarMiniaturaArchivo(ruta: String): Bitmap? {
+    val limites = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(ruta, limites)
+    val opciones = BitmapFactory.Options().apply {
+        inSampleSize = calcularSampleSize(limites.outWidth, limites.outHeight, MAX_LADO_MINIATURA)
+    }
+    return BitmapFactory.decodeFile(ruta, opciones)
+}
+
 /**
  * Muestra la miniatura de una evidencia fotográfica, ya sea remota (`vehiculos/inspecciones/...`)
  * descargada con autenticación o local desde disco, con ícono de respaldo si falla la carga.
@@ -149,8 +202,8 @@ actual fun MiniaturaFotoChequeo(uri: String, descripcion: String?, tint: Color, 
         value = try {
             withContext(Dispatchers.IO) {
                 if (uri.startsWith("vehiculos/inspecciones/")) {
-                    descargarFotoEvidencia(uri)?.let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() }
-                } else BitmapFactory.decodeFile(uri.removePrefix("file://"))?.asImageBitmap()
+                    descargarFotoEvidencia(uri)?.let { decodificarMiniaturaBytes(it)?.asImageBitmap() }
+                } else decodificarMiniaturaArchivo(uri.removePrefix("file://"))?.asImageBitmap()
             }
         } catch (_: OperacionComandaException) { null }
     }

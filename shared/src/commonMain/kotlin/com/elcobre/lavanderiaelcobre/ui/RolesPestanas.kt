@@ -80,11 +80,14 @@ internal fun rememberAhora(): Long {
     return ahora
 }
 
-/** Reinicia los ViewModels de gestión cuando cambia la sesión: nada de una cuenta se ve en otra. */
+/** Reinicia los ViewModels de gestión cuando cambia o se cierra la sesión: nada de una cuenta se ve en otra. */
 @Composable
 private fun ReiniciarAlCambiarSesion(vm: CobreViewModel, modelos: List<GestionViewModel>) {
-    val sesion = vm.sesion ?: return
-    remember(sesion) { modelos.forEach { it.vincularSesion(sesion) } }
+    val sesion = vm.sesion
+    remember(sesion) {
+        if (sesion != null) modelos.forEach { it.vincularSesion(sesion) }
+        else modelos.forEach { it.reiniciar() }
+    }
 }
 
 /** Ajustes compartidos por todos los roles, con cambio de contraseña. */
@@ -279,6 +282,11 @@ internal fun AdminPestanas(tab: Pantalla, vm: CobreViewModel, flota: @Composable
             else -> Unit
         }
     }
+    RefrescarAlSincronizar(vm.sesion) {
+        m.panel.refrescar()
+        m.stock.refrescar()
+        m.produccion.refrescar()
+    }
 
     PestanasScaffold(
         items = NavAdmin,
@@ -343,8 +351,8 @@ private fun SeccionAdmin(
 internal fun RepartidorPestanas(tab: Pantalla, vm: CobreViewModel) {
     val nombre = remember { vm.sesion?.nombre ?: "Repartidor" }
     val rol = remember { vm.sesion?.rolVisible ?: "Repartidor" }
-    // GetAvisosParaEquipo exige consultar con el rol propio ("repartidor" o "conductor").
-    val rolEquipo = remember { rol.lowercase().takeIf { it == "conductor" } ?: "repartidor" }
+    // Conductores y repartidores comparten el canal de avisos de reparto.
+    val rolEquipo = "repartidor"
     val reparto: RepartoViewModel = viewModel { RepartoViewModel() }
     val entregas: EntregasViewModel = viewModel { EntregasViewModel() }
     val avisos: AvisosEquipoViewModel = viewModel(key = "avisos-$rolEquipo") { AvisosEquipoViewModel(rolEquipo = rolEquipo) }
@@ -356,6 +364,10 @@ internal fun RepartidorPestanas(tab: Pantalla, vm: CobreViewModel) {
             Pantalla.Entregas -> entregas.refrescar()
             else -> Unit
         }
+    }
+    RefrescarAlSincronizar(vm.sesion) {
+        reparto.refrescar()
+        entregas.refrescar()
     }
     LaunchedEffect(tab, avisos.avisos) { if (tab == Pantalla.Avisos) avisos.marcarLeidos() }
     PestanasScaffold(

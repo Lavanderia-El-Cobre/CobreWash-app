@@ -196,10 +196,14 @@ private fun FlujoAccionesRow(
             )
         } else {
             CobreButton(
-                text = if (siguiente != null) "Avanzar a ${siguiente.corto}" else "Proceso finalizado",
+                text = when {
+                    siguiente != null -> "Avanzar a ${siguiente.corto}"
+                    pedido.puedeCompletar -> "Marcar entregada"
+                    else -> "Proceso finalizado"
+                },
                 onClick = onAvanzar,
-                icon = if (siguiente != null) CobreIcons.ArrowForward else CobreIcons.DoneAll,
-                enabled = siguiente != null && habilitado,
+                icon = if (pedido.puedeCompletar) CobreIcons.ArrowForward else CobreIcons.DoneAll,
+                enabled = pedido.puedeCompletar && habilitado,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -209,6 +213,7 @@ private fun FlujoAccionesRow(
                 onClick = onReportarIncidencia,
                 variant = ButtonVariant.Danger,
                 icon = CobreIcons.Warning,
+                enabled = habilitado,
             )
         }
     }

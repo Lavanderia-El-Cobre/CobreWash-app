@@ -51,13 +51,16 @@ private const val TRABAJO = "enviar-acciones-pendientes"
 
 /** Archivo de la cola en el almacenamiento privado de la app; se escribe completo y se reemplaza. */
 private class AlmacenArchivo(private val archivo: File) : AlmacenCola {
-    override fun leer(): String? = archivo.takeIf { it.isFile }?.readText()
+    override fun leer(): String? = runCatching { archivo.takeIf { it.isFile }?.readText() }.getOrNull()
     override fun escribir(contenido: String) {
-        val temporal = File(archivo.parentFile, archivo.name + ".tmp")
-        temporal.writeText(contenido)
-        if (!temporal.renameTo(archivo)) {
-            archivo.delete()
-            temporal.renameTo(archivo)
+        runCatching {
+            archivo.parentFile?.mkdirs()
+            val temporal = File(archivo.parentFile, archivo.name + ".tmp")
+            temporal.writeText(contenido)
+            if (!temporal.renameTo(archivo)) {
+                archivo.delete()
+                temporal.renameTo(archivo)
+            }
         }
     }
 }
@@ -92,20 +95,32 @@ private val CODIGOS_SIN_RED = setOf(Status.Code.UNAVAILABLE, Status.Code.DEADLIN
 
 /** Traduce un error del servidor al resultado de la cola. */
 internal fun clasificarError(error: Throwable): ResultadoEnvio {
-    val mensaje = error.causas().mapNotNull { it.message }.joinToString(" ")
+    val causas = error.causas().toList()
+    val mensaje = causas.mapNotNull { it.message }.joinToString(" ")
     val codigo = codigoGrpc(error)
     return when {
         "OPERACION_YA_APLICADA" in mensaje -> ResultadoEnvio.Aplicada
         "HORA_FUERA_DE_RANGO" in mensaje -> ResultadoEnvio.Rechazada(
             "La acción ocurrió hace más de 72 horas o la hora del teléfono es incorrecta. Revísala con administración.",
         )
-        error.causas().any { it is IOException || it is FirebaseNetworkException } || (codigo != null && codigo in CODIGOS_SIN_RED) ->
-            ResultadoEnvio.SinRed
-        codigo == Status.Code.UNAUTHENTICATED || "La cuenta está inactiva" in mensaje || "Perfil no encontrado" in mensaje ->
-            ResultadoEnvio.Sesion("Tu sesión ya no es válida: vuelve a iniciar sesión para enviar las acciones pendientes.")
-        error is DataConnectException -> ResultadoEnvio.Rechazada(mensajeLegible(mensaje))
-        else -> ResultadoEnvio.SinRed
+        else -> clasificarFalloSistema(error, causas, mensaje, codigo)
     }
+}
+
+private fun clasificarFalloSistema(
+    error: Throwable,
+    causas: List<Throwable>,
+    mensaje: String,
+    codigo: Status.Code?,
+): ResultadoEnvio = when {
+    causas.any { it is IOException || it is FirebaseNetworkException } || codigo in CODIGOS_SIN_RED ->
+        ResultadoEnvio.SinRed
+    codigo == Status.Code.UNAUTHENTICATED || "La cuenta está inactiva" in mensaje || "Perfil no encontrado" in mensaje ->
+        ResultadoEnvio.Sesion("Tu sesión ya no es válida: vuelve a iniciar sesión para enviar las acciones pendientes.")
+    error is DataConnectException -> ResultadoEnvio.Rechazada(mensajeLegible(mensaje))
+    causas.any { it is IllegalArgumentException || it is NoSuchElementException || it is NumberFormatException } ->
+        ResultadoEnvio.Rechazada("Los datos guardados de esta acción son inválidos. Descártala y vuelve a registrarla.")
+    else -> ResultadoEnvio.SinRed
 }
 
 /** El motivo del `@check` que rechazó la acción, sin el detalle técnico. */
@@ -198,6 +213,22 @@ private class EjecutorAndroid : EjecutorAcciones {
         }
     }
 
+    /** Envía el comentario opcional adjunto al completar una etapa cuando la mutación principal ya pasó. */
+    @Suppress("TooGenericExceptionCaught")
+    override suspend fun enviarComentario(accion: AccionPendiente): ResultadoEnvio {
+        val texto = accion.datos["comentario"]?.trim()?.takeIf { it.isNotEmpty() }
+            ?: return ResultadoEnvio.Aplicada
+        val comandaId = accion.datos["comandaId"] ?: return ResultadoEnvio.Aplicada
+        return try {
+            dc.agregarComentarioComanda.execute(UUID.fromString(comandaId), texto)
+            ResultadoEnvio.Aplicada
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            clasificarError(error)
+        }
+    }
+
     /**
      * Sube las fotos asociadas a una inspección ya sincronizada y clasifica el código HTTP
      * en reintento transitorio (`SinRed`), renovación de sesión (`401`) o rechazo definitivo.
@@ -224,8 +255,16 @@ private class EjecutorAndroid : EjecutorAcciones {
     override fun fotosConfirmadas(accion: AccionPendiente) = eliminarCapturasConfirmadas(accion.fotos.map { it.uri })
 }
 
+@Volatile
 private var contextoApp: Context? = null
+private val lockInicializacion = Any()
 private val alcance = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+private fun tieneInternetValidado(conectividad: ConnectivityManager?): Boolean {
+    val capacidades = conectividad?.getNetworkCapabilities(conectividad.activeNetwork) ?: return false
+    return capacidades.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+        capacidades.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+}
 
 /**
  * Configura la cola al abrir la app (y en el trabajo en segundo plano): archivo de la cola,
@@ -233,30 +272,45 @@ private val alcance = CoroutineScope(SupervisorJob() + Dispatchers.IO)
  */
 fun inicializarAccionesSinConexion(context: Context) {
     if (contextoApp != null) return
-    val app = context.applicationContext
-    contextoApp = app
-    val cola = ColaAcciones(AlmacenArchivo(File(app.filesDir, ARCHIVO_COLA)))
-    val carpetaCache = File(app.filesDir, "cache_lectura")
-    CacheLectura.configurar(
-        fabrica = { nombre -> AlmacenArchivo(File(carpetaCache.apply { mkdirs() }, "$nombre.json")) },
-        borrarTodo = { carpetaCache.deleteRecursively() },
-    )
-    val uid = { FirebaseAuth.getInstance().currentUser?.uid }
-    AccionesSinConexion.configurar(cola, Sincronizador(cola, EjecutorAndroid(), RelojAndroid(app), uid), uid) { programarEnvio(app) }
-    val conectividad = app.getSystemService(ConnectivityManager::class.java)
-    val capacidades = conectividad?.getNetworkCapabilities(conectividad.activeNetwork)
-    AccionesSinConexion.informarConexion(capacidades?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true)
-    conectividad?.registerDefaultNetworkCallback(
-        object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) {
-                AccionesSinConexion.informarConexion(true)
-                alcance.launch { AccionesSinConexion.sincronizar(forzar = true) }
-            }
+    synchronized(lockInicializacion) {
+        if (contextoApp != null) return
+        val app = context.applicationContext
+        contextoApp = app
+        val cola = ColaAcciones(AlmacenArchivo(File(app.filesDir, ARCHIVO_COLA)))
+        val carpetaCache = File(app.filesDir, "cache_lectura")
+        CacheLectura.configurar(
+            fabrica = { nombre -> AlmacenArchivo(File(carpetaCache.apply { mkdirs() }, "$nombre.json")) },
+            borrarTodo = { carpetaCache.deleteRecursively() },
+        )
+        val uid = { FirebaseAuth.getInstance().currentUser?.uid }
+        val sync = Sincronizador(cola, EjecutorAndroid(), RelojAndroid(app), uid, hayRed = { AccionesSinConexion.conectado.value })
+        AccionesSinConexion.configurar(cola, sync, uid) { programarEnvio(app) }
+        val conectividad = app.getSystemService(ConnectivityManager::class.java)
+        AccionesSinConexion.informarConexion(tieneInternetValidado(conectividad))
+        conectividad?.registerDefaultNetworkCallback(
+            object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) = actualizarEstadoRed(tieneInternetValidado(conectividad))
 
-            override fun onLost(network: Network) = AccionesSinConexion.informarConexion(false)
-        },
-    )
-    if (cola.acciones.value.isNotEmpty()) programarEnvio(app)
+                override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
+                    val validada = networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                        networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+                    actualizarEstadoRed(validada)
+                }
+
+                // Reevalúa la red activa para evitar falsos "Sin conexión" al conmutar Wi-Fi ↔ datos móviles.
+                override fun onLost(network: Network) = AccionesSinConexion.informarConexion(tieneInternetValidado(conectividad))
+            },
+        )
+        if (cola.acciones.value.isNotEmpty()) programarEnvio(app)
+    }
+}
+
+private fun actualizarEstadoRed(conectadoAhora: Boolean) {
+    val previo = AccionesSinConexion.conectado.value
+    AccionesSinConexion.informarConexion(conectadoAhora)
+    if (conectadoAhora && !previo) {
+        alcance.launch { AccionesSinConexion.sincronizar(forzar = true) }
+    }
 }
 
 /** Programa el envío en segundo plano: corre cuando hay red, aunque la app esté cerrada. */
@@ -274,6 +328,7 @@ class EnvioAccionesWorker(context: Context, params: WorkerParameters) : Coroutin
         com.elcobre.lavanderiaelcobre.data.inicializarArchivosEvidencia(applicationContext)
         inicializarAccionesSinConexion(applicationContext)
         val resumen = AccionesSinConexion.sincronizador?.sincronizar(forzar = true) ?: return Result.success()
+        AccionesSinConexion.emitirSincronizacion(resumen)
         // Sesión pausada: espera a que la persona vuelva a entrar (la app reprograma el envío).
         return if (resumen.pendientes > 0 && resumen.pausada == null) Result.retry() else Result.success()
     }

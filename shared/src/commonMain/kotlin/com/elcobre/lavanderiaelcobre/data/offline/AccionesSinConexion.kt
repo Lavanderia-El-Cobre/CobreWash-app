@@ -1,8 +1,11 @@
 package com.elcobre.lavanderiaelcobre.data.offline
 
 import com.elcobre.lavanderiaelcobre.data.OperacionComandaException
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -21,9 +24,13 @@ object AccionesSinConexion {
     private var programarEnvio: () -> Unit = {}
 
     private val _conectado = MutableStateFlow(true)
+    private val _sincronizaciones = MutableSharedFlow<ResumenSincronizacion>(extraBufferCapacity = 4)
 
     /** Estado de la red según la plataforma (para el aviso "Sin conexión"). */
     val conectado: StateFlow<Boolean> = _conectado.asStateFlow()
+
+    /** Emite cada pasada de sincronización que logró enviar al menos una acción pendiente. */
+    val sincronizaciones: SharedFlow<ResumenSincronizacion> = _sincronizaciones.asSharedFlow()
 
     /** Registra la cola, el sincronizador y los hooks nativos al iniciar la aplicación. */
     fun configurar(cola: ColaAcciones, sincronizador: Sincronizador, uidActual: () -> String?, programarEnvio: () -> Unit) {
@@ -57,8 +64,8 @@ object AccionesSinConexion {
     ) {
         val s = sincronizador ?: throw OperacionComandaException("Esta función aún no está disponible en esta plataforma.")
         val uid = uidActual() ?: throw OperacionComandaException("Inicia sesión nuevamente.")
-        duplicada(tipo, entidad, uid)?.let { throw OperacionComandaException(it) }
         val limpios = datos.filterValues { it != null }.mapValues { it.value!! }
+        duplicada(tipo, entidad, uid, limpios)?.let { throw OperacionComandaException(it) }
         val accion = s.nueva(Uuid.random().toString(), tipo, uid, entidad, limpios, descripcion, fotos)
         when (val r = s.registrar(accion)) {
             ResultadoRegistro.Enviada -> Unit
@@ -74,23 +81,56 @@ object AccionesSinConexion {
      * Mientras una acción de cambio de estado no se envía, la pantalla sigue mostrando el
      * estado anterior: repetirla crearía un duplicado que el servidor rechazaría después.
      */
-    private fun duplicada(tipo: TipoAccion, entidad: String, uid: String): String? {
+    private fun duplicada(tipo: TipoAccion, entidad: String, uid: String, datos: Map<String, String>): String? {
         val propias = cola?.acciones?.value.orEmpty().filter { it.uid == uid }
         return when {
             tipo in UNA_POR_ENTIDAD && propias.any { it.tipo == tipo && it.entidad == entidad } ->
                 "Ya hay una acción «${tipo.etiqueta}» sin enviar para esta comanda o salida. Se enviará al recuperar la conexión."
-            tipo == TipoAccion.SALIDA_FLOTA && propias.any { it.tipo == TipoAccion.SALIDA_FLOTA } ->
-                "Ya hay una salida de vehículo sin enviar. Espera a recuperar la conexión antes de registrar otra."
+            tipo == TipoAccion.SALIDA_FLOTA -> duplicadaSalida(propias, datos)
+            else -> null
+        }
+    }
+
+    private fun duplicadaSalida(propias: List<AccionPendiente>, datos: Map<String, String>): String? {
+        val retornos = propias.filter { it.tipo == TipoAccion.RETORNO_FLOTA }.map { it.entidad }.toSet()
+        val abiertas = propias.filter { it.tipo == TipoAccion.SALIDA_FLOTA && it.entidad !in retornos }
+        val vehiculo = datos["vehiculoId"]
+        val repartidor = datos["repartidorId"]
+        return when {
+            datos["modoAdmin"] != "true" -> if (abiertas.isNotEmpty()) {
+                "Ya hay una salida de vehículo sin enviar. Registra su regreso o espera a recuperar la conexión antes de registrar otra."
+            } else null
+            vehiculo != null && abiertas.any { it.datos["vehiculoId"] == vehiculo } ->
+                "Ya hay una salida sin enviar para este vehículo."
+            repartidor != null && abiertas.any { it.datos["repartidorId"] == repartidor } ->
+                "Ya hay una salida sin enviar para este conductor."
             else -> null
         }
     }
 
     private val UNA_POR_ENTIDAD = setOf(TipoAccion.COMPLETAR_ETAPA, TipoAccion.ENTREGAR, TipoAccion.RETORNO_FLOTA)
 
+    /** Notifica a los ViewModels observadores cuando una pasada logró enviar acciones pendientes. */
+    fun emitirSincronizacion(resumen: ResumenSincronizacion) {
+        if (resumen.enviadas > 0) _sincronizaciones.tryEmit(resumen)
+    }
+
     /** Envía lo pendiente (al recuperar la red, al volver a la app o desde la bandeja). */
     suspend fun sincronizar(forzar: Boolean = false): ResumenSincronizacion? {
         val resumen = sincronizador?.sincronizar(forzar)
-        if (resumen != null && resumen.pendientes > 0) programarEnvio()
+        if (resumen != null) {
+            emitirSincronizacion(resumen)
+            if (resumen.pendientes > 0) programarEnvio()
+        }
         return resumen
+    }
+
+    /** Vuelve a poner en cola una acción rechazada y dispara el envío inmediato si hay red. */
+    suspend fun reintentarAhora(id: String): ResumenSincronizacion? {
+        sincronizador?.reintentar(id) ?: return null
+        return if (conectado.value) sincronizar(forzar = true) else {
+            programarEnvio()
+            null
+        }
     }
 }

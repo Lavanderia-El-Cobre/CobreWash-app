@@ -241,4 +241,46 @@ class CobreViewModelTest {
         assertEquals("Ana", vm.operario?.nombre)
         assertEquals("Operario de planta", vm.operario?.rol)
     }
+
+    @Test
+    fun iniciarSesion_limpiaErrorYOperacionSeqAvanzaTrasOperaciones() {
+        SesionPersistente.guardar(DatosSesionGuardada("admin@cobre.cl", "Admin", "admin"), ahoraMs())
+        val vm = CobreViewModel(
+            FakeComandasRepository(),
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.test.UnconfinedTestDispatcher()),
+            restaurarPerfil = { PerfilResultado.Error("La cuenta está inactiva", definitivo = true) },
+        )
+        assertEquals("La cuenta está inactiva", vm.errorOperacion)
+        vm.limpiarError()
+        assertNull(vm.errorOperacion)
+
+        SesionPersistente.guardar(DatosSesionGuardada("admin@cobre.cl", "Admin", "admin"), ahoraMs())
+        val vm2 = CobreViewModel(
+            FakeComandasRepository(),
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.test.UnconfinedTestDispatcher()),
+            restaurarPerfil = { PerfilResultado.Error("Error previo", definitivo = true) },
+        )
+        assertNotNull(vm2.errorOperacion)
+        vm2.iniciarSesion(operario)
+        assertNull(vm2.errorOperacion)
+        val seqAntes = vm2.operacionSeq
+        vm2.avanzarEtapa("P003", "avance")
+        assertTrue(vm2.operacionSeq > seqAntes)
+    }
+
+    @Test
+    fun cancelarRestauracion_descartaRespuestaTardiaEnVuelo() {
+        SesionPersistente.guardar(DatosSesionGuardada("op@cobre.cl", "Ana", "operario"), ahoraMs())
+        val pendiente = kotlinx.coroutines.CompletableDeferred<PerfilResultado?>()
+        val vm = CobreViewModel(
+            FakeComandasRepository(),
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.test.UnconfinedTestDispatcher()),
+            restaurarPerfil = { pendiente.await() },
+        )
+        assertNull(vm.sesion)
+        vm.cancelarRestauracion()
+        pendiente.complete(PerfilResultado.Exito("Ana", "operario"))
+        assertNull(vm.sesion)
+        assertEquals(Pantalla.Login, vm.pantalla)
+    }
 }

@@ -19,14 +19,14 @@ import androidx.compose.ui.graphics.Color
  */
 @Composable
 actual fun rememberCapturadorFoto(
-    onFotoCapturada: (uri: String) -> Unit,
-): () -> Unit {
+    onFotoCapturada: (uri: String, guia: GuiaFotoVehiculo) -> Unit,
+): (GuiaFotoVehiculo) -> Unit {
     val callbackActual by rememberUpdatedState(onFotoCapturada)
     var secuencia by remember { mutableIntStateOf(0) }
     return remember {
-        {
+        { guia ->
             secuencia += 1
-            callbackActual("vehiculos/evidencia/ios-captura-$secuencia.jpg")
+            callbackActual("vehiculos/evidencia/ios-captura-$secuencia.jpg", guia)
         }
     }
 }

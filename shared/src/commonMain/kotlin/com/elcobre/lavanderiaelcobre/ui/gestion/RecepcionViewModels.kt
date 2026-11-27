@@ -100,13 +100,13 @@ class ProduccionViewModel(
     val hayMas: Boolean get() = comandas.size < total
 
     /** Carga las comandas activas en planta; con [mas] amplía el límite en una página. */
-    fun refrescar(mas: Boolean = false) {
-        if (mas && !hayMas) return
+    fun refrescar(mas: Boolean = false, limpiarError: Boolean = true) {
+        if (mas && (cargando || !hayMas)) return
         if (mas) limite += PAGINA_COMANDAS
         val solicitud = ++consulta
         val texto = busqueda
         val limiteActual = limite
-        cargar {
+        cargar(limpiarError = limpiarError) {
             val pagina = repository.seguimiento(texto, 0, limiteActual)
             if (solicitud == consulta) {
                 comandas = pagina.comandas
@@ -132,7 +132,7 @@ class ProduccionViewModel(
         val etapa = comanda.etapaActual ?: return
         operar("${etapa.nombre} completada en ${comanda.numero}.", alTerminar = {
             if (it != null) error = "$it Actualiza la vista: otra persona pudo haber avanzado esta comanda."
-            refrescar()
+            refrescar(limpiarError = it == null)
         }) { repository.completarEtapa(comanda) }
     }
 
@@ -140,7 +140,7 @@ class ProduccionViewModel(
     fun asociarFlujo(comanda: ComandaGestion) {
         operar("Flujo asociado a ${comanda.numero}.", alTerminar = {
             if (it != null) error = it
-            refrescar()
+            refrescar(limpiarError = it == null)
         }) { recepcion.asociarFlujo(comanda.id) }
     }
 
@@ -186,7 +186,7 @@ class IncidenciasViewModel(
     /** Cantidad de incidencias aún pendientes (abiertas o en revisión). */
     val abiertas: Int get() = incidencias.count { it.estado != EstadoIncidencia.RESUELTA }
 
-    fun refrescar() = cargar { incidencias = repository.incidencias() }
+    fun refrescar(limpiarError: Boolean = true) = cargar(limpiarError = limpiarError) { incidencias = repository.incidencias() }
 
     fun filtrar(estado: EstadoIncidencia?) {
         filtro = estado
@@ -197,7 +197,7 @@ class IncidenciasViewModel(
         if (incidencia.estado == estado) return
         operar("Incidencia de ${incidencia.numeroComanda}: ${estado.etiqueta.lowercase()}.", alTerminar = {
             if (it != null) error = it
-            refrescar()
+            refrescar(limpiarError = it == null)
         }) { repository.actualizarIncidencia(incidencia.id, estado) }
     }
 
@@ -220,18 +220,20 @@ class CotizacionesViewModel(
     var filtro by mutableStateOf<EstadoSolicitud?>(null)
         private set
     private var limite = PAGINA_COMANDAS
+    private var consulta = 0
 
     val hayMas: Boolean get() = solicitudes.size < total
 
     /** Carga cotizaciones para el [filtro] vigente descartando respuestas si cambió en vuelo. */
-    fun refrescar(mas: Boolean = false) {
-        if (mas && !hayMas) return
+    fun refrescar(mas: Boolean = false, limpiarError: Boolean = true) {
+        if (mas && (cargando || !hayMas)) return
         if (mas) limite += PAGINA_COMANDAS
+        val solicitud = ++consulta
         val estado = filtro
         val limiteActual = limite
-        cargar {
+        cargar(limpiarError = limpiarError) {
             val pagina = repository.solicitudes(estado, 0, limiteActual)
-            if (estado == filtro) {
+            if (solicitud == consulta && estado == filtro) {
                 solicitudes = pagina.solicitudes
                 total = pagina.total
             }
@@ -250,12 +252,13 @@ class CotizacionesViewModel(
         if (solicitud.estado == estado) return
         operar("Solicitud de ${solicitud.nombre}: ${estado.etiqueta.lowercase()}.", alTerminar = {
             if (it != null) error = "No se pudo guardar el estado. Reintenta."
-            refrescar()
+            refrescar(limpiarError = it == null)
         }) { repository.actualizarSolicitud(solicitud.id, estado) }
     }
 
     override fun reiniciar() {
         super.reiniciar()
+        consulta++
         solicitudes = emptyList()
         total = 0
         filtro = null

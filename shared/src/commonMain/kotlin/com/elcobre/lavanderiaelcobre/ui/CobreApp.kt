@@ -22,6 +22,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -131,6 +132,12 @@ fun CobreApp() {
             }
         }
     }
+    RefrescarAlSincronizar(vm.sesion) {
+        if (vm.operario != null) {
+            vm.refrescarComandas()
+            vm.inventario.refrescar()
+        }
+    }
     val temaOscuro = when (vm.modoTema) {
         ModoTema.CLARO -> false
         ModoTema.OSCURO -> true
@@ -159,6 +166,7 @@ fun CobreApp() {
                 NavegacionRaiz(vm)
             }
             AvisoErrorOperacion(vm)
+            AvisoInformativoOperacion(vm)
             if (vm.cargando && vm.pedidos.isEmpty()) {
                 androidx.compose.material3.CircularProgressIndicator(
                     modifier = Modifier
@@ -328,8 +336,11 @@ private fun PestanaOperario(
 private fun PlantaOperario(vm: CobreViewModel) {
     val produccion: ProduccionViewModel = viewModel(key = "produccion-operario") { ProduccionViewModel() }
     val sesion = vm.sesion
-    if (sesion != null) remember(sesion) { produccion.vincularSesion(sesion) }
+    remember(sesion) {
+        if (sesion != null) produccion.vincularSesion(sesion) else produccion.reiniciar()
+    }
     RefrescoPeriodico(Unit) { produccion.refrescar() }
+    RefrescarAlSincronizar(vm.sesion) { produccion.refrescar() }
     ProduccionScreen(
         vm = produccion,
         permisos = PermisosProduccion(completar = true, reportarIncidencia = true),
@@ -359,6 +370,9 @@ private fun AdministracionConFlota(tab: Pantalla, vm: CobreViewModel) {
             }
         }
     }
+    RefrescarAlSincronizar(vm.sesion) {
+        if (vm.administrador != null) vehiculosVm.refrescarFlota()
+    }
     AdminPestanas(
         tab = tab,
         vm = vm,
@@ -373,6 +387,7 @@ private fun FlotaPestana(administrador: Administrador, vehiculosVm: VehiculosVie
     VehiculosScreen(
         administrador = administrador,
         vehiculos = vehiculosVm.vehiculosFiltrados,
+        todosLosVehiculos = vehiculosVm.vehiculos,
         chequeoEnRuta = { id -> vehiculosVm.chequeoEnRuta(id) },
         historialVehiculo = { id -> vehiculosVm.historialVehiculo(id) },
         onRegistrarSalida = { id, km, fotos, obs ->
@@ -468,10 +483,24 @@ internal fun PestanasScaffold(
     }
 }
 
-/** Banner superior que anuncia errores de operación usando `LiveRegionMode.Polite` para accesibilidad. */
+/** Ejecuta [accion] automáticamente cada vez que la cola offline envía al menos una acción. */
+@Composable
+internal fun RefrescarAlSincronizar(clave: Any?, accion: () -> Unit) {
+    LaunchedEffect(clave) {
+        AccionesSinConexion.sincronizaciones.collect { resumen ->
+            if (resumen.enviadas > 0) accion()
+        }
+    }
+}
+
+/** Banner superior que anuncia errores de operación; se oculta a los 6 s o al tocarlo. */
 @Composable
 private fun AvisoErrorOperacion(vm: CobreViewModel) {
     val mensaje = vm.errorOperacion ?: return
+    LaunchedEffect(mensaje) {
+        kotlinx.coroutines.delay(6_000)
+        if (vm.errorOperacion == mensaje) vm.limpiarError()
+    }
     Box(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
         Text(
             mensaje,
@@ -479,9 +508,39 @@ private fun AvisoErrorOperacion(vm: CobreViewModel) {
                 .align(Alignment.TopCenter)
                 .padding(16.dp)
                 .background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(12.dp))
+                .clickable(onClickLabel = "Cerrar aviso") { vm.limpiarError() }
                 .padding(12.dp)
                 .semantics { liveRegion = LiveRegionMode.Polite },
             color = MaterialTheme.colorScheme.onErrorContainer,
+        )
+    }
+}
+
+/**
+ * Banner informativo para avisos del modo sin conexión ([CobreViewModel.avisoOperacion]).
+ * Se oculta automáticamente a los 5 s o al tocarlo, y cede espacio si existe un error activo.
+ */
+@Composable
+private fun AvisoInformativoOperacion(vm: CobreViewModel) {
+    if (vm.errorOperacion != null) return
+    val mensaje = vm.avisoOperacion ?: return
+    LaunchedEffect(mensaje) {
+        kotlinx.coroutines.delay(5_000)
+        if (vm.avisoOperacion == mensaje) vm.limpiarAviso()
+    }
+    val colors = CobreTheme.colors
+    Box(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
+        Text(
+            mensaje,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(16.dp)
+                .background(colors.surface, RoundedCornerShape(12.dp))
+                .clickable(onClickLabel = "Cerrar aviso") { vm.limpiarAviso() }
+                .padding(horizontal = 14.dp, vertical = 10.dp)
+                .semantics { liveRegion = LiveRegionMode.Polite },
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textPrimary,
         )
     }
 }
@@ -524,6 +583,7 @@ private fun LoginDestino(vm: CobreViewModel) {
     LoginScreen(
         onLogin = { sesion -> vm.iniciarSesion(sesion) },
         onToggleTema = { vm.alternarTema(isDark) },
+        onInicioLoginManual = { vm.cancelarRestauracion() },
     )
 }
 
@@ -617,7 +677,9 @@ private fun DetalleDestino(
     DetalleScreen(
         pedido = currentPedido,
         operacionPendiente = vm.cargando,
+        operacionSeq = vm.operacionSeq,
         errorOperacion = vm.errorOperacion,
+        avisoOperacion = vm.avisoOperacion,
         onVolver = { vm.volver() },
         onAvanzar = { comentario -> vm.avanzarEtapa(currentPedido.id, comentario) },
         onComentar = { texto -> vm.agregarComentario(currentPedido.id, texto) },

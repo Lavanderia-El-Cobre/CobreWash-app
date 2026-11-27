@@ -6,14 +6,14 @@ import androidx.compose.ui.graphics.Color
 
 /**
  * Crea un lanzador multiplataforma que solicita el permiso de cámara (si es requerido)
- * y abre la cámara del dispositivo para capturar una fotografía de evidencia de inspección.
+ * y abre la cámara con la [GuiaFotoVehiculo] seleccionada para capturar evidencia.
  *
- * @param onFotoCapturada Callback invocado con la ruta local o URI de la foto capturada.
+ * @param onFotoCapturada Callback invocado con la ruta local o URI y la guía aplicada.
  */
 @Composable
 expect fun rememberCapturadorFoto(
-    onFotoCapturada: (uri: String) -> Unit,
-): () -> Unit
+    onFotoCapturada: (uri: String, guia: GuiaFotoVehiculo) -> Unit,
+): (GuiaFotoVehiculo) -> Unit
 
 /**
  * Renderiza la miniatura de una fotografía de inspección si [uri] corresponde a un archivo

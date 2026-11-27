@@ -9,6 +9,7 @@ import com.elcobre.lavanderiaelcobre.data.model.esRolConductorORepartidor
 import com.elcobre.lavanderiaelcobre.data.model.extraerMarcaYModelo
 import com.elcobre.lavanderiaelcobre.data.model.normalizarPatenteChilena
 import com.elcobre.lavanderiaelcobre.data.offline.AccionesSinConexion
+import com.elcobre.lavanderiaelcobre.data.offline.CacheLectura
 import com.elcobre.lavanderiaelcobre.data.offline.FotoPendiente
 import com.elcobre.lavanderiaelcobre.data.offline.TipoAccion
 import com.elcobre.lavanderiaelcobre.dataconnect.EstadoVehiculo
@@ -19,6 +20,7 @@ import com.elcobre.lavanderiaelcobre.dataconnect.SalidaVehiculoEstado
 import com.elcobre.lavanderiaelcobre.dataconnect.execute
 import com.elcobre.lavanderiaelcobre.dataconnect.instance
 import com.elcobre.lavanderiaelcobre.dataconnect.ref
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.dataconnect.QueryRef
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -58,8 +60,9 @@ private fun mapearSalidaAChequeo(
 ): ChequeoVehiculo {
     val antes = salida.inspecciones.firstOrNull { it.momento.value == MomentoInspeccion.ANTES }
     val despues = salida.inspecciones.firstOrNull { it.momento.value == MomentoInspeccion.DESPUES }
+    val programada = salida.estado.value == SalidaVehiculoEstado.PROGRAMADA
     val finalizada = salida.estado.value == SalidaVehiculoEstado.FINALIZADA
-    val kmSalida = antes?.kilometraje?.roundToInt() ?: 0
+    val kmSalida = if (programada) null else (antes?.kilometraje?.roundToInt() ?: 0)
     val kmEntrada = if (finalizada) (despues?.kilometraje?.roundToInt() ?: kmSalida) else null
     val instanteBase = salida.fechaSalida ?: antes?.registradoEn ?: salida.creadoEn
     val instanteRetorno = salida.fechaRetorno ?: despues?.registradoEn
@@ -92,7 +95,9 @@ private fun mapearSalidaAChequeo(
  * Excluye salidas canceladas y calcula el odómetro actual de cada vehículo a partir del
  * mayor kilometraje registrado en sus inspecciones vigentes.
  */
-internal actual suspend fun consultarFlotaFirebase(): EstadoFlotaRemota = solicitud {
+internal actual suspend fun consultarFlotaFirebase(): EstadoFlotaRemota =
+    CacheLectura.leer("flota-admin", EstadoFlotaRemota.serializer()) {
+        solicitud {
     var data: GetFlotaVehiculosQuery.Data? = null
     val salidas = mutableListOf<GetFlotaVehiculosQuery.Data.SalidasItem>()
     var offset = 0
@@ -149,7 +154,8 @@ internal actual suspend fun consultarFlotaFirebase(): EstadoFlotaRemota = solici
         conductores = conductores,
         chequeos = salidasVigentes.map { mapearSalidaAChequeo(it, formatoFecha, formatoHora) },
     )
-}
+        }
+    }
 
 /** Normaliza patente chilena, marca y modelo antes de registrar un vehículo en Data Connect. */
 internal actual suspend fun registrarVehiculoFirebase(input: NuevoVehiculoInput): String = solicitud {
@@ -195,6 +201,8 @@ internal actual suspend fun registrarSalidaFirebase(input: SalidaFlotaInput): St
     if (input.fotos.size > MAX_FOTOS_INSPECCION) throw OperacionComandaException("Máximo 20 fotografías por inspección.")
     val salidaId = UUID.randomUUID().toString()
     val obs = input.observaciones?.trim()?.takeIf { it.isNotEmpty() }
+    val uidActual = FirebaseAuth.getInstance().currentUser?.uid
+    val modoAdmin = if (uidActual != null && input.repartidorId != uidActual) "true" else null
     AccionesSinConexion.ejecutar(
         TipoAccion.SALIDA_FLOTA,
         entidad = salidaId,
@@ -202,6 +210,7 @@ internal actual suspend fun registrarSalidaFirebase(input: SalidaFlotaInput): St
             "vehiculoId" to input.vehiculoId, "repartidorId" to input.repartidorId, "kilometraje" to "${input.kilometraje}",
             "estadoVehiculo" to mapearCondicionADataConnect(input.estadoVehiculo).name, "salidaId" to salidaId,
             "inspeccionId" to UUID.randomUUID().toString(), "observaciones" to obs?.take(300), "observacionesInspeccion" to obs?.take(500),
+            "modoAdmin" to modoAdmin,
         ),
         descripcion = "Salida de vehículo · ${input.kilometraje} km",
         fotos = fotosPendientes(input.fotos),

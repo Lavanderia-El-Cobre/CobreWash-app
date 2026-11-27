@@ -1,6 +1,7 @@
 package com.elcobre.lavanderiaelcobre.data
 
 import com.elcobre.lavanderiaelcobre.data.offline.AccionesSinConexion
+import com.elcobre.lavanderiaelcobre.data.offline.CacheLectura
 import com.elcobre.lavanderiaelcobre.data.offline.TipoAccion
 
 import com.elcobre.lavanderiaelcobre.data.model.ClienteFicha
@@ -52,11 +53,37 @@ private fun GetSeguimientoProduccionQuery.Data.ComandasItem.aGestion(): ComandaG
 private class FirebaseProduccionRepository : ProduccionRepository {
     private val dc get() = ExampleConnector.instance
 
-    override suspend fun seguimiento(buscar: String, offset: Int, limit: Int): PaginaProduccion = solicitud {
+    override suspend fun seguimiento(buscar: String, offset: Int, limit: Int): PaginaProduccion {
+        val termino = buscar.trim()
+        if (termino.isEmpty() && offset == 0) {
+            return CacheLectura.leer("produccion-planta", PaginaProduccion.serializer()) {
+                consultarSeguimientoRemoto(termino, offset, limit)
+            }
+        }
+        return try {
+            consultarSeguimientoRemoto(termino, offset, limit)
+        } catch (error: OperacionComandaException) {
+            if (!CacheLectura.esErrorSinConexion(error)) throw error
+            val guardada = CacheLectura.guardado("produccion-planta", PaginaProduccion.serializer())
+                ?: throw error
+            val filtradas = guardada.comandas.filter {
+                termino.isEmpty() ||
+                    it.numero.contains(termino, ignoreCase = true) ||
+                    it.cliente.nombre.contains(termino, ignoreCase = true)
+            }
+            PaginaProduccion(
+                comandas = filtradas.drop(offset).take(limit),
+                total = filtradas.size,
+                operarios = guardada.operarios,
+            )
+        }
+    }
+
+    private suspend fun consultarSeguimientoRemoto(buscar: String, offset: Int, limit: Int): PaginaProduccion = solicitud {
         val data = dc.getSeguimientoProduccion.ref {
             this.limit = limit
             this.offset = offset
-            this.buscar = buscar.trim()
+            this.buscar = buscar
         }.execute(QueryRef.FetchPolicy.SERVER_ONLY).data
         PaginaProduccion(
             comandas = data.comandas.map { it.aGestion() },

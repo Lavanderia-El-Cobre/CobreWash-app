@@ -72,6 +72,14 @@ internal fun ComandaDetalleContenido(comanda: ComandaGestion, vm: ComandasViewMo
             )
         }
         AccionesComanda(comanda, vm, onAnular = { anulando = true }, onEntregar = { entregando = true })
+        vm.error?.let {
+            Text(
+                it,
+                color = CobreTheme.colors.dangerText,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        }
         if (comanda.estado != EstadoComanda.ANULADA) QrSeguimiento(comanda)
         Bloque("Cliente") {
             FilaDato("Nombre", comanda.cliente.nombre)

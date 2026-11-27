@@ -56,8 +56,10 @@ data class AccionPendiente(
     val monotonicoMs: Long,
     val arranque: String,
     val estado: EstadoAccion = EstadoAccion.PENDIENTE,
-    /** La mutación ya se aplicó en el servidor; solo faltan las fotografías. */
+    /** La mutación ya se aplicó en el servidor; solo faltan el comentario o las fotografías. */
     val aplicada: Boolean = false,
+    /** El comentario opcional adjunto al completar una etapa ya fue enviado al servidor. */
+    val comentarioAplicado: Boolean = false,
     val intentos: Int = 0,
     val ultimoError: String? = null,
     val proximoIntentoMs: Long = 0,

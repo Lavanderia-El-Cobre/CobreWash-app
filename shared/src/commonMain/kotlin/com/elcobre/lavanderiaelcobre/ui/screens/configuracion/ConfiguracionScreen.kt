@@ -38,6 +38,7 @@ import com.elcobre.lavanderiaelcobre.ui.components.GlassSegmentedControl
 import com.elcobre.lavanderiaelcobre.ui.components.LargeTitleScreen
 import com.elcobre.lavanderiaelcobre.ui.components.SectionLabel
 import com.elcobre.lavanderiaelcobre.ui.components.readableWidth
+import com.elcobre.lavanderiaelcobre.ui.components.rememberAccionesPendientes
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreShapes
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
 import com.elcobre.lavanderiaelcobre.ui.theme.ModoTema
@@ -66,6 +67,7 @@ fun ConfiguracionScreen(
 ) {
     var confirmandoSalida by remember { mutableStateOf(false) }
     var cambiandoContrasena by remember { mutableStateOf(false) }
+    val pendientes = rememberAccionesPendientes()
     val haptic = LocalHapticFeedback.current
 
     LargeTitleScreen(
@@ -117,9 +119,17 @@ fun ConfiguracionScreen(
     }
 
     if (confirmandoSalida) {
+        val mensajeSalida = if (pendientes.isNotEmpty()) {
+            val cant = pendientes.size
+            val texto = if (cant == 1) "1 acción guardada sin enviar" else "$cant acciones guardadas sin enviar"
+            "Tienes $texto. Si cierras sesión quedarán retenidas en este teléfono hasta que vuelvas a ingresar " +
+                "con tu cuenta (máximo 72 h antes de vencer)."
+        } else {
+            "Deberás volver a ingresar tus datos para acceder de nuevo."
+        }
         GlassAlert(
             title = "¿Cerrar sesión?",
-            message = "Deberás volver a ingresar tus datos para acceder de nuevo.",
+            message = mensajeSalida,
             confirmText = "Cerrar sesión",
             onConfirm = {
                 confirmandoSalida = false

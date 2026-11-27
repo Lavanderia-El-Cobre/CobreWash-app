@@ -35,7 +35,14 @@ internal fun contrasenaTemporal(): String =
     (1..LARGO_CONTRASENA).map { ALFABETO[aleatorio.nextInt(ALFABETO.length)] }.joinToString("") + "aA9!"
 
 /** Resultado del alta en Firebase Auth: el usuario nuevo o `null` si el correo ya tenía cuenta. */
-internal class AltaAuth(val auth: FirebaseAuth, val usuario: FirebaseUser?)
+internal class AltaAuth(
+    val auth: FirebaseAuth,
+    val usuario: FirebaseUser?,
+    private val alPersistir: () -> Unit = {},
+) {
+    /** Marca que el perfil/ficha ya fue persistido en BD para no borrar el usuario de Auth ante cancelación posterior. */
+    fun confirmarPersistencia() = alPersistir()
+}
 
 /**
  * Crea la cuenta de [email] en [auth]. Devuelve `null` si el correo ya tenía cuenta (no
@@ -67,7 +74,7 @@ internal suspend fun <T> conCuentaNueva(email: String, bloque: suspend (AltaAuth
     var completado = false
     try {
         creado = crearCuenta(auth, email)
-        val resultado = bloque(AltaAuth(auth, creado))
+        val resultado = bloque(AltaAuth(auth, creado) { completado = true })
         completado = true
         return resultado
     } finally {

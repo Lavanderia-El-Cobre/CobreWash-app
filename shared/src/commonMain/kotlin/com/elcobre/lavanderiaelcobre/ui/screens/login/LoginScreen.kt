@@ -187,6 +187,7 @@ private suspend fun resolverIngreso(
 fun LoginScreen(
     onLogin: (Sesion) -> Unit,
     onToggleTema: () -> Unit = {},
+    onInicioLoginManual: () -> Unit = {},
 ) {
     val sesionGuardada = remember { SesionPersistente.obtener(IntentosIngreso.ahoraMs()) }
     var correo by remember { mutableStateOf(sesionGuardada?.email ?: "") }
@@ -216,41 +217,32 @@ fun LoginScreen(
     }
 
     fun recuperar() {
-        val email = correo.trim()
-        if (!Validaciones.correoValido(email)) {
-            error = "Escribe tu correo arriba para enviarte el enlace de restablecimiento."
-            return
-        }
-        error = null
-        isLoading = true
-        scope.launch {
-            val problema = authRepository.recuperarContrasena(email)
-            isLoading = false
-            if (problema != null) {
-                error = problema
-            } else {
-                aviso = "Si $email tiene una cuenta, te enviamos un enlace para restablecer la contraseña. Revisa también spam."
-            }
-        }
+        if (isLoading || success) return
+        solicitarRecuperacion(
+            scope = scope,
+            email = correo.trim(),
+            authRepository = authRepository,
+            alCambiarCarga = { isLoading = it },
+            alResultado = { err, msg ->
+                error = err
+                if (msg != null) aviso = msg
+            },
+        )
     }
 
     fun intentarEntrar() {
-        if (correo.isBlank() || password.isBlank()) {
+        if (isLoading || success) return
+        val errorLocal = validarIngresoLocal(correo, password)
+        if (errorLocal != null) {
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-            error = "Por favor ingresa tu correo y contraseña."
-            return
-        }
-        val ahora = IntentosIngreso.ahoraMs()
-        val bloqueo = IntentosIngreso.estado(ahora)
-        if (bloqueo.bloqueadoHasta != null) {
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-            error = mensajeIntentos(bloqueo, ahora)
+            error = errorLocal
             return
         }
         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
         error = null
         aviso = null
         isLoading = true
+        onInicioLoginManual()
         scope.launch {
             val resultado = resolverIngreso(authRepository, perfilRepository, correo.trim(), password, recordarme)
             isLoading = false
@@ -284,6 +276,40 @@ fun LoginScreen(
             )
         },
     )
+}
+
+/** Valida el correo y solicita el enlace de restablecimiento en Firebase Auth. */
+private fun solicitarRecuperacion(
+    scope: kotlinx.coroutines.CoroutineScope,
+    email: String,
+    authRepository: AuthRepository,
+    alCambiarCarga: (Boolean) -> Unit,
+    alResultado: (error: String?, aviso: String?) -> Unit,
+) {
+    if (!Validaciones.correoValido(email)) {
+        alResultado("Escribe tu correo arriba para enviarte el enlace de restablecimiento.", null)
+        return
+    }
+    alResultado(null, null)
+    alCambiarCarga(true)
+    scope.launch {
+        val problema = authRepository.recuperarContrasena(email)
+        alCambiarCarga(false)
+        val ok = if (problema == null) {
+            "Si $email tiene una cuenta, te enviamos un enlace para restablecer la contraseña. Revisa también spam."
+        } else {
+            null
+        }
+        alResultado(problema, ok)
+    }
+}
+
+/** Valida credenciales no vacías y el bloqueo local por intentos fallidos antes de llamar a Firebase. */
+private fun validarIngresoLocal(correo: String, password: String): String? {
+    if (correo.isBlank() || password.isBlank()) return "Por favor ingresa tu correo y contraseña."
+    val ahora = IntentosIngreso.ahoraMs()
+    val bloqueo = IntentosIngreso.estado(ahora)
+    return if (bloqueo.bloqueadoHasta != null) mensajeIntentos(bloqueo, ahora) else null
 }
 
 /** Ancho máximo del formulario. */
@@ -517,13 +543,14 @@ private fun LoginForm(
             },
             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { onSubmit() }),
+            keyboardActions = KeyboardActions(onDone = { if (!isLoading) onSubmit() }),
         )
         Spacer(Modifier.height(12.dp))
         val haptic = LocalHapticFeedback.current
         RecordarmeYOlvideFila(
             recordarme = recordarme,
             onRecordarmeChange = onRecordarmeChange,
+            enabled = !isLoading,
             onOlvideContrasena = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onOlvide()
@@ -546,6 +573,7 @@ private fun LoginForm(
 private fun RecordarmeYOlvideFila(
     recordarme: Boolean,
     onRecordarmeChange: (Boolean) -> Unit,
+    enabled: Boolean = true,
     onOlvideContrasena: () -> Unit,
 ) {
     val colors = CobreTheme.colors
@@ -558,6 +586,7 @@ private fun RecordarmeYOlvideFila(
         CobreCheckbox(
             checked = recordarme,
             onCheckedChange = {
+                if (!enabled) return@CobreCheckbox
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onRecordarmeChange(it)
             },
@@ -568,7 +597,7 @@ private fun RecordarmeYOlvideFila(
             style = MaterialTheme.typography.labelMedium,
             color = colors.accentText,
             modifier = Modifier
-                .clickable(role = Role.Button, onClick = onOlvideContrasena)
+                .clickable(enabled = enabled, role = Role.Button, onClick = onOlvideContrasena)
                 .padding(vertical = 12.dp),
         )
     }

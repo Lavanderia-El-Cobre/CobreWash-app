@@ -117,7 +117,9 @@ fun DetalleScreen(
     onAlerta: (tipo: TipoAlerta, comentario: String) -> Unit,
     onResolver: () -> Unit,
     operacionPendiente: Boolean = false,
+    operacionSeq: Int = 0,
     errorOperacion: String? = null,
+    avisoOperacion: String? = null,
     sharedScope: SharedTransitionScope? = null,
     animatedScope: AnimatedVisibilityScope? = null,
 ) {
@@ -128,12 +130,18 @@ fun DetalleScreen(
     AutoDescartarAlerta(alertaActiva) { alertaActiva = null }
 
     // Protege avanzar/resolver/generar alerta de un doble toque (frecuente con
-    // guantes en planta): se deshabilita al primer toque y se reactiva recién
-    // cuando el pedido recompuesto refleja el cambio real.
+    // guantes en planta): se deshabilita al primer toque y se reactiva al completarse
+    // cualquier operación (incluido encolado offline o respuesta síncrona).
     var accionEnCurso by remember { mutableStateOf(false) }
-    LaunchedEffect(pedido.etapaActual, pedido.estaBloqueado, pedido.historial.size, operacionPendiente, errorOperacion) {
-        accionEnCurso = false
-    }
+    DesbloquearAccionEnCurso(
+        pedido = pedido,
+        accionEnCurso = accionEnCurso,
+        operacionPendiente = operacionPendiente,
+        operacionSeq = operacionSeq,
+        errorOperacion = errorOperacion,
+        avisoOperacion = avisoOperacion,
+        onLiberar = { accionEnCurso = false },
+    )
 
     val scroll = rememberScrollState()
     val colapsado by rememberTitleCollapsed(scroll)
@@ -156,11 +164,11 @@ fun DetalleScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     Encabezado(pedido = pedido, sharedScope = sharedScope, animatedScope = animatedScope)
-                    val acciones: @Composable ColumnScope.() -> Unit = {
+                    val acciones: @Composable () -> Unit = {
                         AccionesCard(
                             pedido = pedido,
                             comentario = comentario,
-                            onComentarioChange = { comentario = it },
+                            onComentarioChange = { comentario = it.take(288) },
                             onComentar = {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 onComentar(comentario)
@@ -178,23 +186,7 @@ fun DetalleScreen(
                         HistorialCard(pedido = pedido)
                     }
                     errorOperacion?.let { MensajeError(it) }
-                    if (dosColumnas) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                DetalleInfo(pedido)
-                                DatosFirebase(pedido)
-                                ProcesoCard(pedido)
-                            }
-                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                acciones()
-                            }
-                        }
-                    } else {
-                        DetalleInfo(pedido)
-                        DatosFirebase(pedido)
-                        ProcesoCard(pedido)
-                        acciones()
-                    }
+                    ContenidoDetalle(dosColumnas = dosColumnas, pedido = pedido, acciones = acciones)
                 }
             }
         },
@@ -222,6 +214,62 @@ fun DetalleScreen(
             )
         },
     )
+}
+
+/** Distribuye las tarjetas informativas y de acción en una o dos columnas según el ancho disponible. */
+@Composable
+private fun ContenidoDetalle(
+    dosColumnas: Boolean,
+    pedido: Pedido,
+    acciones: @Composable () -> Unit,
+) {
+    if (dosColumnas) {
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                DetalleInfo(pedido)
+                DatosFirebase(pedido)
+                ProcesoCard(pedido)
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                acciones()
+            }
+        }
+    } else {
+        DetalleInfo(pedido)
+        DatosFirebase(pedido)
+        ProcesoCard(pedido)
+        acciones()
+    }
+}
+
+/** Libera el candado anti doble-toque cuando concluye la operación o expira el respaldo temporal. */
+@Composable
+private fun DesbloquearAccionEnCurso(
+    pedido: Pedido,
+    accionEnCurso: Boolean,
+    operacionPendiente: Boolean,
+    operacionSeq: Int,
+    errorOperacion: String?,
+    avisoOperacion: String?,
+    onLiberar: () -> Unit,
+) {
+    LaunchedEffect(
+        pedido.etapaActual,
+        pedido.estaBloqueado,
+        pedido.historial.size,
+        operacionPendiente,
+        operacionSeq,
+        errorOperacion,
+        avisoOperacion,
+    ) {
+        onLiberar()
+    }
+    LaunchedEffect(accionEnCurso, operacionPendiente) {
+        if (accionEnCurso && !operacionPendiente) {
+            kotlinx.coroutines.delay(1_500)
+            onLiberar()
+        }
+    }
 }
 
 /** Barra superior (volver + comanda al colapsar), aviso de alerta y barra de acción: la capa de vidrio del detalle. */

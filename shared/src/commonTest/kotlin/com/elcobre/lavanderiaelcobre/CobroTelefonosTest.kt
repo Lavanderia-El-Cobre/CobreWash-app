@@ -161,4 +161,25 @@ class CobroTelefonosTest {
         assertEquals("123", Telefonos.normalizar(" 123 "))
         assertEquals("", Telefonos.normalizar(""))
     }
+
+    @Test
+    fun cobroPorKg_repartirPesoNuncaGeneraCerosConPesosPequenos() {
+        val caso1 = Cobro.repartirPeso(0.1, listOf(100, 1, 1))
+        assertEquals(3, caso1.size)
+        assertTrue(caso1.all { it > 0.0 }, "Ningún detalle puede quedar con peso 0: $caso1")
+        assertEquals(0.1, caso1.sum(), 1e-6)
+
+        val caso2 = Cobro.repartirPeso(0.01, listOf(1, 1, 1))
+        assertEquals(3, caso2.size)
+        assertTrue(caso2.all { it > 0.0 }, "Micro-pesos deben mantenerse positivos: $caso2")
+        assertEquals(0.01, caso2.sum(), 1e-6)
+    }
+
+    @Test
+    fun telefonos_rechazaDigitosSobrantesEnNumerosChilenosLocales() {
+        assertFalse(Telefonos.esValido("912345678999"))
+        assertFalse(Telefonos.esValido("55234567899"))
+        assertTrue(Telefonos.esValido("552345678"))
+        assertEquals("912345678999", Telefonos.normalizar("912345678999"))
+    }
 }

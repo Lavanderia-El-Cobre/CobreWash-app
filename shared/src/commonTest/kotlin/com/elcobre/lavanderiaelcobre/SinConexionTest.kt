@@ -22,10 +22,17 @@ import com.elcobre.lavanderiaelcobre.data.offline.ResultadoEnvio
 import com.elcobre.lavanderiaelcobre.data.offline.ResultadoRegistro
 import com.elcobre.lavanderiaelcobre.data.offline.Sincronizador
 import com.elcobre.lavanderiaelcobre.data.offline.TipoAccion
+import com.elcobre.lavanderiaelcobre.data.model.DisponibilidadVehiculo
+import com.elcobre.lavanderiaelcobre.data.model.EstadoSalida
+import com.elcobre.lavanderiaelcobre.data.model.PanelReparto
+import com.elcobre.lavanderiaelcobre.data.model.VehiculoReparto
 import com.elcobre.lavanderiaelcobre.ui.CobreViewModel
 import com.elcobre.lavanderiaelcobre.ui.Pantalla
 import com.elcobre.lavanderiaelcobre.ui.gestion.ahoraMs
+import com.elcobre.lavanderiaelcobre.ui.gestion.salidaPendienteDesdeCola
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.builtins.ListSerializer
@@ -53,9 +60,13 @@ private class ServidorFalso : EjecutorAcciones {
     val rechazar = mutableMapOf<String, String>()
     var sesionValida = true
     var fotosConRed = true
+    var comentarioConRed = true
+    var comentarioRechazado: String? = null
+    var horaDisponible = true
     val fotosSubidas = mutableListOf<String>()
+    val comentariosEnviados = mutableListOf<Pair<String, String>>()
 
-    override suspend fun horaServidorMs(): Long? = if (conectado) horaServidor else null
+    override suspend fun horaServidorMs(): Long? = if (conectado && horaDisponible) horaServidor else null
 
     override suspend fun aplicar(accion: AccionPendiente, hora: HoraOriginal): ResultadoEnvio = when {
         !conectado -> ResultadoEnvio.SinRed
@@ -68,6 +79,19 @@ private class ServidorFalso : EjecutorAcciones {
         }
     }
 
+    override suspend fun enviarComentario(accion: AccionPendiente): ResultadoEnvio {
+        val texto = accion.datos["comentario"]?.takeIf { it.isNotBlank() } ?: return ResultadoEnvio.Aplicada
+        return when {
+            !conectado || !comentarioConRed -> ResultadoEnvio.SinRed
+            !sesionValida -> ResultadoEnvio.Sesion("Sesión vencida")
+            comentarioRechazado != null -> ResultadoEnvio.Rechazada(comentarioRechazado!!)
+            else -> {
+                comentariosEnviados += accion.id to texto
+                ResultadoEnvio.Aplicada
+            }
+        }
+    }
+
     override suspend fun subirFotos(accion: AccionPendiente): ResultadoEnvio =
         if (!conectado || !fotosConRed) ResultadoEnvio.SinRed else ResultadoEnvio.Aplicada.also { fotosSubidas += accion.id }
 }
@@ -77,7 +101,7 @@ class SinConexionTest {
     private val servidor = ServidorFalso()
     private val cola = ColaAcciones(AlmacenEnMemoria())
     private var uid: String? = "operario-1"
-    private val sync = Sincronizador(cola, servidor, reloj) { uid }
+    private val sync = Sincronizador(cola, servidor, reloj, uidActual = { uid })
 
     private fun accion(id: String, entidad: String = "c1", tipo: TipoAccion = TipoAccion.COMPLETAR_ETAPA, fotos: List<FotoPendiente> = emptyList()) =
         sync.nueva(id, tipo, uid!!, entidad, mapOf("comandaId" to entidad), "Acción $id", fotos)
@@ -277,5 +301,133 @@ class SinConexionTest {
         )
         assertEquals(Pantalla.Dashboard, vm.pantalla)
         assertNotNull(vm.avisoOperacion)
+        vm.limpiarAviso()
+        assertNull(vm.avisoOperacion)
+    }
+
+    @Test
+    fun avanceConComentario_noSePierdeSinConexionYSeReintentaSinDuplicarEtapa() = runTest {
+        servidor.comentarioConRed = false
+        val a = sync.nueva(
+            "av1", TipoAccion.COMPLETAR_ETAPA, uid!!, "c1",
+            mapOf("comandaId" to "c1", "comentario" to "Prenda delicada"), "Completar etapa 2",
+        )
+        val r = sync.registrar(a)
+        assertTrue(r is ResultadoRegistro.EnCola)
+        val pendiente = cola.acciones.value.single()
+        assertTrue(pendiente.aplicada, "La etapa quedó aplicada")
+        assertTrue(!pendiente.comentarioAplicado, "El comentario sigue pendiente")
+        servidor.comentarioConRed = true
+        sync.sincronizar(forzar = true)
+        assertEquals(1, servidor.aplicadas.size, "No se duplica la etapa")
+        assertEquals(listOf("av1" to "Prenda delicada"), servidor.comentariosEnviados)
+        assertTrue(cola.acciones.value.isEmpty())
+    }
+
+    @Test
+    fun horaServidorCaidaConRedValidada_continuaConRelojDudoso() = runTest {
+        servidor.horaDisponible = false
+        val r = sync.registrar(accion("h1"))
+        assertEquals(ResultadoRegistro.Enviada, r)
+        assertTrue(servidor.aplicadas.getValue("h1").relojDudoso)
+    }
+
+    @Test
+    fun reintentarAhora_enviaDeInmediatoYEmiteEventoSincronizacion() = runTest {
+        AccionesSinConexion.configurar(cola, sync, { uid }) {}
+        AccionesSinConexion.informarConexion(true)
+        servidor.conectado = false
+        sync.registrar(accion("r1"))
+        servidor.conectado = true
+        servidor.rechazar["c1"] = "Conflicto temporal"
+        sync.sincronizar(forzar = true)
+        assertEquals(EstadoAccion.REQUIERE_ATENCION, cola.acciones.value.single().estado)
+
+        servidor.rechazar.clear()
+        var recibido: Int? = null
+        val job = launch(UnconfinedTestDispatcher(testScheduler)) {
+            recibido = AccionesSinConexion.sincronizaciones.first().enviadas
+        }
+        val resumen = AccionesSinConexion.reintentarAhora("r1")
+        job.join()
+        assertEquals(1, resumen?.enviadas)
+        assertEquals(1, recibido)
+        assertTrue(cola.acciones.value.isEmpty())
+    }
+
+    @Test
+    fun salidaYRegresoSinConexion_seEncadenanYAdminPuedeDespacharDosVehiculos() = runTest {
+        AccionesSinConexion.configurar(cola, sync, { uid }) {}
+        servidor.conectado = false
+        assertFailsWith<AccionEnColaException> {
+            AccionesSinConexion.ejecutar(
+                TipoAccion.SALIDA_FLOTA, "sal-1",
+                mapOf("vehiculoId" to "v1", "repartidorId" to "r1", "kilometraje" to "12000", "estadoVehiculo" to "APTO"),
+                "Salida 1",
+            )
+        }
+        val panel = PanelReparto(
+            vehiculos = listOf(VehiculoReparto("v1", "HLRT-24", "Suzuki APV", null, DisponibilidadVehiculo.DISPONIBLE, 11900, null)),
+        )
+        val proyectada = salidaPendienteDesdeCola(cola.acciones.value, panel)
+        assertNotNull(proyectada)
+        assertEquals("sal-1", proyectada.id)
+        assertEquals(EstadoSalida.EN_SERVICIO, proyectada.estado)
+        assertEquals("HLRT-24", proyectada.patente)
+
+        // Permite registrar el regreso sobre la misma salida sin conexión.
+        assertFailsWith<AccionEnColaException> {
+            AccionesSinConexion.ejecutar(TipoAccion.RETORNO_FLOTA, "sal-1", mapOf("salidaId" to "sal-1"), "Regreso 1")
+        }
+
+        // En modo admin se permiten salidas simultáneas para vehículos y conductores distintos.
+        assertFailsWith<AccionEnColaException> {
+            AccionesSinConexion.ejecutar(
+                TipoAccion.SALIDA_FLOTA, "sal-2",
+                mapOf("vehiculoId" to "v2", "repartidorId" to "r2", "modoAdmin" to "true"), "Salida admin 1",
+            )
+        }
+        assertFailsWith<AccionEnColaException> {
+            AccionesSinConexion.ejecutar(
+                TipoAccion.SALIDA_FLOTA, "sal-3",
+                mapOf("vehiculoId" to "v3", "repartidorId" to "r3", "modoAdmin" to "true"), "Salida admin 2",
+            )
+        }
+        // Pero bloquea duplicar el mismo vehículo.
+        val dup = assertFailsWith<OperacionComandaException> {
+            AccionesSinConexion.ejecutar(
+                TipoAccion.SALIDA_FLOTA, "sal-4",
+                mapOf("vehiculoId" to "v2", "repartidorId" to "r4", "modoAdmin" to "true"), "Salida duplicada",
+            )
+        }
+        assertTrue(dup !is AccionEnColaException)
+    }
+
+    @Test
+    fun rechazoEnComentarioPosterior_muestraMotivoRealYNoMensajeSinRed() = runTest {
+        servidor.comentarioRechazado = "Comentario excede el límite permitido"
+        val a = sync.nueva(
+            "av-rej", TipoAccion.COMPLETAR_ETAPA, uid!!, "c1",
+            mapOf("comandaId" to "c1", "comentario" to "Texto largo"), "Completar etapa",
+        )
+        val r = sync.registrar(a)
+        assertTrue(r is ResultadoRegistro.EnCola)
+        assertTrue(r.motivo.contains("Comentario excede el límite permitido"), "Debe informar el rechazo real: ${r.motivo}")
+        assertEquals(EstadoAccion.REQUIERE_ATENCION, cola.acciones.value.single().estado)
+    }
+
+    @Test
+    fun cacheDeLectura_noEscribeTrasLimpiarEnVuelo() = runTest {
+        val archivos = mutableMapOf<String, AlmacenEnMemoria>()
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        CacheLectura.configurar({ nombre -> archivos.getOrPut(nombre) { AlmacenEnMemoria() } }, { archivos.clear() }, dispatcher)
+        AccionesSinConexion.configurar(cola, sync, { uid }) {}
+        val serializador = ListSerializer(String.serializer())
+        val valor = CacheLectura.leer("lista", serializador) {
+            CacheLectura.limpiar()
+            listOf("Sensible")
+        }
+        assertEquals(listOf("Sensible"), valor)
+        assertTrue(archivos.values.all { it.leer() == null }, "No debe persistir caché de una sesión cerrada en vuelo")
     }
 }

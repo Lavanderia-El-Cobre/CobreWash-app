@@ -1,6 +1,9 @@
 package com.elcobre.lavanderiaelcobre.data.model
 
+import kotlinx.serialization.Serializable
+
 /** Estados de una comanda (`ComandaEstado`), con las etiquetas que usa la web. */
+@Serializable
 enum class EstadoComanda(val etiqueta: String) {
     PENDIENTE("Pendiente"),
     EN_PROCESO("En proceso"),
@@ -17,6 +20,7 @@ enum class EstadoComanda(val etiqueta: String) {
 }
 
 /** Tipo de cliente de la ficha; en [HOTEL] el detalle registra entregado, recibido y pendiente. */
+@Serializable
 enum class TipoClienteFicha(val etiqueta: String) {
     PARTICULAR("Particular"),
     HOTEL("Hotel"),
@@ -28,6 +32,7 @@ enum class TipoClienteFicha(val etiqueta: String) {
 }
 
 /** Ficha de cliente (`Cliente`) con un resumen de su historial de comandas. */
+@Serializable
 data class ClienteFicha(
     val id: String,
     val nombre: String,
@@ -65,6 +70,7 @@ data class CatalogosComanda(
 )
 
 /** Línea de detalle de una comanda: prenda, servicio, cantidad, precio y su parte del peso. */
+@Serializable
 data class LineaComanda(
     val prenda: String,
     val servicio: String,
@@ -79,6 +85,7 @@ data class LineaComanda(
 }
 
 /** Estado de avance de una etapa dentro del flujo de producción de una comanda. */
+@Serializable
 enum class EstadoEtapaProduccion(val etiqueta: String) {
     PENDIENTE("Pendiente"),
     EN_PROCESO("En proceso"),
@@ -91,6 +98,7 @@ enum class EstadoEtapaProduccion(val etiqueta: String) {
 }
 
 /** Etapa del flujo de producción de una comanda, normalizada como `normalizarEtapas` de la web. */
+@Serializable
 data class EtapaComanda(
     val id: String,
     val nombre: String,
@@ -106,9 +114,11 @@ data class EtapaComanda(
 )
 
 /** Evento del historial cronológico de trazabilidad de una comanda. */
+@Serializable
 data class EventoComanda(val titulo: String, val detalle: String, val fecha: String, val autor: String)
 
 /** Comanda vista desde recepción o administración (lista y detalle). */
+@Serializable
 data class ComandaGestion(
     val id: String,
     val numero: String,
@@ -206,9 +216,11 @@ data class PaginaComandas(
 )
 
 /** Persona que puede recibir asignaciones (operario) o salidas (repartidor). */
+@Serializable
 data class PersonaRef(val id: String, val nombre: String)
 
 /** Página de seguimiento de planta junto con la lista de operarios disponibles para reasignar. */
+@Serializable
 data class PaginaProduccion(
     val comandas: List<ComandaGestion>,
     val total: Int,

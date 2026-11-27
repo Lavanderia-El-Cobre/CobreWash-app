@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.elcobre.lavanderiaelcobre.data.model.fechaHoraLocal
 import com.elcobre.lavanderiaelcobre.data.offline.AccionPendiente
 import com.elcobre.lavanderiaelcobre.data.offline.AccionesSinConexion
+import com.elcobre.lavanderiaelcobre.data.offline.CacheLectura
 import com.elcobre.lavanderiaelcobre.data.offline.EstadoAccion
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreShapes
 import com.elcobre.lavanderiaelcobre.ui.theme.CobreTheme
@@ -48,15 +49,17 @@ fun EstadoSincronizacion(modifier: Modifier = Modifier) {
     val cola = AccionesSinConexion.cola
     val acciones by (cola?.acciones ?: SIN_COLA).collectAsState()
     val conectado by AccionesSinConexion.conectado.collectAsState()
+    val desdeCache by CacheLectura.desdeCache.collectAsState()
     val uid = AccionesSinConexion.uid()
     val propias = acciones.filter { it.uid == uid }
     val atencion = propias.count { it.estado == EstadoAccion.REQUIERE_ATENCION }
     val pendientes = propias.size - atencion
     var abierta by remember { mutableStateOf(false) }
-    if (conectado && propias.isEmpty()) return
+    if (conectado && propias.isEmpty() && !desdeCache) return
     val colors = CobreTheme.colors
     val texto = listOfNotNull(
         "Sin conexión".takeIf { !conectado },
+        "Datos guardados".takeIf { desdeCache && (!conectado || propias.isEmpty()) },
         "$pendientes por enviar".takeIf { pendientes > 0 },
         "$atencion requieren atención".takeIf { atencion > 0 },
     ).joinToString(" · ")
@@ -94,7 +97,7 @@ private fun BandejaPendientes(acciones: List<AccionPendiente>, conectado: Boolea
     var descartando by remember { mutableStateOf<AccionPendiente?>(null) }
     var enviando by remember { mutableStateOf(false) }
     GlassSheet(
-        onDismiss = onCerrar,
+        onDismiss = { if (!enviando) onCerrar() },
         title = "Acciones sin enviar",
         subtitle = "Se guardaron en el teléfono con la hora en que ocurrieron y se envían solas al recuperar la conexión.",
     ) {
@@ -103,23 +106,30 @@ private fun BandejaPendientes(acciones: List<AccionPendiente>, conectado: Boolea
         }
         acciones.forEach { accion ->
             FilaAccion(
-                accion,
-                onReintentar = { scope.launch { AccionesSinConexion.sincronizador?.reintentar(accion.id) } },
-                onDescartar = { descartando = accion },
+                accion = accion,
+                ocupado = enviando,
+                onReintentar = {
+                    if (enviando) return@FilaAccion
+                    enviando = true
+                    scope.launch {
+                        try { AccionesSinConexion.reintentarAhora(accion.id) } finally { enviando = false }
+                    }
+                },
+                onDescartar = { if (!enviando) descartando = accion },
             )
         }
         CobreButton(
             text = if (conectado) "Enviar ahora" else "Sin conexión",
             onClick = {
+                if (enviando) return@CobreButton
                 enviando = true
                 scope.launch {
-                    AccionesSinConexion.sincronizar(forzar = true)
-                    enviando = false
+                    try { AccionesSinConexion.sincronizar(forzar = true) } finally { enviando = false }
                 }
             },
             icon = CobreIcons.Send,
             loading = enviando,
-            enabled = conectado && acciones.any { it.estado == EstadoAccion.PENDIENTE },
+            enabled = !enviando && conectado && acciones.any { it.estado == EstadoAccion.PENDIENTE },
             fillWidth = true,
         )
     }
@@ -131,7 +141,10 @@ private fun BandejaPendientes(acciones: List<AccionPendiente>, conectado: Boolea
             destructive = true,
             onConfirm = {
                 descartando = null
-                scope.launch { AccionesSinConexion.sincronizador?.descartar(accion.id) }
+                enviando = true
+                scope.launch {
+                    try { AccionesSinConexion.sincronizador?.descartar(accion.id) } finally { enviando = false }
+                }
             },
             onDismiss = { descartando = null },
         )
@@ -144,7 +157,12 @@ private fun BandejaPendientes(acciones: List<AccionPendiente>, conectado: Boolea
  * o descarte si requiere atención.
  */
 @Composable
-private fun FilaAccion(accion: AccionPendiente, onReintentar: () -> Unit, onDescartar: () -> Unit) {
+private fun FilaAccion(
+    accion: AccionPendiente,
+    ocupado: Boolean,
+    onReintentar: () -> Unit,
+    onDescartar: () -> Unit,
+) {
     val colors = CobreTheme.colors
     val atencion = accion.estado == EstadoAccion.REQUIERE_ATENCION
     ContentCard(stripe = if (atencion) colors.danger else null) {
@@ -154,7 +172,10 @@ private fun FilaAccion(accion: AccionPendiente, onReintentar: () -> Unit, onDesc
                 listOfNotNull(
                     "Hecha ${fechaHoraLocal(accion.ocurridoEnMs)}",
                     accion.fotos.size.takeIf { it > 0 }?.let { "$it foto(s)" },
-                    "Fotos pendientes".takeIf { accion.aplicada },
+                    "Comentario pendiente".takeIf {
+                        accion.aplicada && !accion.comentarioAplicado && !accion.datos["comentario"].isNullOrBlank()
+                    },
+                    "Fotos pendientes".takeIf { accion.aplicada && accion.fotos.isNotEmpty() },
                 ).joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.textSecondary,
@@ -166,8 +187,20 @@ private fun FilaAccion(accion: AccionPendiente, onReintentar: () -> Unit, onDesc
                     color = colors.dangerText,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    CobreButton(text = "Reintentar", onClick = onReintentar, variant = ButtonVariant.Tonal, modifier = Modifier.weight(1f))
-                    CobreButton(text = "Descartar", onClick = onDescartar, variant = ButtonVariant.Danger, modifier = Modifier.weight(1f))
+                    CobreButton(
+                        text = "Reintentar",
+                        onClick = onReintentar,
+                        variant = ButtonVariant.Tonal,
+                        enabled = !ocupado,
+                        modifier = Modifier.weight(1f),
+                    )
+                    CobreButton(
+                        text = "Descartar",
+                        onClick = onDescartar,
+                        variant = ButtonVariant.Danger,
+                        enabled = !ocupado,
+                        modifier = Modifier.weight(1f),
+                    )
                 }
             } else {
                 ChipTono(if (accion.intentos > 0) "Reintentando" else "En cola", Tono.INFO)

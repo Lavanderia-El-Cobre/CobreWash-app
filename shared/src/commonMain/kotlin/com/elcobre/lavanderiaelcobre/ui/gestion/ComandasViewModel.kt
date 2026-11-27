@@ -53,6 +53,8 @@ class ComandasViewModel(
 
     // Número de consulta monotónico para descartar respuestas que lleguen fuera de orden.
     private var consulta = 0
+    private var consultaDetalle = 0
+    private var servicioElegidoPorUsuario = false
 
     val hayMas: Boolean get() = comandas.size < total
 
@@ -83,7 +85,7 @@ class ComandasViewModel(
 
     /** Consulta la página de comandas según [filtro]; con [mas] amplía el límite en una página. */
     fun refrescar(mas: Boolean = false) {
-        if (mas && !hayMas) return
+        if (mas && (cargando || !hayMas)) return
         if (mas) limite += PAGINA_COMANDAS
         val solicitud = ++consulta
         val filtroActual = filtro
@@ -126,18 +128,22 @@ class ComandasViewModel(
 
     /** Muestra de inmediato la versión en caché del listado y solicita el detalle completo al servidor. */
     fun abrirDetalle(id: String) {
+        val solicitud = ++consultaDetalle
         detalle = comandas.firstOrNull { it.id == id }
         cargandoDetalle = true
         cargar {
             try {
-                detalle = repository.detalle(id) ?: detalle
+                val recibido = repository.detalle(id)
+                if (solicitud == consultaDetalle) detalle = recibido ?: detalle
             } finally {
-                cargandoDetalle = false
+                if (solicitud == consultaDetalle) cargandoDetalle = false
             }
         }
     }
 
     fun cerrarDetalle() {
+        consultaDetalle++
+        cargandoDetalle = false
         detalle = null
     }
 
@@ -148,7 +154,7 @@ class ComandasViewModel(
     private fun cargarCatalogos() = cargar {
         catalogos = repository.catalogos()
         formulario?.let { f ->
-            val servicio = f.servicio.takeIf { it.isNotBlank() && edicion != null }
+            val servicio = f.servicio.takeIf { it.isNotBlank() && (edicion != null || servicioElegidoPorUsuario) }
                 ?: catalogos.servicios.firstOrNull()?.nombre ?: f.servicio
             val precio = f.precioKg.ifBlank { Cobro.formatearPrecio(precioKgDe(servicio)) }
             formulario = f.copy(servicio = servicio, precioKg = precio)
@@ -160,6 +166,7 @@ class ComandasViewModel(
     fun abrirNueva() {
         identidad = null
         edicion = null
+        servicioElegidoPorUsuario = false
         errorFormulario = null
         formulario = FormularioComanda()
         cargarCatalogos()
@@ -169,6 +176,7 @@ class ComandasViewModel(
     fun abrirEdicion(comanda: ComandaGestion) {
         if (!comanda.puedeEditar) return
         edicion = comanda
+        servicioElegidoPorUsuario = false
         errorFormulario = null
         formulario = formularioDesde(comanda)
         cargarCatalogos()
@@ -177,6 +185,7 @@ class ComandasViewModel(
     /** Servicio de toda la comanda; propone su precio por kg si el campo está vacío o era el sugerido. */
     fun seleccionarServicio(nombre: String) {
         val f = formulario ?: return
+        servicioElegidoPorUsuario = true
         val anteriorSugerido = Cobro.formatearPrecio(precioKgDe(f.servicio))
         val precio = if (f.precioKg.isBlank() || f.precioKg == anteriorSugerido) {
             Cobro.formatearPrecio(precioKgDe(nombre)).ifBlank { f.precioKg }
@@ -336,9 +345,21 @@ class ComandasViewModel(
         }
         val id = identidad ?: IdentidadComanda(idNuevo(), Validaciones.generarNumeroComanda()).also { identidad = it }
         val creada = repository.crearComanda(id, f)
+        // Una vez confirmada la creación en servidor, se cierra el formulario y se limpia la identidad
+        // para que un fallo al leer el comprobante nunca provoque un reintento duplicado.
         identidad = null
+        formulario = null
+        edicion = null
         mensaje = listOfNotNull("Comanda ${id.numero} creada correctamente.", avisoCuenta).joinToString(" ")
-        detalle = repository.detalle(creada)
+        detalle = try {
+            repository.detalle(creada)
+        } catch (_: OperacionComandaException) {
+            mensaje = listOfNotNull(
+                "Comanda ${id.numero} creada. No se pudo cargar su comprobante; ábrela desde la lista.",
+                avisoCuenta,
+            ).joinToString(" ")
+            null
+        }
     }
 
     /** Anula [comanda] dejando registro del [motivo] obligatorio, si su estado lo permite. */
@@ -357,6 +378,7 @@ class ComandasViewModel(
     fun entregar(comanda: ComandaGestion, alTerminar: (String?) -> Unit = {}) {
         if (!comanda.puedeEntregar) return
         operar("Comanda ${comanda.numero} entregada. Se registró la fecha y el historial.", alTerminar = {
+            if (it != null) error = it
             alTerminar(it)
             if (it == null) refrescar()
         }) {
@@ -378,6 +400,9 @@ class ComandasViewModel(
         super.reiniciar()
         busquedaJob?.cancel()
         consulta++
+        consultaDetalle++
+        cargandoDetalle = false
+        servicioElegidoPorUsuario = false
         filtro = FiltroComandas()
         comandas = emptyList()
         total = 0

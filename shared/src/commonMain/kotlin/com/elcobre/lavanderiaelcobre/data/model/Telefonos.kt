@@ -216,7 +216,9 @@ object Telefonos {
         val detectado = detectar(valor)
         if (!detectado.reconocido) return "Usa un teléfono de Chile o de otro país de Latinoamérica, con su prefijo."
         // El número completo debe calzar exactamente: no se aceptan dígitos sobrantes.
-        if (soloDigitos(formatear(detectado.pais.id, detectado.nacional)) != normalizarDigitos(valor)) {
+        if (detectado.nacional.isNotEmpty() &&
+            soloDigitos(formatear(detectado.pais.id, detectado.nacional)) != normalizarDigitos(valor)
+        ) {
             return "Revisa el teléfono: tiene más dígitos de los esperados."
         }
         return validarNacional(detectado.pais, detectado.nacional)
@@ -226,8 +228,10 @@ object Telefonos {
     private fun normalizarDigitos(valor: String): String {
         val texto = valor.trim()
         if (esInternacional(texto)) return digitosInternacionales(texto)
-        val detectado = detectar(texto)
-        return soloDigitos(formatear(detectado.pais.id, detectado.nacional))
+        var digitos = soloDigitos(texto)
+        if (digitos.length >= 10 && digitos.startsWith("56")) digitos = digitos.drop(2)
+        if (digitos.length >= 10 && digitos.startsWith("0")) digitos = digitos.drop(1)
+        return "56$digitos"
     }
 
     fun esValido(valor: String): Boolean = valor.isNotBlank() && validar(valor) == null

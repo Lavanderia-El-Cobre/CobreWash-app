@@ -114,6 +114,7 @@ private class FirebaseAdministracionRepository : AdministracionRepository {
         return conCuentaNueva(email) { alta ->
             val cuenta = alta.usuario ?: throw OperacionComandaException("Ese correo ya tiene una cuenta registrada.")
             registrarPerfil(cuenta.uid, input)
+            alta.confirmarPersistencia()
             enviarInvitacion(alta.auth, email)
         }
     }
@@ -228,33 +229,74 @@ private class FirebaseAdministracionRepository : AdministracionRepository {
     }
 
     override suspend fun aprobarConteo(id: String, motivo: String): Unit = solicitud {
-        dc.aprobarConteoInventario.execute(UUID.fromString(id), motivo.trim().take(200))
+        dc.aprobarConteoInventario.execute(UUID.fromString(id), motivo.trim().take(160))
     }
 
     override suspend fun rechazarConteo(id: String, motivo: String): Unit = solicitud {
-        dc.rechazarConteoInventario.execute(UUID.fromString(id), motivo.trim().take(200))
+        dc.rechazarConteoInventario.execute(UUID.fromString(id), motivo.trim().take(160))
+    }
+
+    private suspend fun cargarCuentasReporte(desde: Timestamp, hasta: Timestamp): List<FilaReporte> {
+        val filasCuentas = mutableListOf<com.elcobre.lavanderiaelcobre.dataconnect.GetReporteCuentasQuery.Data.CuentasItem>()
+        val filasPrendas = mutableListOf<com.elcobre.lavanderiaelcobre.dataconnect.GetReporteCuentasQuery.Data.PrendasItem>()
+        var offset = 0
+        do {
+            val data = dc.getReporteCuentas.ref(desde, hasta) { limit = 500; this.offset = offset }.execute(SERVIDOR).data
+            filasCuentas += data.cuentas
+            filasPrendas += data.prendas
+            offset += 500
+        } while (data.cuentas.size == 500 || data.prendas.size == 500)
+        val prendasPorCuenta = filasPrendas.groupBy { "${it.comanda.cliente.id}|${it.comanda.empresa.orEmpty()}" }
+            .mapValues { (_, filas) -> filas.sumOf { it.cantidad_sum ?: 0 } }
+        return filasCuentas.groupBy { "${it.cliente.id}|${it.empresa.orEmpty()}" }.map { (clave, grupo) ->
+            val primera = grupo.first()
+            val etiqueta = primera.empresa?.takeIf { e -> e.isNotBlank() }?.let { e -> "${primera.cliente.nombre} · $e" }
+                ?: primera.cliente.nombre
+            FilaReporte(etiqueta, grupo.sumOf { it._count }, prendasPorCuenta[clave] ?: 0, grupo.sumOf { it.valorTotal_sum ?: 0.0 })
+        }.sortedByDescending { it.monto }
+    }
+
+    private suspend fun cargarServiciosReporte(desde: Timestamp, hasta: Timestamp): List<FilaReporte> {
+        val filas = mutableListOf<com.elcobre.lavanderiaelcobre.dataconnect.GetReporteServiciosQuery.Data.ServiciosItem>()
+        var offset = 0
+        do {
+            val pagina = dc.getReporteServicios.ref(desde, hasta) { limit = 500; this.offset = offset }.execute(SERVIDOR).data.servicios
+            filas += pagina
+            offset += 500
+        } while (pagina.size == 500)
+        return filas.groupBy { it.tipoServicio.id }.map { (_, grupo) ->
+            FilaReporte(
+                grupo.first().tipoServicio.nombre,
+                grupo.sumOf { it.comandaId_count },
+                grupo.sumOf { it.cantidad_sum ?: 0 },
+                grupo.sumOf { it.subtotal_sum ?: 0.0 },
+            )
+        }.sortedByDescending { it.monto }
+    }
+
+    private suspend fun contarCerradasReporte(desde: Timestamp, hasta: Timestamp, desdeMs: Long, hastaMs: Long): Int {
+        val idsCerradas = mutableSetOf<UUID>()
+        var offset = 0
+        do {
+            val pagina = dc.getReporteVolumen.ref(desde, hasta) { limit = 500; this.offset = offset }.execute(SERVIDOR).data.comandas
+            for (comanda in pagina) {
+                val cierre = (comanda.primerCierre.firstOrNull()?.fecha ?: comanda.fechaEntregaReal)?.millis()
+                if (cierre != null && cierre in desdeMs until hastaMs) idsCerradas += comanda.id
+            }
+            offset += 500
+        } while (pagina.size == 500)
+        return idsCerradas.size
     }
 
     override suspend fun reporte(desdeMs: Long, hastaMs: Long): ReporteGestion = solicitud {
         val desde = Timestamp(Date(desdeMs))
         val hasta = Timestamp(Date(hastaMs))
-        val cuentas = dc.getReporteCuentas.ref(desde, hasta).execute(SERVIDOR).data
-        val prendasPorCuenta = cuentas.prendas.groupBy { "${it.comanda.cliente.id}|${it.comanda.empresa.orEmpty()}" }
-            .mapValues { (_, filas) -> filas.sumOf { it.cantidad_sum ?: 0 } }
-        val servicios = dc.getReporteServicios.ref(desde, hasta).execute(SERVIDOR).data.servicios
-        val cerradas = dc.getReporteVolumen.ref(desde, hasta).execute(SERVIDOR).data.comandas.size
         ReporteGestion(
             desde = fechaCorta(desde),
             hasta = fechaCorta(Timestamp(Date(hastaMs - 1))),
-            porCuenta = cuentas.cuentas.map {
-                val clave = "${it.cliente.id}|${it.empresa.orEmpty()}"
-                val etiqueta = it.empresa?.takeIf { e -> e.isNotBlank() }?.let { e -> "${it.cliente.nombre} · $e" } ?: it.cliente.nombre
-                FilaReporte(etiqueta, it._count, prendasPorCuenta[clave] ?: 0, it.valorTotal_sum ?: 0.0)
-            }.sortedByDescending { it.monto },
-            porServicio = servicios.map {
-                FilaReporte(it.tipoServicio.nombre, it.comandaId_count, it.cantidad_sum ?: 0, it.subtotal_sum ?: 0.0)
-            }.sortedByDescending { it.monto },
-            cerradas = cerradas,
+            porCuenta = cargarCuentasReporte(desde, hasta),
+            porServicio = cargarServiciosReporte(desde, hasta),
+            cerradas = contarCerradasReporte(desde, hasta, desdeMs, hastaMs),
         )
     }
 

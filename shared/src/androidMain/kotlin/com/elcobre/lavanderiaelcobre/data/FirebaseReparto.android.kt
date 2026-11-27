@@ -169,13 +169,13 @@ private class FirebaseRepartoRepository : RepartoRepository {
         inspeccionesPendientes[clave] = inspeccionId
         try {
             for ((indice, foto) in input.fotos.withIndex()) subirFotoInspeccion(inspeccionId, foto, indice + 1)
-            eliminarCapturasConfirmadas(input.fotos.map { it.uri })
         } catch (error: OperacionComandaException) {
             throw OperacionComandaException(
                 "La inspección ya se guardó. Hay fotografías pendientes: reintenta para subirlas. " + error.message, error,
             )
         }
         dc.iniciarSalidaVehiculo.execute(UUID.fromString(input.salidaId))
+        eliminarCapturasConfirmadas(input.fotos.map { it.uri })
         inspeccionesPendientes.remove(clave)
     }
 

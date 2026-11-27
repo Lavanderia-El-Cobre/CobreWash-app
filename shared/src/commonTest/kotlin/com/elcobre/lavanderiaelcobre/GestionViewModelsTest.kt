@@ -2,6 +2,8 @@
 
 package com.elcobre.lavanderiaelcobre
 
+import com.elcobre.lavanderiaelcobre.data.AdministracionRepository
+import com.elcobre.lavanderiaelcobre.data.EdicionUsuarioInput
 import com.elcobre.lavanderiaelcobre.data.IdentidadComanda
 import com.elcobre.lavanderiaelcobre.data.OperacionComandaException
 import com.elcobre.lavanderiaelcobre.data.RecepcionRepository
@@ -20,6 +22,7 @@ import com.elcobre.lavanderiaelcobre.data.model.EstadoIncidencia
 import com.elcobre.lavanderiaelcobre.data.model.EstadoSalida
 import com.elcobre.lavanderiaelcobre.data.model.FiltroComandas
 import com.elcobre.lavanderiaelcobre.data.model.FormularioComanda
+import com.elcobre.lavanderiaelcobre.data.model.FotoChequeo
 import com.elcobre.lavanderiaelcobre.data.model.InspeccionInput
 import com.elcobre.lavanderiaelcobre.data.model.InspeccionReparto
 import com.elcobre.lavanderiaelcobre.data.model.LineaFormulario
@@ -27,14 +30,19 @@ import com.elcobre.lavanderiaelcobre.data.model.NuevoClienteInput
 import com.elcobre.lavanderiaelcobre.data.model.PaginaComandas
 import com.elcobre.lavanderiaelcobre.data.model.PanelReparto
 import com.elcobre.lavanderiaelcobre.data.model.ProblemaEntrega
+import com.elcobre.lavanderiaelcobre.data.model.RolRef
 import com.elcobre.lavanderiaelcobre.data.model.SalidaReparto
 import com.elcobre.lavanderiaelcobre.data.model.TipoClienteFicha
 import com.elcobre.lavanderiaelcobre.data.model.TipoServicioCatalogo
+import com.elcobre.lavanderiaelcobre.data.model.UsuarioGestion
 import com.elcobre.lavanderiaelcobre.data.model.VehiculoReparto
+import com.elcobre.lavanderiaelcobre.ui.components.GUIAS_FOTOS_VEHICULO
+import com.elcobre.lavanderiaelcobre.ui.components.siguienteGuiaFoto
 import com.elcobre.lavanderiaelcobre.ui.gestion.ComandasViewModel
 import com.elcobre.lavanderiaelcobre.ui.gestion.EntregasViewModel
 import com.elcobre.lavanderiaelcobre.ui.gestion.MovimientoInput
 import com.elcobre.lavanderiaelcobre.ui.gestion.RepartoViewModel
+import com.elcobre.lavanderiaelcobre.ui.gestion.UsuariosViewModel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -52,6 +60,8 @@ class GestionViewModelsTest {
         val clientesCreados = mutableListOf<NuevoClienteInput>()
         val ediciones = mutableListOf<String>()
         var fallosCrear = 0
+        var fallarDetalle = false
+        var errorEntregar: String? = null
         val comandasGuardadas = mutableListOf(
             ComandaGestion("k1", "ELCOBRE-AB12", EstadoComanda.PENDIENTE, ClienteFicha("c1", "Ana"), 3000.0, "", "10.0"),
             ComandaGestion("k2", "ELCOBRE-CD34", EstadoComanda.FINALIZADA, ClienteFicha("c2", "Hotel"), 9000.0, "", "11.0"),
@@ -62,7 +72,14 @@ class GestionViewModelsTest {
             return PaginaComandas(lista.drop(offset).take(limit), lista.size, mapOf(EstadoComanda.PENDIENTE to 1))
         }
 
-        override suspend fun detalle(id: String): ComandaGestion? = comandasGuardadas.firstOrNull { it.id == id }
+        override suspend fun detalle(id: String): ComandaGestion? {
+            if (fallarDetalle) throw OperacionComandaException("Timeout leyendo detalle")
+            return comandasGuardadas.firstOrNull { it.id == id }
+        }
+
+        override suspend fun entregar(id: String) {
+            errorEntregar?.let { throw OperacionComandaException(it) }
+        }
 
         override suspend fun catalogos() = CatalogosComanda(servicios = listOf(TipoServicioCatalogo("s1", "Lavado", 1200.0)))
 
@@ -320,5 +337,74 @@ class GestionViewModelsTest {
         vm.reportarProblema(comandaLista, "Cliente ausente", "") { error = it }
         assertNull(error)
         assertEquals(Triple("c1", "Cliente ausente", null), repo.problemas.single())
+    }
+
+    @Test
+    fun crearComanda_siDetalleFalla_cierraFormularioYNoDuplica() {
+        val repo = RecepcionFalsa().apply { fallarDetalle = true }
+        val vm = ComandasViewModel(repo, scope(), idNuevo = { "uuid-det" })
+        vm.abrirNueva()
+        vm.actualizarFormulario(formularioNuevoCliente)
+
+        vm.guardar()
+        assertNull(vm.formulario, "Debe cerrar el formulario aunque falle la recarga del comprobante")
+        assertNull(vm.detalle)
+        assertEquals(1, repo.creadas.size)
+        assertTrue(vm.mensaje!!.contains("No se pudo cargar su comprobante"))
+    }
+
+    @Test
+    fun entregarComanda_siFalla_exponeErrorEnViewModel() {
+        val repo = RecepcionFalsa().apply { errorEntregar = "No autorizado para entregar" }
+        val vm = ComandasViewModel(repo, scope())
+        val finalizada = repo.comandasGuardadas[1]
+        var callbackError: String? = null
+        vm.entregar(finalizada) { callbackError = it }
+        assertEquals("No autorizado para entregar", callbackError)
+        assertEquals("No autorizado para entregar", vm.error)
+    }
+
+    @Test
+    fun usuarios_alternarActivoSiFalla_preservaErrorTrasRefrescar() {
+        val rol = RolRef("r1", "operario", "Operario")
+        val usuario = UsuarioGestion("u1", "Ana", "Diaz", "ana@cobre.cl", null, null, activo = true, rol = rol)
+        val repo = object : AdministracionRepository {
+            override suspend fun roles() = listOf(rol)
+            override suspend fun usuarios() = listOf(usuario)
+            override suspend fun actualizarUsuario(input: EdicionUsuarioInput) {
+                throw OperacionComandaException("No puedes desactivar tu propia cuenta")
+            }
+        }
+        val vm = UsuariosViewModel(repo, scope())
+        vm.refrescar()
+        vm.alternarActivo(usuario)
+        assertEquals("No puedes desactivar tu propia cuenta", vm.error)
+    }
+
+    @Test
+    fun guiaFotosVehiculo_empiezaPorFrenteYReproponeFaltantes() {
+        val primera = siguienteGuiaFoto(emptyList())
+        assertEquals("Frente", primera.etiqueta)
+        assertEquals("Frente del vehículo", primera.tituloCamara)
+        assertEquals(1, primera.paso)
+
+        // Si se tomó Frente y Lateral izquierdo (descartando Lateral derecho), propone Lateral derecho.
+        val parciales = listOf(
+            FotoChequeo("f1", "/tmp/1.jpg", "Frente", 1),
+            FotoChequeo("f2", "/tmp/2.jpg", "Lateral izquierdo", 2),
+        )
+        val faltante = siguienteGuiaFoto(parciales)
+        assertEquals("Lateral derecho", faltante.etiqueta)
+        assertEquals("Lateral derecho del vehículo", faltante.tituloCamara)
+        assertEquals(2, faltante.paso)
+
+        // Tras cubrir las 5 guías, propone evidencia adicional numerada.
+        val completas = GUIAS_FOTOS_VEHICULO.mapIndexed { idx, guia ->
+            FotoChequeo("f$idx", "/tmp/$idx.jpg", guia.etiqueta, idx + 1)
+        }
+        val extra = siguienteGuiaFoto(completas)
+        assertEquals("Evidencia 6", extra.etiqueta)
+        assertEquals("Evidencia adicional #6", extra.tituloCamara)
+        assertNull(extra.paso)
     }
 }
